@@ -1,0 +1,8 @@
+/* Ionic core — required for layout and component primitives */
+@import "@ionic/angular/css/core.css";
+@import "@ionic/angular/css/normalize.css";
+@import "@ionic/angular/css/structure.css";
+@import "@ionic/angular/css/display.css";
+
+/* SabeeApp Go design system — tokens + all shared classes */
+@import 'theme/sabeeapp-design';

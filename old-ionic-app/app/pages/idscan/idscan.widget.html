@@ -1,0 +1,17 @@
+<div class="widget half action" (click)="openPage()">
+  <div class="widget-header">
+    <div class="widget-icon">
+      <ion-img src="assets/icon/icon-id-scan2.svg"></ion-img>
+    </div>
+    <div class="widget-title">
+      {{ 'idScanWidget.pageTitle' | translateIT:(languageService.translations$ |
+      async) }}
+    </div>
+  </div>
+  <div class="widget-content">
+    <span class="large">14</span> {{ 'idScanWidget.arrivalGuests' |
+    translateIT:(languageService.translations$ | async) }}
+    <!-- {{ 'idScanWidget.arrivalGuests' | translateIT
+    : null : {count:14} }} -->
+  </div>
+</div>

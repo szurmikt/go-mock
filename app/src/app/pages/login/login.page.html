@@ -1,0 +1,86 @@
+<ion-content>
+  <div class="login-page">
+
+    <div class="login-header">
+      <select class="lang-select" [(ngModel)]="lang">
+        @for (l of languages; track l.code) {
+          <option [value]="l.code">{{ l.label }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="login-body">
+      <div style="text-align:center; margin-bottom:40px">
+        <div style="font-size:13px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; color:var(--primary); margin-bottom:8px">SabeeApp Go</div>
+        <div style="font-size:28px; font-weight:800; color:var(--ink); letter-spacing:-0.02em; line-height:1.15">Welcome back</div>
+        <div style="font-size:15px; font-weight:600; color:var(--ink-4); margin-top:6px">Sign in to your account</div>
+      </div>
+
+      <form (submit)="submit($event)">
+        <div class="form-group">
+          <input
+            placeholder=" "
+            type="email"
+            [(ngModel)]="email"
+            name="email"
+            autocomplete="email"
+            [disabled]="loading" />
+          <label>Email</label>
+        </div>
+
+        <div class="form-group" style="margin-bottom:24px">
+          <input
+            placeholder=" "
+            type="password"
+            [(ngModel)]="password"
+            name="password"
+            autocomplete="current-password"
+            [disabled]="loading" />
+          <label>Password</label>
+        </div>
+
+        <button
+          class="btn"
+          type="submit"
+          [disabled]="loading || !email.trim() || !password">
+          @if (loading) {
+            <span style="display:inline-flex; align-items:center; gap:8px">
+              <span class="spin"></span>
+              Signing in…
+            </span>
+          } @else {
+            Sign in
+          }
+        </button>
+      </form>
+    </div>
+
+    <div class="login-footer">
+      Account management is handled through your SabeeApp PMS
+    </div>
+
+  </div>
+</ion-content>
+
+@if (errorOpen) {
+  <div class="sheet-backdrop" (click)="dismissError()">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      <div class="head">
+        <h3>Sign in failed</h3>
+        <button class="icon-btn" (click)="dismissError()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div style="margin-top: 16px; margin-bottom: 8px">
+        <div style="font-size: 15px; font-weight: 600; color: var(--ink-3); line-height: 1.5">
+          {{ errorMessage }}
+        </div>
+      </div>
+      <div style="margin-top: 24px">
+        <button class="btn" (click)="dismissError()">Try again</button>
+      </div>
+    </div>
+  </div>
+}

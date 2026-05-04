@@ -1,0 +1,20 @@
+.widget-content {
+  margin-top: 15px;
+}
+.label {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 135%;
+  color: var(--color-grey-600);
+}
+.data {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+  &.green {
+    color: var(--color-sabeeapp-green);
+  }
+  &.red {
+    color: var(--color-sabeeapp-red);
+  }
+}

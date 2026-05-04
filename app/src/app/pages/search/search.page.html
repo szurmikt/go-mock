@@ -1,0 +1,85 @@
+<ion-content>
+  <div class="page" style="background: var(--bg)">
+
+    <div class="sub-header">
+      <button class="back" (click)="back()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+      <div style="flex: 1; display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-sm); padding: 0 12px; height: 40px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          style="color: var(--ink-4); flex-shrink: 0">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input #searchInput
+          type="text"
+          placeholder="Search reservations…"
+          [value]="query()"
+          (input)="setQuery($any($event.target).value)"
+          (keyup.enter)="onEnter()"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          style="flex: 1; border: none; background: none; outline: none; font-size: 15px; font-weight: 600; color: var(--ink); font-family: inherit" />
+        @if (query().length > 0) {
+          <button (click)="clearQuery()" style="background: none; border: none; padding: 0; cursor: pointer; color: var(--ink-4); display: flex; align-items: center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="app-scroll" style="padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px))">
+
+      @if (query().trim().length === 0) {
+        @if (recentSearches().length > 0) {
+          <div style="padding: 24px var(--pad) 0">
+            <div style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 12px">Recent</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              @for (s of recentSearches(); track s) {
+                <button (click)="setQuery(s)"
+                  style="background: var(--surface); border: 1.5px solid var(--line); border-radius: 20px; padding: 6px 14px; font-size: 14px; font-weight: 600; color: var(--ink); cursor: pointer; font-family: inherit">
+                  {{ s }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+      } @else if (query().trim().length < 3) {
+        <div style="text-align: center; padding: 32px var(--pad); color: var(--ink-4); font-size: 14px; font-weight: 600">
+          Type at least 3 characters to search
+        </div>
+      } @else if (results().length === 0) {
+        <div style="text-align: center; padding: 32px var(--pad); color: var(--ink-4); font-size: 14px; font-weight: 600">
+          No results for "{{ query() }}"
+        </div>
+      } @else {
+        <div style="padding-top: 8px">
+          @for (r of results(); track r.id) {
+            <div class="card res-card tap-anim tappable" (click)="goReservation(r)">
+              <div class="top">
+                <span class="res-code">{{ r.reservation_code }}</span>
+                <span class="pill" [attr.data-status]="pillStatus(r.status)">
+                  {{ pillLabel(r.status) }}
+                </span>
+              </div>
+              <div class="res-name">{{ bookerName(r) }}</div>
+              <div class="res-email">{{ r.booker.email }}</div>
+              <div class="res-meta">
+                <span><span class="v">{{ r.arrival_date }}</span> · {{ r.number_of_guests }} guests / {{ r.nights }} nights</span>
+                <span class="v">{{ r.room_name }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+    </div>
+  </div>
+</ion-content>

@@ -1,0 +1,26 @@
+ion-grid {
+  width: 100%;
+}
+
+.icons {
+  display: flex;
+  ion-img {
+    max-width: 28px;
+    padding: 10px;
+    box-sizing: content-box;
+    border-radius: 10px;
+    &.selected {
+      background-color: #c2c2c254;
+    }
+  }
+}
+
+.views {
+  ion-item {
+    --inner-border-width: 0;
+    &.selected {
+      --ion-background-color: #c2c2c254 !important;
+      // background-color: #c2c2c254;
+    }
+  }
+}

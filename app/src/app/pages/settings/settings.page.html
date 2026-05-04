@@ -1,0 +1,42 @@
+<ion-content>
+  <div class="page" style="background: var(--bg)">
+
+    <div class="sub-header">
+      <button class="back" (click)="back()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+      <span class="title">Settings</span>
+    </div>
+
+    <div class="app-scroll" style="padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px))">
+      <div style="padding: 24px var(--pad) 0; display: flex; flex-direction: column; gap: 24px">
+
+        <!-- Account card -->
+        <div class="card">
+          <div style="padding: 4px 0">
+            @if (auth.name()) {
+              <div style="font-size: 18px; color: var(--ink); font-weight: 700">{{ auth.name() }}</div>
+              <div style="font-size: 14px; color: var(--ink-4); font-weight: 600; margin-top: 3px">{{ auth.email() }}</div>
+            } @else {
+              <div style="font-size: 16px; color: var(--ink); font-weight: 700">{{ auth.email() }}</div>
+            }
+          </div>
+        </div>
+
+        <!-- Logout -->
+        <button class="btn danger" (click)="logout()" [disabled]="loggingOut()">
+          @if (loggingOut()) {
+            <span class="spin" style="width: 18px; height: 18px; border-width: 2.5px; border-top-color: var(--warn)"></span>
+          } @else {
+            Log out
+          }
+        </button>
+
+      </div>
+    </div>
+
+  </div>
+</ion-content>

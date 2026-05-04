@@ -1,0 +1,26 @@
+<div class="widget">
+  <div class="widget-header">
+    <div class="widget-icon">
+      <ion-img src="assets/icon/icon-performance-up.svg"></ion-img>
+    </div>
+    <div class="widget-title">Daily Performance</div>
+  </div>
+  <ion-grid>
+    <ion-row class="day-data">
+      <ion-col size="auto">
+        <div class="label">ADR</div>
+        <div class="data">
+          <span class="currency">&euro;</span>{{data_adr}}
+          <ion-img src="assets/icon/icon-performance-up.svg"></ion-img>
+        </div>
+      </ion-col>
+      <ion-col size="auto">
+        <div class="label">RevPAR</div>
+        <div class="data">
+          <span class="currency">&euro;</span>{{data_revpar}}
+          <ion-img src="assets/icon/icon-performance-down.svg"></ion-img>
+        </div>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</div>

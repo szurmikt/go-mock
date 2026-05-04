@@ -1,0 +1,285 @@
+@if (!initialized) {
+<div class="loader">
+  <div class="spinner-container">
+    <ion-spinner></ion-spinner>
+  </div>
+</div>
+} @if (initialized) {
+
+<ion-header
+  [translucent]="true"
+  class="ion-no-border"
+  [ngClass]="{below: fabOpened}"
+>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <custom-back-button href="/reservations" text="" />
+    </ion-buttons>
+    <ion-title>{{ "reservationPage.pageTitle" | translateIT }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="p8" [ngClass]="{'loading': loading}">
+  <div class="data-panel-wrapper">
+    <div class="reservation_code">
+      @if (loading) {
+      <ion-skeleton-text
+        [animated]="true"
+        style="width: 100%"
+      ></ion-skeleton-text>
+      } @if (!loading) { {{ reservation?.reservation_code }} }
+    </div>
+    @if (!loading) {
+    <div class="status" [ngClass]="reservation?.status">
+      <div class="badge" [ngClass]="reservation?.status">
+        {{ reservation?.status }}
+      </div>
+    </div>
+    }
+    <div class="booker_name">
+      @if (loading) {
+      <ion-skeleton-text
+        [animated]="true"
+        style="width: 100%"
+      ></ion-skeleton-text>
+      } @if (!loading) { {{ reservation?.booker?.first_name }} {{
+      reservation?.booker?.last_name }} }
+    </div>
+    <div class="data-panel half">
+      <div class="title-wrapper">
+        <div class="title-icon">
+          <ion-icon name="calendar20" aria-hidden="true"></ion-icon>
+        </div>
+        <div class="title-text">
+          {{ "reservationProperty.checkinDate" | translateIT }}
+        </div>
+      </div>
+      <div class="data-wrapper">
+        <ion-skeleton-text
+          [animated]="true"
+          style="width: 100%"
+        ></ion-skeleton-text>
+        <span class="value"> {{reservation?.arrival_date}} </span>
+      </div>
+    </div>
+    <div class="data-panel half">
+      <div class="title-wrapper">
+        <div class="title-icon">
+          <ion-icon name="calendar20" aria-hidden="true"></ion-icon>
+        </div>
+        <div class="title-text">
+          {{ "reservationProperty.checkoutDate" | translateIT }}
+        </div>
+      </div>
+      <div class="data-wrapper">
+        <ion-skeleton-text
+          [animated]="true"
+          style="width: 100%"
+        ></ion-skeleton-text>
+        <span class="value"> {{reservation?.departure_date}} </span>
+      </div>
+    </div>
+    <div class="data-panel half">
+      <div class="title-wrapper">
+        <div class="title-icon">
+          <ion-icon name="guests" aria-hidden="true"></ion-icon>
+        </div>
+        <div class="title-text">
+          {{ "reservationProperty.guests" | translateIT }}
+        </div>
+      </div>
+      <div class="data-wrapper">
+        <ion-skeleton-text
+          [animated]="true"
+          style="width: 100%"
+        ></ion-skeleton-text>
+        <span class="value"> {{reservation?.number_of_guests}} </span>
+      </div>
+    </div>
+    <div class="data-panel half">
+      <div class="title-wrapper">
+        <div class="title-icon">
+          <ion-icon name="briefcase" aria-hidden="true"></ion-icon>
+        </div>
+        <div class="title-text">
+          {{ "reservationProperty.partnerSource" | translateIT }}
+        </div>
+      </div>
+      <div class="data-wrapper">
+        <ion-skeleton-text
+          [animated]="true"
+          style="width: 100%"
+        ></ion-skeleton-text>
+        <span class="value"> {{reservation?.partner?.partner_name}} </span>
+      </div>
+    </div>
+    <div class="data-panel">
+      <div class="title-wrapper">
+        <div class="title-icon">
+          <ion-icon name="briefcase" aria-hidden="true"></ion-icon>
+        </div>
+        <div class="title-text">
+          {{ "reservationProperty.roomType" | translateIT }}
+        </div>
+      </div>
+      <div class="data-wrapper">
+        <ion-skeleton-text
+          [animated]="true"
+          style="width: 100%"
+        ></ion-skeleton-text>
+        <span class="value">
+          {{reservation?.room_type_id}} / {{reservation?.room_type_name}}
+        </span>
+      </div>
+    </div>
+  </div>
+  <!-- <div class="data-panel-wrapper b1">
+    <div class="ion-activatable ripple-parent circle" (click)="openComments()">
+      <ion-icon name="comment" aria-hidden="true"></ion-icon>
+      <ion-ripple-effect></ion-ripple-effect>
+    </div>
+    <div class="ion-activatable ripple-parent circle" (click)="openComments()">
+      <ion-icon name="list" aria-hidden="true"></ion-icon>
+      <ion-ripple-effect></ion-ripple-effect>
+    </div>
+    <div class="ion-activatable ripple-parent circle" (click)="openComments()">
+      <ion-icon name="message" aria-hidden="true"></ion-icon>
+      <ion-ripple-effect></ion-ripple-effect>
+    </div>
+    <div class="ion-activatable ripple-parent circle" (click)="openComments()">
+      <ion-icon name="door" aria-hidden="true"></ion-icon>
+      <ion-ripple-effect></ion-ripple-effect>
+    </div>
+    <div class="ion-activatable ripple-parent circle" (click)="openComments()">
+      <ion-icon name="mobile" aria-hidden="true"></ion-icon>
+      <ion-ripple-effect></ion-ripple-effect>
+    </div>
+  </div> -->
+
+  <!-- <div class="segmented-buttons">
+      <div
+        class="button"
+        (click)="selectSegment(SegmentsEnum.guests)"
+        [ngClass]="{active: segment == SegmentsEnum.guests}"
+        >
+        {{ "reservationPage.segmentGuests" | translateIT }}
+      </div>
+      <div
+        class="button"
+        (click)="selectSegment(SegmentsEnum.services)"
+        [ngClass]="{active: segment == SegmentsEnum.services}"
+        >
+        {{ "reservationPage.segmentServices" | translateIT }}
+      </div>
+      <div
+        class="button"
+        (click)="selectSegment(SegmentsEnum.finances)"
+        [ngClass]="{active: segment == SegmentsEnum.finances}"
+        >
+        {{ "reservationPage.segmentFinances" | translateIT }}
+      </div>
+    </div> -->
+
+  @if (loading) {
+  <div class="guests-skeleton">
+    <ion-skeleton-text
+      [animated]="true"
+      style="width: 100%"
+    ></ion-skeleton-text>
+  </div>
+  } @if (!loading) {
+  <div
+    class="segmented-content"
+    [ngClass]="{active: segment == SegmentsEnum.guests}"
+  >
+    <div class="segmented-content-title">
+      {{ "reservationPage.segmentGuests" | translateIT }}
+    </div>
+    @if (reservation?.guests?.length == 0) {
+    <div class="no-data">
+      <ion-img src="assets/images/no-data.svg"></ion-img>
+      <div class="no-data-text">
+        {{ "reservationPage.noGuests" | translateIT }}
+      </div>
+    </div>
+    } @if (reservation?.guests && reservation?.guests!.length > 0) { @for (guest
+    of reservation!.guests; track guest) {
+    <app-guest-card [guest]="guest" (click)="openGuest(guest)"></app-guest-card>
+    } }
+  </div>
+  }
+  <div
+    class="segmented-content"
+    [ngClass]="{active: segment == SegmentsEnum.services}"
+  >
+    @if (reservation?.services?.length == 0) {
+    <div class="no-data">
+      <ion-img src="assets/images/no-data.svg"></ion-img>
+      <div class="no-data-text">
+        {{ "reservationPage.noServices" | translateIT }}
+      </div>
+    </div>
+    } @if (reservation?.services && reservation?.services!.length > 0) { @for
+    (service of reservation!.services; track service) {
+    <app-service-card
+      [service]="service"
+      (click)="openService(service)"
+    ></app-service-card>
+    } }
+  </div>
+  <div
+    class="segmented-content"
+    [ngClass]="{active: segment == SegmentsEnum.finances}"
+  >
+    @if (reservation?.finances?.length == 0) {
+    <div class="no-data">
+      <ion-img src="assets/images/no-data.svg"></ion-img>
+      <div class="no-data-text">
+        {{ "reservationPage.noFinances" | translateIT }}
+      </div>
+    </div>
+    } @if (reservation?.finances && reservation?.finances!.length > 0) { @for
+    (finance of reservation!.finances; track finance) {
+    <app-finance-card
+      [finance]="finance"
+      (click)="openFinance(finance)"
+    ></app-finance-card>
+    } }
+  </div>
+  <!-- <div class="fab-menu" [ngClass]="{open: fabOpened}" (click)="toggleFAB()">
+    @if (reservation) {
+    <div class="fab-menu-content" (click)="stopProp($event)">
+      <div class="fab-menu-content-inner">
+        <ion-select
+          class="status-select"
+          interface="popover"
+          (ionChange)="changeStatus($event)"
+          value="{{reservation!.status}}"
+        >
+          @for (item of reservationStatusOptions | keyvalue; track item) {
+          <ion-select-option value="{{item.key}}"
+            >{{item.value}}</ion-select-option
+          >
+          }
+        </ion-select>
+        <div class="status-update">Status change: 13/08/2025 14:23</div>
+        <div class="separator"></div>
+        <ion-button expand="block" (click)="edit()"
+          ><span
+            >{{ "reservationPage.fabEdit" | translateIT }}</span
+          ></ion-button
+        >
+        <ion-button expand="block" (click)="edit()"
+          ><span
+            >{{ "reservationPage.fabComment" | translateIT }}</span
+          ></ion-button
+        >
+      </div>
+    </div>
+    }
+  </div>
+  <div class="fab" (click)="toggleFAB()">
+    <ion-img src="assets/icon/icon-fab.svg"></ion-img>
+  </div> -->
+</ion-content>
+}

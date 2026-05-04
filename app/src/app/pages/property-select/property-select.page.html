@@ -1,0 +1,39 @@
+<ion-content>
+  <div class="login-page">
+    <div style="flex: 1; padding: 60px var(--pad) 0; overflow-y: auto">
+
+      <div style="text-align: center; margin-bottom: 40px">
+        <div style="font-size: 13px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--primary); margin-bottom: 8px">SabeeApp Go</div>
+        <div style="font-size: 28px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; line-height: 1.15">Select Property</div>
+        <div style="font-size: 15px; font-weight: 600; color: var(--ink-4); margin-top: 6px">Choose a property to manage</div>
+      </div>
+
+      @if (loading) {
+        <div style="display: flex; justify-content: center; padding-top: 32px">
+          <span class="spin-primary" style="width: 28px; height: 28px; border-width: 3px"></span>
+        </div>
+      } @else {
+        @for (p of properties; track p.property_id) {
+          <div class="card tap-anim tappable"
+               style="margin-bottom: 12px; display: flex; align-items: center; gap: 14px"
+               (click)="select(p)">
+            <div style="width: 44px; height: 44px; border-radius: var(--radius-sm); background: var(--primary-soft-bg); border: 1.5px solid var(--primary-soft); display: flex; align-items: center; justify-content: center; color: var(--primary); flex-shrink: 0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9.5L12 3l9 6.5V21H3V9.5z"/>
+                <rect x="9" y="13" width="6" height="8"/>
+              </svg>
+            </div>
+            <div style="flex: 1; min-width: 0">
+              <div style="font-size: 17px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; line-height: 1.2">{{ p.property_name }}</div>
+              <div style="font-size: 13px; font-weight: 600; color: var(--ink-4); margin-top: 2px">{{ p.property_company_name }}</div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--ink-4); flex-shrink: 0">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
+        }
+      }
+
+    </div>
+  </div>
+</ion-content>

@@ -1,0 +1,119 @@
+@if (!initialized) {
+  <div class="loader">
+    <div class="spinner-container">
+      <ion-spinner></ion-spinner>
+    </div>
+  </div>
+  } @if (initialized) {
+  <ion-header [translucent]="true" class="ion-no-border">
+    <ion-toolbar>
+      <ion-buttons slot="start">
+        <custom-back-button href="/dashboard" />
+      </ion-buttons>
+      <ion-title> {{ 'arrivalsPage.pageTitle' | translateIT }} </ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content [ngClass]="{'loading': loading}">
+    <div class="segmented-buttons">
+      <div
+        class="button"
+        (click)="selectSegment(SegmentsEnum.yesterday)"
+        [ngClass]="{active: segment == SegmentsEnum.yesterday}"
+        >
+        {{ 'global.dayFilterYesterday' | translateIT }}
+      </div>
+      <div
+        class="button"
+        (click)="selectSegment(SegmentsEnum.today)"
+        [ngClass]="{active: segment == SegmentsEnum.today}"
+        >
+        {{ 'global.dayFilterToday' | translateIT }}
+      </div>
+      <div
+        class="button"
+        (click)="selectSegment(SegmentsEnum.tomorrow)"
+        [ngClass]="{active: segment == SegmentsEnum.tomorrow}"
+        >
+        {{ 'global.dayFilterTomorrow' | translateIT }}
+      </div>
+    </div>
+
+    <div class="data-panel-wrapper">
+      <div class="data-panel half">
+        <div class="title-wrapper">
+          <div class="title-icon">
+            <ion-icon name="guests" aria-hidden="true"></ion-icon>
+          </div>
+          <div class="title-text">{{ 'arrivalsPage.guest' | translateIT }}</div>
+        </div>
+        <div class="data-wrapper large text-gray-600">
+          @if (loading) {
+            <ion-skeleton-text
+              [animated]="true"
+              style="width: 100%"
+            ></ion-skeleton-text>
+          }
+          @if (!loading) {
+            {{currentGuestCount}} / {{allGuestCount}}
+          }
+        </div>
+      </div>
+      <div class="data-panel half">
+        <div class="title-wrapper">
+          <div class="title-icon">
+            <ion-icon name="briefcase" aria-hidden="true"></ion-icon>
+          </div>
+          <div class="title-text">
+            {{ 'arrivalsPage.reservations' | translateIT }}
+          </div>
+        </div>
+        <div class="data-wrapper large text-gray-600">
+          @if (loading) {
+            <ion-skeleton-text
+              [animated]="true"
+              style="width: 100%"
+            ></ion-skeleton-text>
+          }
+          @if (!loading) {
+            {{currentReservationCount}} / {{allReservationCount}}
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="list-title-wrapper">
+      <div class="list-title">{{currentArrivalsTitle}}</div>
+      <div class="list-filters">
+        <ion-icon name="filters" aria-hidden="true"></ion-icon>
+      </div>
+    </div>
+
+    @if (loading) {
+      <div class="fetching">
+        <ion-spinner></ion-spinner>
+      </div>
+    }
+    @if (currentReservations.length==0 && !loading) {
+      <div class="no-result">
+        {{ 'arrivalsPage.noReservationFound' | translateIT }}
+      </div>
+    }
+    @if (currentReservations.length>0) {
+      <ion-list class="reservations">
+        @for (reservation of currentReservations; track reservation) {
+          <app-reservation-card
+            [reservation]="reservation"
+            (click)="openReservation(reservation)"
+          ></app-reservation-card>
+        }
+      </ion-list>
+    }
+    <!-- fetching: {{fetching}} -->
+    <!--
+
+    <div class="!fetching">
+      <ion-spinner></ion-spinner>
+    </div> -->
+  </ion-content>
+}

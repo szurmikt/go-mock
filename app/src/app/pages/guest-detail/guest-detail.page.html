@@ -1,0 +1,159 @@
+<ion-content>
+  <div class="page" style="background: var(--bg)">
+
+    <div class="sub-header">
+      <button class="back" (click)="back()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+      <span class="title">Guest details</span>
+    </div>
+
+    @if (loading()) {
+      <div style="display: flex; justify-content: center; padding-top: 48px">
+        <span class="spin-primary" style="width: 28px; height: 28px; border-width: 3px"></span>
+      </div>
+    } @else if (error()) {
+      <div style="text-align: center; padding: 48px var(--pad); color: var(--ink-3); font-size: 15px; font-weight: 600">
+        {{ error() }}
+      </div>
+    } @else if (guest(); as g) {
+
+      <!-- Scrollable content — extra bottom padding to clear FAB -->
+      <div class="app-scroll" style="padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px))">
+        <div style="padding: 0 16px" class="stagger">
+
+          <!-- Personal info card -->
+          <div class="card" style="margin-bottom: 16px">
+            <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">ID: {{ g.reservation_guest_id }}</div>
+              <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ guestName(g) }}</div>
+            </div>
+            <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Maiden full name</div>
+              <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.maiden_name || '—' }}</div>
+            </div>
+            <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Mother's full name</div>
+              <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.mother_name || '—' }}</div>
+            </div>
+            <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div style="flex: 1">
+                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Birth date</div>
+                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.birth_date || '—' }}</div>
+              </div>
+              <div style="flex: 1">
+                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Birth place</div>
+                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.birth_place || '—' }}</div>
+              </div>
+            </div>
+            <div style="padding: 12px 0 0">
+              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Citizenship</div>
+              <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.citizenship || '—' }}</div>
+            </div>
+          </div>
+
+          <!-- Contact details -->
+          <h3 class="group-title">Contact details</h3>
+          <div class="card" style="margin-bottom: 16px">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line)">
+              <div>
+                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Phone</div>
+                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.phone_number || '—' }}</div>
+              </div>
+              <a [href]="'tel:' + g.phone_number" class="icon-btn" style="color: var(--primary)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.77a16 16 0 0 0 6 6l1.62-1.62a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+              </a>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0">
+              <div>
+                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Email</div>
+                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.email || '—' }}</div>
+              </div>
+              <a [href]="'mailto:' + g.email" class="icon-btn" style="color: var(--primary)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Travelling document -->
+          <h3 class="group-title">Travelling document</h3>
+          <div class="card">
+            <div style="display: flex; gap: 24px; padding: 8px 0; border-bottom: 1px solid var(--line)">
+              <div style="flex: 1">
+                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Document Type</div>
+                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ docTypeName(g.document?.document_type || '') }}</div>
+              </div>
+              <div style="flex: 1">
+                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Scanned</div>
+                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.scanned_data ? 'Yes' : 'No' }}</div>
+              </div>
+            </div>
+            <div style="padding: 12px 0 0">
+              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Number</div>
+              <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.document?.document_number || '—' }}</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    }
+
+  </div>
+</ion-content>
+
+<!-- FAB and action sheet live outside ion-content so they don't scroll -->
+@if (guest(); as g) {
+  <button class="fab" (click)="menuOpen.set(true)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="3" y="3" width="7" height="7" rx="1"/>
+      <rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/>
+      <rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  </button>
+
+  @if (menuOpen()) {
+    <div class="sheet-backdrop" (click)="menuOpen.set(false)">
+      <div class="sheet" (click)="$event.stopPropagation()">
+        <div class="head">
+          <h3>{{ guestName(g) }}</h3>
+          <button class="icon-btn" (click)="menuOpen.set(false)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div style="margin-top: 8px">
+          <button class="action-item" (click)="goEdit()">
+            <span class="action-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </span>
+            Edit guest
+          </button>
+          <button class="action-item" (click)="menuOpen.set(false)">
+            <span class="action-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <line x1="2" y1="10" x2="22" y2="10"/>
+                <circle cx="8" cy="15" r="1" fill="currentColor"/>
+              </svg>
+            </span>
+            ID Scan
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+}

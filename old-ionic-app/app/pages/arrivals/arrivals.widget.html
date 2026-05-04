@@ -1,0 +1,17 @@
+<div class="widget half" (click)="openPage()">
+  <div class="widget-header">
+    <div class="widget-icon">
+      <ion-img src="assets/icon/icon-arrivals.svg"></ion-img>
+    </div>
+    <div class="widget-title">
+      {{ 'arrivalsWidget.pageTitle' | translateIT:(languageService.translations$
+      | async) }}
+    </div>
+  </div>
+  <div class="widget-content">
+    <span class="large">23 / 56</span>
+    <br />
+    {{ 'arrivalsWidget.arrivedGuests' |
+    translateIT:(languageService.translations$ | async) }}
+  </div>
+</div>

@@ -1,0 +1,32 @@
+<div class="search-container">
+  <ion-input
+    labelPlacement="stacked"
+    placeholder="{{ 'search.plhrSearch' | translateIT }}"
+    abel-placement="floating"
+    fill="outline"
+    shape="round"
+    (ionInput)="onChange($event)"
+    [debounce]="500"
+    value="{{ searchText }}"
+    mode="md"
+  >
+    <ion-icon
+      slot="start"
+      name="search"
+      aria-hidden="true"
+      (click)="doSearch()"
+    ></ion-icon>
+    <ion-button
+      fill="clear"
+      slot="end"
+      aria-label="Show/hide"
+      (click)="startDictate()"
+    >
+      <ion-icon
+        slot="icon-only"
+        name="microphone"
+        aria-hidden="true"
+      ></ion-icon>
+    </ion-button>
+  </ion-input>
+</div>

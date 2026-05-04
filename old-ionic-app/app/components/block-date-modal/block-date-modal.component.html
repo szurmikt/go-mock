@@ -1,0 +1,80 @@
+<div class="modal">
+  <ion-grid>
+    <ion-row style="margin-bottom: 1em">
+      <ion-col>
+        <ion-input
+          placeholder="Select room"
+          fill="outline"
+          shape="round"
+          value="{{ currentRoom }}"
+          id="doc_type"
+          #roomRef
+          (click)="toggleRoomSelect()"
+        ></ion-input>
+        <ion-select
+          aria-label="Room"
+          placeholder="Select room"
+          value="currentRoom"
+          #roomSelectRef
+          (ionChange)="roomChange($event)"
+          >
+          @for (room of rooms; track room) {
+            <ion-select-option value="{{ room }}">{{
+              room
+            }}</ion-select-option>
+          }
+        </ion-select>
+      </ion-col>
+    </ion-row>
+    <ion-row class="navigation">
+      <ion-col>
+        <ion-icon name="left" (click)="goPrev()"></ion-icon>
+      </ion-col>
+      <ion-col>
+        <ion-icon name="right" (click)="goNext()"></ion-icon>
+      </ion-col>
+    </ion-row>
+    <ion-row class="slider">
+      <swiper-container
+        [free-mode]="true"
+        slides-per-view="auto"
+        #swiper
+        (afterInit)="swiperReady()"
+        (slidechange)="swiperSlideChanged($event)"
+        >
+        @for (card of cards; track card) {
+          <swiper-slide
+            ><div
+            class="content"
+            (click)="card.occupied ? null : toggleSelected(card)"
+            [ngClass]="{ selected: card.selected, occupied: card.occupied }"
+            >
+            <div class="month">{{ card.month }}</div>
+            <div class="day">{{ card.day }}</div>
+          </div></swiper-slide
+          >
+        }
+      </swiper-container>
+    </ion-row>
+
+    <div class="separator"></div>
+    @if (selectedCards.length > 0) {
+      <ion-row
+        class="ion-justify-content-center"
+        >
+        <ion-col class="selected-dates ion-justify-content-center">
+          {{ selectedCards[0].day }} {{ selectedCards[0].month }},
+          {{ selectedCards.length }}
+          {{ selectedCards.length > 1 ? "nights" : "night" }}
+        </ion-col>
+      </ion-row>
+    }
+    <ion-row class="ion-justify-content-center buttons">
+      <ion-col class="ion-justify-content-center">
+        <ion-button expand="block" (click)="block()"
+          ><span>Block Dates</span></ion-button
+          >
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </div>

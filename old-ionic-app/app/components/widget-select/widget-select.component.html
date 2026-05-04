@@ -1,0 +1,29 @@
+<ion-content
+  [fullscreen]="false"
+  class="page-container"
+  [ngClass]="{ ios: isiOS() }"
+  >
+  <ion-grid>
+    <ion-row>
+      <ion-col>
+        <h1>Select widget to add to active view</h1>
+        <div class="button-close" (click)="close()">
+          <ion-img src="assets/icon/icon-close.svg"></ion-img>
+        </div>
+      </ion-col>
+    </ion-row>
+    <ion-row>
+      <ion-col>
+        <ion-list>
+          @for (widget of widgets; track widget) {
+            <ion-item (click)="closeModal(widget)">
+              <ion-label>
+                <h2>{{ widget.title }}</h2>
+              </ion-label>
+            </ion-item>
+          }
+        </ion-list>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>

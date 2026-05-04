@@ -1,0 +1,7 @@
+{
+  "name": "sabeeapp-go",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}

@@ -1,0 +1,35 @@
+<div class="widget" (click)="openPage()">
+  <div class="widget-header">
+    <div class="widget-icon">
+      <ion-img src="assets/icon/icon-comment-blue.svg"></ion-img>
+    </div>
+    <div class="widget-title">Guest Feedback</div>
+  </div>
+  <div class="widget-content">
+    <div class="feedback-bar">
+      <div
+        class="positive"
+        *ngIf="positive>0"
+        [ngStyle]="{'flex-basis': positive/all*100+'%'}"
+      >
+        {{positive}}
+      </div>
+      <div
+        class="neutral"
+        *ngIf="neutral>0"
+        [ngStyle]="{'flex-basis': neutral/all*100+'%'}"
+      >
+        {{neutral}}
+      </div>
+      <div
+        class="negative"
+        *ngIf="negative>0"
+        [ngStyle]="{'flex-basis': negative/all*100+'%'}"
+      >
+        <!-- [style.flex-basis]="negative" -->
+        {{negative}}
+      </div>
+    </div>
+    <div class="feeback-text">from onboarded guests</div>
+  </div>
+</div>

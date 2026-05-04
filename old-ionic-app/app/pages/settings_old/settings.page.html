@@ -1,0 +1,109 @@
+<ion-content
+  [fullscreen]="false"
+  class="page-container"
+  [ngClass]="{ios: isiOS()}"
+>
+  <ion-grid *ngIf="loaded">
+    <ion-row>
+      <ion-col><h1>Tabs</h1></ion-col>
+      <div class="button-close" (click)="close()">
+        <ion-img src="assets/icon/icon-close.svg"></ion-img>
+      </div>
+    </ion-row>
+    <ion-row class="view-tabs">
+      <ion-col
+        *ngFor="let tab of settings.tabs"
+        (click)="editTab(tab)"
+        [ngClass]="tab.enabled ? 'enabled' : ''"
+      >
+        <ion-img src="{{tab.icon}}"></ion-img>
+        <div class="view-title">{{getTabNameByContent(tab)}}</div>
+      </ion-col>
+      <ion-col *ngIf="settings.tabs.length<5">
+        <div class="view-title add-new" (click)="addTab()">Add New</div>
+      </ion-col>
+    </ion-row>
+    <ion-row>
+      <ion-col><h1>Views</h1></ion-col>
+    </ion-row>
+    <ion-row>
+      <ion-col>
+        <!-- [freeMode]="true"  -->
+        <swiper-container [slidesPerView]="'auto'">
+          <swiper-slide *ngFor="let view of settings.views"
+            ><div
+              class="content"
+              [ngClass]="{'active':activeViewId == view.id, 'disabled': view.widgets.length == 0}"
+              (click)="changeView(view.id)"
+            >
+              <div class="text">{{view.title}}</div>
+            </div></swiper-slide
+          >
+        </swiper-container>
+      </ion-col>
+    </ion-row>
+
+    <ion-row>
+      <ion-col class="view-title-input">
+        <ion-input
+          labelPlacement="floating"
+          label="View title"
+          placeholder="Enter text"
+          fill="outline"
+          shape="round"
+          value="{{title}}"
+          (ionInput)="changeTitle($event)"
+        ></ion-input>
+      </ion-col>
+    </ion-row>
+
+    <ion-row>
+      <ion-col class="widget-title">
+        <h3>Widgets</h3>
+        <ion-img
+          class="reorder-icon"
+          [ngClass]="{'active':reorder}"
+          src="assets/icon/icon-swap-vertical-outline.svg"
+          (click)="reorderToggle()"
+        >
+        </ion-img>
+      </ion-col>
+    </ion-row>
+
+    <ion-row>
+      <ion-col>
+        <ion-list>
+          <ion-reorder-group
+            [disabled]="!reorder"
+            (ionItemReorder)="handleReorder($any($event))"
+          >
+            @for (widget of activeWidgets; track widget) {
+            <ion-reorder>
+              <ion-item lines="none">
+                <ion-label>{{ widget.title }}</ion-label>
+                <ion-img
+                  *ngIf="!reorder"
+                  (click)="removeWidget(widget)"
+                  src="assets/icon/icon-close.svg"
+                ></ion-img>
+              </ion-item>
+            </ion-reorder>
+            }
+          </ion-reorder-group>
+        </ion-list>
+      </ion-col>
+    </ion-row>
+
+    <ion-row>
+      <ion-col>
+        <div
+          class="button-add-widget"
+          (click)="addWidget()"
+          [ngClass]="{disabled: selectableWidgets.length == 0}"
+        >
+          <ion-img src="assets/icon/icon-add-large.svg"></ion-img>
+        </div>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>

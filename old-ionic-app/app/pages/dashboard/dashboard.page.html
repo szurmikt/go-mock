@@ -1,0 +1,132 @@
+@if (!initialized) {
+  <div class="loader">
+    <div class="spinner-container">
+      <ion-spinner></ion-spinner>
+    </div>
+  </div>
+  } @if (initialized) {
+
+  <ion-header
+    class="ion-no-border dashboard"
+    [ngClass]="{overlayed: searchOverlayOpened}"
+    >
+    <ion-toolbar>
+      <ion-buttons slot="start">
+        @if (property?.property_name!='') {
+          <div
+            (click)="openProperty()"
+            class="property-wrapper"
+            >
+            <div class="property">{{property?.property_name}}</div>
+            <ion-icon name="caret-down"></ion-icon>
+          </div>
+        }
+      </ion-buttons>
+      <ion-buttons slot="end">
+        <ion-button text="" class="icon-button">
+          <ion-icon
+            class="icon-gray-1"
+            src="assets/icon/icon-notifications.svg"
+          ></ion-icon>
+        </ion-button>
+        <ion-button
+          (click)="openSettings()"
+          defaultHref="settings"
+          text=""
+          class="icon-button"
+          >
+          <ion-icon
+            class="icon-gray-1"
+            src="assets/icon/icon-settings.svg"
+          ></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+  </ion-header>
+  @if (loaded) {
+    <ion-content
+      class="dashboard"
+      [ngClass]="{overlayed: searchOverlayOpened}"
+      >
+      <div id="container">
+        <app-search
+          value="{{searchText2}}"
+          [onChangeCallback]="changeSearchText"
+          [updateSearchText]="searchText2"
+        ></app-search>
+        @if (activeWidgets.length>0) {
+          <div class="widget-list">
+            @for (w of activeWidgets; track w) {
+              <div [ngClass]="w.widget.size">
+                <ng-container
+                  *ngComponentOutlet="w.widget.widget; inputs: w.widget.data"
+                  />
+              </div>
+            }
+          </div>
+        }
+        @if (activeWidgets.length==0) {
+          <div class="no-widget">
+            <p>{{ 'dashboard.noWidget' | translateIT }}</p>
+          </div>
+        }
+      </div>
+    </ion-content>
+  }
+  @if (loaded && 1>2) {
+    <div
+      class="custom-footer-container"
+      [ngClass]="{overlayed: searchOverlayOpened}"
+      >
+      <div class="custom-footer">
+        <ion-grid>
+          <ion-row class="dashboard-tabs">
+            @for (tab of settings.tabs; track tab) {
+              <ion-col
+                [ngClass]="{active:activeViewId==tab.view}"
+                (click)="handleClick(tab)"
+                >
+                <ion-icon src="{{tab.icon}}"></ion-icon>
+                <div class="view-title">{{getTabNameByContent(tab)}}</div>
+              </ion-col>
+            }
+          </ion-row>
+        </ion-grid>
+      </div>
+    </div>
+  }
+}
+<div class="search-overlay" [ngClass]="{opened: searchOverlayOpened}">
+  <div class="search-header">
+    <div class="search-close-btn" (click)="closeSearchOverlay()">
+      <ion-icon name="chevronback"></ion-icon>
+    </div>
+    <app-search
+      value="{{searchText}}"
+      [onChangeCallback]="changeSearchText"
+      [updateSearchText]="searchText"
+    ></app-search>
+  </div>
+  <div class="search-result">
+    @if (reservations.length>0) {
+      <ion-list class="reservations">
+        @for (reservation of reservations; track reservation) {
+          <app-reservation-card
+            [reservation]="reservation"
+            (click)="openReservation(reservation)"
+          ></app-reservation-card>
+        }
+      </ion-list>
+    }
+    @if (reservations.length==0 && !fetching) {
+      <div class="no-result">
+        {{ 'dashboard.searchReservationNoResult' | translateIT }}
+      </div>
+    }
+    @if (reservations.length==0 && fetching) {
+      <div class="no-result">
+        <ion-spinner></ion-spinner>
+      </div>
+    }
+  </div>
+</div>

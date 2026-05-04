@@ -1,0 +1,56 @@
+<ion-header class="ion-no-border dashboard">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      @if (property?.property_name!='') {
+      <div (click)="openProperty()" class="property-wrapper">
+        <div class="property">{{property?.property_name}}</div>
+        <ion-icon name="caret-down"></ion-icon>
+      </div>
+      }
+    </ion-buttons>
+    <ion-buttons slot="end">
+      <ion-button text="" class="icon-button">
+        <ion-icon
+          class="icon-gray-1"
+          src="assets/icon/icon-notifications.svg"
+        ></ion-icon>
+      </ion-button>
+      <ion-button
+        (click)="openSettings()"
+        defaultHref="settings"
+        text=""
+        class="icon-button"
+      >
+        <ion-icon
+          class="icon-gray-1"
+          src="assets/icon/icon-settings.svg"
+        ></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <app-search
+    value="{{searchText}}"
+    [onChangeCallback]="changeSearchText"
+  ></app-search>
+  @if (reservations.length>0) {
+  <ion-list class="reservations">
+    @for (reservation of reservations; track reservation) {
+    <app-reservation-card
+      [reservation]="reservation"
+      (click)="openReservation(reservation)"
+    ></app-reservation-card>
+    }
+  </ion-list>
+  } @if (reservations.length==0 && !fetching) {
+  <div class="no-result">
+    No reservations were found matching your search criteria
+  </div>
+  } @if (reservations.length==0 && fetching) {
+  <div class="no-result">
+    <ion-spinner></ion-spinner>
+  </div>
+  }
+</ion-content>

@@ -1,0 +1,92 @@
+.card {
+  .inner {
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #eaeaea;
+      padding-bottom: 11px;
+      .reservation_code {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--color-primary-500);
+        min-width: 50%;
+      }
+      .status {
+        min-width: 50%;
+        text-align: right;
+        .badge {
+          width: fit-content;
+          border-radius: 16px;
+          padding: 6px 20px;
+          font-size: 14px;
+          font-weight: 700;
+          &.confirmed,
+          &.checkin {
+            background-color: #e7f9f5;
+            color: #0dcf97;
+          }
+          &.onboard,
+          &.checkout {
+            background-color: #eaf7fa;
+            color: #38afd1;
+          }
+          margin-right: 0;
+          margin-left: auto;
+        }
+      }
+      .booker_name {
+        min-width: 100%;
+        font-size: 16px;
+        font-weight: 700;
+        color: #3c3c3c;
+        margin-top: 5px;
+      }
+    }
+    .bottom {
+      margin-top: 11px;
+      font-size: 16px;
+      font-weight: 400;
+      color: #3c3c3c;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      .room_type_name {
+        width: 100%;
+      }
+      .cols {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        .left {
+          padding-right: 10px;
+          flex-grow: 1;
+          div {
+            margin-top: 5px;
+            margin-bottom: 5px;
+          }
+        }
+        .right {
+          flex-shrink: 1;
+          .answer {
+            &.needsattention {
+              font-weight: 700;
+              font-size: 24px;
+              color: var(--color-sabeeapp-red);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.list-title {
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 32px;
+  color: var(--color-text-500);
+}

@@ -1,0 +1,45 @@
+<div class="modal">
+  <div class="property-list-modal">
+    <ng-container>
+      <div class="title">
+        {{
+          "propertiesList.lblProps"
+            | translateIT: (languageService.translations$ | async)
+        }}
+      </div>
+      @if (showSuperAdminSearch) {
+        <ion-input
+          class="search"
+          placeholder="{{
+            'propertiesList.plhrPropsFilter'
+              | translateIT: (languageService.translations$ | async)
+          }}"
+          (ionInput)="filterProperties($event)"
+        ></ion-input>
+      }
+      <div class="properties">
+        @for (property of filteredData; track property) {
+          <div class="property" (click)="changeProperty(property)">
+            {{ property.property_name }} ({{ property.property_id }})
+          </div>
+        }
+      </div>
+    </ng-container>
+    <ion-grid>
+      <ion-row class="ion-justify-content-center buttons">
+        <ion-col class="ion-justify-content-center">
+          <ion-button fill="solid" color="danger" (click)="logoutUser()">{{
+            "propertiesList.btnLogout"
+              | translateIT: (languageService.translations$ | async)
+          }}</ion-button>
+        </ion-col>
+        <ion-col class="ion-justify-content-center">
+          <ion-button fill="clear" color="secondary" (click)="cancel()">{{
+            "global.btnCancel"
+              | translateIT: (languageService.translations$ | async)
+          }}</ion-button>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </div>
+</div>

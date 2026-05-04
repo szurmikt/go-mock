@@ -1,0 +1,149 @@
+@if (!initialized) {
+<div class="loader">
+  <div class="spinner-container">
+    <ion-spinner></ion-spinner>
+  </div>
+</div>
+} @if (initialized) {
+<ion-header
+  [translucent]="true"
+  class="ion-no-border"
+  [ngClass]="{below: fabOpened}"
+>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <custom-back-button href="/reservation/{{reservationCode}}" />
+    </ion-buttons>
+    <ion-title> {{ "guestPage.pageTitle" | translateIT }} </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="guest-card">
+    <div class="row">
+      <div class="guest-id">
+        {{ "guestProperty.id" | translateIT }}: {{ guest?.guest_id | dashIfEmpty
+        }}
+      </div>
+      <div class="guest-name">
+        {{ guest?.first_name }} {{ guest?.last_name }}
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <div class="title">{{ "guestProperty.maidenName" | translateIT }}</div>
+        <div class="data gender">{{ guest?.maiden_name | dashIfEmpty}}</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <div class="title">{{ "guestProperty.mothersName" | translateIT }}</div>
+        <div class="data gender">{{ guest?.mother_name | dashIfEmpty}}</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col half">
+        <div class="title">{{ "guestProperty.birthDate" | translateIT }}</div>
+        <div class="data">
+          {{ guest?.birth_date | date:'yyyy. MM. dd.' | dashIfEmpty}}
+        </div>
+      </div>
+      <div class="col half">
+        <div class="title">{{ "guestProperty.birthPlace" | translateIT }}</div>
+        <div class="data gender">{{ guest?.birth_place | dashIfEmpty}}</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col half">
+        <div class="title">{{ "guestProperty.nationality" | translateIT }}</div>
+        <div class="data">
+          {{ guest?.citizenship ?? "" | defaultValue: options : "country" :
+          "NAME" | dashIfEmpty}}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guest-card-title">
+    {{ "guestPage.blockTitleContactDetails" | translateIT }}
+  </div>
+
+  <div class="guest-card">
+    <div class="row">
+      <div class="col">
+        <div class="title">{{ "guestProperty.phone" | translateIT }}</div>
+        <div class="data data-with-icon">
+          <div class="data-value">{{ guest?.phone_number | dashIfEmpty}}</div>
+          <div class="data-icon">
+            <ion-icon name="call" aria-hidden="true"></ion-icon>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <div class="title">{{ "guestProperty.email" | translateIT }}</div>
+        <div class="data data-with-icon">
+          <div class="data-value">{{ guest?.email | dashIfEmpty }}</div>
+          <div class="data-icon">
+            <ion-icon name="mail" aria-hidden="true"></ion-icon>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guest-card-title">
+    {{ "guestPage.blockTitleTravelingDocument" | translateIT }}
+  </div>
+
+  <div class="guest-card">
+    <div class="row">
+      <div class="col half">
+        <div class="title">
+          {{ "guestProperty.documentType" | translateIT }}
+        </div>
+        <div class="data">
+          {{ guest?.document?.document_type ?? "" | defaultValue: options :
+          "document_type" : "" | dashIfEmpty }}
+        </div>
+      </div>
+      <div class="col half">
+        <div class="title">{{ "guestPage.documentScanned" | translateIT }}</div>
+        <div class="data">
+          {{ guest?.scanned_data?.document?.document_type ? 'Yes' : 'No' }}
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <div class="title">
+          {{ "guestProperty.documentNumber" | translateIT }}
+        </div>
+        <div class="data">
+          {{ guest?.document?.document_number | dashIfEmpty }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fab-menu" [ngClass]="{open: fabOpened}" (click)="toggleFAB()">
+    <div class="fab-menu-content" (click)="stopProp($event)">
+      <div class="fab-menu-content-inner">
+        <ion-button expand="block" (click)="edit()"
+          ><span>{{ "guestPage.fabEdit" | translateIT }}</span></ion-button
+        >
+        <!-- <ion-button expand="block" (click)="edit()"
+          ><span>{{ "guestPage.fabComment" | translateIT }}</span></ion-button
+        > -->
+        <ion-button expand="block" (click)="openScanModal()"
+          ><span>{{ "guestPage.fabIdScan" | translateIT }}</span></ion-button
+        >
+      </div>
+    </div>
+  </div>
+  <div class="fab" (click)="toggleFAB()">
+    <ion-img src="assets/icon/icon-fab.svg"></ion-img>
+  </div>
+</ion-content>
+}
