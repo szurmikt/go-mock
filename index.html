@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SabeeApp Go</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+/* global React */
+// Icons (inline SVG) and shared atoms
+
+const I = {
+  Search: (p) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+    </svg>
+  ),
+  Bell: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
+  ),
+  Settings: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  ChevronDown: (p) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
+  ),
+  ChevronBack: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m15 18-6-6 6-6" /></svg>
+  ),
+  Scan: (p) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><path d="M7 12h10" />
+    </svg>
+  ),
+  Calendar: (p) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
+    </svg>
+  ),
+  ArrowIn: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M3 12h13" /><path d="m12 7 5 5-5 5" /><path d="M21 4v16" />
+    </svg>
+  ),
+  ArrowOut: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M21 12H8" /><path d="m12 17-5-5 5-5" /><path d="M3 4v16" />
+    </svg>
+  ),
+  Users: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+  Bars: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" {...p}>
+      <rect x="3" y="10" width="4" height="11" rx="1"/><rect x="10" y="3" width="4" height="18" rx="1"/><rect x="17" y="14" width="4" height="7" rx="1"/>
+    </svg>
+  ),
+  Comment: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  ),
+  Filter: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
+    </svg>
+  ),
+  Home: (p) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M9 22V12h6v10" />
+    </svg>
+  ),
+  HomeFill: (p) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" {...p}>
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2h-4v-8H10v8H5a2 2 0 0 1-2-2z" />
+    </svg>
+  ),
+  Grid: (p) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  ),
+  GridFill: (p) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" {...p}>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  ),
+  IDCard: (p) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="2" y="5" width="20" height="14" rx="2" /><circle cx="9" cy="12" r="2.5" /><path d="M14 10h5M14 14h3" />
+    </svg>
+  ),
+  Phone: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z" />
+    </svg>
+  ),
+  Mail: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 6-10 7L2 6" />
+    </svg>
+  ),
+  Briefcase: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  ),
+  Door: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M5 22V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v18" /><path d="M3 22h18" /><circle cx="15" cy="13" r="1" />
+    </svg>
+  ),
+  Phone2: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="5" y="2" width="14" height="20" rx="2" /><path d="M12 18h.01" />
+    </svg>
+  ),
+  Check: (p) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  ),
+  Plus: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  ),
+  X: (p) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  ),
+  Bolt: (p) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M2 17h20v2H2zM4 4l16 0v2L4 6zM2 9h20v6H2z"/></svg>
+  ),
+  ChevronRight: (p) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m9 18 6-6-6-6" /></svg>
+  ),
+  Edit: (p) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  ),
+};
+
+function StatusBar({ time = "9:27" }) {
+  return (
+    <div className="status-bar">
+      <span>{time}</span>
+      <div className="icons">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="6" width="3" height="6" rx="0.5" /><rect x="5" y="3" width="3" height="9" rx="0.5" /><rect x="10" y="0" width="3" height="12" rx="0.5" /></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2c2.5 0 4.7.9 6.5 2.4l-1.4 1.4A7 7 0 0 0 8 4a7 7 0 0 0-5.1 1.8L1.5 4.4A9.4 9.4 0 0 1 8 2zm0 4a5 5 0 0 1 3.5 1.4L10 8.9a3 3 0 0 0-4.1 0L4.5 7.4A5 5 0 0 1 8 6zm0 3.6 1.6 1.6L8 12 6.4 11.2z"/></svg>
+        <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="2.5" stroke="currentColor" strokeWidth="1" /><rect x="3" y="3" width="16" height="6" rx="1" fill="currentColor" /><rect x="22" y="4" width="2" height="4" rx="0.6" fill="currentColor" /></svg>
+      </div>
+    </div>
+  );
+}
+
+function Pill({ status, children }) {
+  const labels = { onboard: "Onboard", "check-in": "Check-in", "check-out": "Check-out", confirmed: "Confirmed", open: "Open" };
+  return <span className="pill" data-status={status}>{children || labels[status]}</span>;
+}
+
+function Toast({ msg }) {
+  return <div className="toast"><I.Check style={{width:16, height:16}} /> {msg}</div>;
+}
+
+window.I = I;
+window.StatusBar = StatusBar;
+window.Pill = Pill;
+window.Toast = Toast;
+
+  </script>
+
+  <script type="text/babel">
+/* global React, I, StatusBar, Pill, Toast */
+
+const RESERVATIONS = [
+  { id: "34MRK211", name: "Emma Williams", email: "e.williams@email.com", room: "Junior Suit", roomNo: "201", date: "Dec 18, 2025", guests: 2, nights: 2, status: "onboard", source: "Booking.com", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Booking.com", composition: "2 (2/0/0)" },
+  { id: "34MXK25",  name: "Michael Antonio Franklin Correro", email: "m.antonio@email.com", room: "Luxury Suit", roomNo: "412", date: "Dec 18, 2025", guests: 2, nights: 2, status: "check-in", source: "Direct", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Direct", composition: "2 (2/0/0)" },
+  { id: "68CXK25",  name: "Emma Williams", email: "e.williams@email.com", room: "Junior Suit", roomNo: "203", date: "Dec 18, 2025", guests: 4, nights: 2, status: "onboard", source: "Booking.com", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Booking.com", composition: "4 (2/1/1)" },
+  { id: "47XK911",  name: "Rose Shepard", email: "r.shepard@email.com", room: "Junior Suit", roomNo: "115", date: "Dec 18, 2025", guests: 1, nights: 3, status: "check-out", source: "Expedia", checkIn: "25/04/2025  14:00", checkOut: "28/04/2025  10:00", partner: "Expedia", composition: "1 (1/0/0)" },
+  { id: "82PLK48",  name: "Franklin Williams Jr", email: "f.williams@email.com", room: "Junior Suit", roomNo: "302", date: "Dec 18, 2025", guests: 3, nights: 2, status: "confirmed", source: "Direct", checkIn: "26/04/2025  16:00", checkOut: "28/04/2025  11:00", partner: "Direct", composition: "3 (2/0/1)" },
+  { id: "13QXC76",  name: "Olivia Schmidt", email: "o.schmidt@email.com", room: "Junior Suit", roomNo: "108", date: "Dec 18, 2025", guests: 2, nights: 4, status: "check-in", source: "Booking.com", checkIn: "26/04/2025  15:00", checkOut: "30/04/2025  11:00", partner: "Booking.com", composition: "2 (2/0/0)" },
+  { id: "55ABK29",  name: "Lukas Hofer", email: "l.hofer@email.com", room: "Standard Double", roomNo: "210", date: "Dec 18, 2025", guests: 2, nights: 1, status: "open", source: "Direct", checkIn: "26/04/2025  17:30", checkOut: "27/04/2025  10:30", partner: "Direct", composition: "2 (2/0/0)" },
+];
+
+const GUESTS = {
+  "34MRK211": [
+    { id: "324323", name: "Emma Williams", maiden: "Emma Smith", mother: "Brigitte Goldsmidth", birth: "28/11/1980", birthPlace: "London", nationality: "German", citizenship: "German", age: "Adult", gender: "Female", reporting: "VIZA / NTAK", booker: true, phone: "+49 176 463 66888", email: "e.williams@email.com", docType: "Passport", docNo: "GH7383923", scanned: false }
+  ],
+  "34MXK25": [
+    { id: "654001", name: "Michael Antonio Franklin Correro", maiden: "—", mother: "Maria Correro", birth: "12/03/1976", birthPlace: "Rome", nationality: "Italian", citizenship: "Italian", age: "Adult", gender: "Male", reporting: "VIZA / NTAK", booker: true, phone: "+39 320 123 4567", email: "m.antonio@email.com", docType: "Passport", docNo: "IT4421099", scanned: true },
+    { id: "654002", name: "Lucia Correro", maiden: "Lucia Bianchi", mother: "Anna Bianchi", birth: "04/07/1982", birthPlace: "Milan", nationality: "Italian", citizenship: "Italian", age: "Adult", gender: "Female", reporting: "VIZA / NTAK", booker: false, phone: "+39 320 765 1122", email: "l.correro@email.com", docType: "Passport", docNo: "IT8810321", scanned: false },
+  ],
+  "68CXK25": [
+    { id: "324323", name: "Emma Williams", maiden: "Emma Smith", mother: "Brigitte Goldsmidth", birth: "28/11/1980", birthPlace: "London", nationality: "German", citizenship: "German", age: "Adult", gender: "Female", reporting: "VIZA / NTAK", booker: true, phone: "+49 176 463 66888", email: "e.williams@email.com", docType: "Passport", docNo: "GH7383923", scanned: false },
+    { id: "5653443", name: "Rose Shepard", mother: "Sophie Shepard", birth: "11/02/1979", birthPlace: "Vienna", nationality: "Austrian", citizenship: "Austrian", age: "Adult", gender: "Female", reporting: "VIZA / NTAK", booker: false, phone: "+43 660 998 2200", email: "r.shepard@email.com", docType: "ID Card", docNo: "AT1928340", scanned: true },
+    { id: "654323", name: "Franklin Williams Jr", mother: "Brigitte Goldsmidth", birth: "06/05/2018", birthPlace: "London", nationality: "German", citizenship: "German", age: "Child", gender: "Male", reporting: "VIZA / NTAK", booker: false, phone: "—", email: "—", docType: "Passport", docNo: "GH7383928", scanned: false },
+    { id: "654324", name: "Lily Williams", mother: "Brigitte Goldsmidth", birth: "21/08/2020", birthPlace: "London", nationality: "German", citizenship: "German", age: "Child", gender: "Female", reporting: "VIZA / NTAK", booker: false, phone: "—", email: "—", docType: "Passport", docNo: "GH7383929", scanned: false },
+  ],
+  "47XK911": [{ id: "5653443", name: "Rose Shepard", mother: "Sophie Shepard", birth: "11/02/1979", birthPlace: "Vienna", nationality: "Austrian", citizenship: "Austrian", age: "Adult", gender: "Female", reporting: "VIZA / NTAK", booker: true, phone: "+43 660 998 2200", email: "r.shepard@email.com", docType: "ID Card", docNo: "AT1928340", scanned: true }],
+  "82PLK48": [{ id: "654323", name: "Franklin Williams Jr", mother: "—", birth: "20/01/1985", birthPlace: "Berlin", nationality: "German", citizenship: "German", age: "Adult", gender: "Male", reporting: "VIZA / NTAK", booker: true, phone: "+49 30 1122 3344", email: "f.williams@email.com", docType: "Passport", docNo: "GH7383987", scanned: false }],
+  "13QXC76": [{ id: "771234", name: "Olivia Schmidt", mother: "—", birth: "08/09/1990", birthPlace: "Munich", nationality: "German", citizenship: "German", age: "Adult", gender: "Female", reporting: "VIZA / NTAK", booker: true, phone: "+49 89 4455 7788", email: "o.schmidt@email.com", docType: "ID Card", docNo: "DE9921334", scanned: true }],
+  "55ABK29": [{ id: "881122", name: "Lukas Hofer", mother: "—", birth: "14/06/1992", birthPlace: "Vienna", nationality: "Austrian", citizenship: "Austrian", age: "Adult", gender: "Male", reporting: "VIZA / NTAK", booker: true, phone: "+43 660 222 1188", email: "l.hofer@email.com", docType: "Passport", docNo: "AT2233901", scanned: false }],
+};
+
+const SERVICES = {
+  "34MRK211": [{ name: "Breakfast (×2)", qty: 2, price: "€36.00" }, { name: "Spa Access", qty: 1, price: "€45.00" }],
+  "34MXK25": [{ name: "Airport Transfer", qty: 1, price: "€80.00" }, { name: "Late Check-out", qty: 1, price: "€25.00" }],
+  "68CXK25": [{ name: "Breakfast (×4)", qty: 4, price: "€72.00" }, { name: "Crib Rental", qty: 1, price: "€10.00" }, { name: "Babysitter (3h)", qty: 1, price: "€60.00" }],
+  "47XK911": [{ name: "Spa Access", qty: 1, price: "€45.00" }],
+  "82PLK48": [],
+  "13QXC76": [{ name: "Breakfast (×2)", qty: 2, price: "€36.00" }],
+  "55ABK29": [],
+};
+
+const FINANCES = {
+  "34MRK211": { room: "€220.00", services: "€81.00", total: "€301.00", paid: "€150.00", balance: "€151.00" },
+  "34MXK25":  { room: "€480.00", services: "€105.00", total: "€585.00", paid: "€585.00", balance: "€0.00" },
+  "68CXK25":  { room: "€340.00", services: "€142.00", total: "€482.00", paid: "€200.00", balance: "€282.00" },
+  "47XK911":  { room: "€420.00", services: "€45.00", total: "€465.00", paid: "€465.00", balance: "€0.00" },
+  "82PLK48":  { room: "€280.00", services: "€0.00", total: "€280.00", paid: "€0.00", balance: "€280.00" },
+  "13QXC76":  { room: "€520.00", services: "€36.00", total: "€556.00", paid: "€556.00", balance: "€0.00" },
+  "55ABK29":  { room: "€140.00", services: "€0.00", total: "€140.00", paid: "€0.00", balance: "€140.00" },
+};
+
+const PROPERTIES = [
+  { id: "sunshine", name: "Sunshine Hotel & Apartments", type: "Hotel & Apartments" },
+  { id: "cozy",     name: "Cozy Corner Apartments",      type: "Apartments" },
+  { id: "lake",     name: "Lake Salt Hotel",              type: "Hotel" },
+];
+
+window.RESERVATIONS = RESERVATIONS;
+window.GUESTS = GUESTS;
+window.SERVICES = SERVICES;
+window.FINANCES = FINANCES;
+window.PROPERTIES = PROPERTIES;
+
+  </script>
+
+  <script type="text/babel">
+/* global React, I */
+
+const { useState, useRef, useEffect } = React;
+
+const VALID_EMAIL    = "tamas@szurmik.com";
+const VALID_PASSWORD = "password";
+const VALID_OTP      = "444555";
+
+const LANGS = [
+  { code: "en", label: "EN" },
+  { code: "hu", label: "HU" },
+  { code: "de", label: "DE" },
+  { code: "tr", label: "TR" },
+  { code: "fr", label: "FR" },
+  { code: "lv", label: "LV" },
+  { code: "es", label: "ES" },
+];
+
+function LoginScreen({ go, goHome }) {
+  const [lang, setLang]       = useState("en");
+  const [email, setEmail]     = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError]     = useState(false);
+  const [loading, setLoading] = useState(false);
+  const passwordRef           = useRef(null);
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (loading) return;
+    if (!email && !password) { goHome(); return; }
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      if (email.trim() === VALID_EMAIL && password === VALID_PASSWORD) {
+        go("mfa");
+      } else {
+        setError(true);
+      }
+    }, 600);
+  };
+
+  const retry = () => {
+    setError(false);
+    setPassword("");
+    setTimeout(() => passwordRef.current?.focus(), 50);
+  };
+
+  return (
+    <div className="login-page">
+      <div className="login-header">
+        <select className="lang-select" value={lang} onChange={e => setLang(e.target.value)}>
+          {LANGS.map(l => (
+            <option key={l.code} value={l.code}>{l.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="login-body">
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--primary)", marginBottom: 8 }}>SabeeApp Go</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.02em", lineHeight: 1.15 }}>Welcome back</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink-4)", marginTop: 6 }}>Sign in to your account</div>
+        </div>
+
+        <form onSubmit={submit}>
+          <div className="form-group">
+            <input
+              placeholder=" "
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+            <label>Email</label>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 24 }}>
+            <input
+              ref={passwordRef}
+              placeholder=" "
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+            <label>Password</label>
+          </div>
+
+          <button
+            className="btn"
+            type="submit"
+            disabled={loading}
+            style={{ opacity: 1 }}
+          >
+            {loading
+              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 18, height: 18, border: "2.5px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite", display: "inline-block" }} />
+                  Signing in…
+                </span>
+              : "Sign in"
+            }
+          </button>
+        </form>
+      </div>
+
+      <div className="login-footer">
+        Account management is handled through your SabeeApp PMS
+      </div>
+
+      {error && (
+        <div className="sheet-backdrop" onClick={retry}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>Sign in failed</h3>
+              <button className="icon-btn" onClick={retry}><I.X /></button>
+            </div>
+            <div style={{ marginTop: 16, marginBottom: 8 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink-3)", lineHeight: 1.5 }}>
+                The email or password you entered is incorrect. Please check your credentials and try again.
+              </div>
+            </div>
+            <div style={{ marginTop: 24 }}>
+              <button className="btn" onClick={retry}>Try again</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MFAScreen({ goHome, back }) {
+  const [digits, setDigits] = useState(["", "", "", "", "", ""]);
+  const [error, setError]   = useState(false);
+  const [loading, setLoading] = useState(false);
+  const inputRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
+
+  useEffect(() => {
+    const t = setTimeout(() => inputRefs[0].current?.focus(), 350);
+    return () => clearTimeout(t);
+  }, []);
+
+  const verify = (d) => {
+    const code = d.join("");
+    setLoading(true);
+    setTimeout(() => {
+      if (code === VALID_OTP) {
+        goHome();
+      } else {
+        setLoading(false);
+        setError(true);
+        setDigits(["", "", "", "", "", ""]);
+        setTimeout(() => inputRefs[0].current?.focus(), 50);
+      }
+    }, 600);
+  };
+
+  const handleKey = (i, e) => {
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      const next = [...digits];
+      if (next[i]) {
+        next[i] = "";
+        setDigits(next);
+      } else if (i > 0) {
+        next[i - 1] = "";
+        setDigits(next);
+        inputRefs[i - 1].current?.focus();
+      }
+      setError(false);
+    }
+  };
+
+  const handleChange = (i, e) => {
+    if (loading) return;
+    const val = e.target.value.replace(/\D/g, "").slice(-1);
+    const next = [...digits];
+    next[i] = val;
+    setDigits(next);
+    setError(false);
+    if (val && i < 5) {
+      inputRefs[i + 1].current?.focus();
+    } else if (val && i === 5) {
+      verify(next);
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return;
+    const next = ["", "", "", "", "", ""];
+    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
+    setDigits(next);
+    setError(false);
+    if (pasted.length === 6) {
+      verify(next);
+    } else {
+      inputRefs[Math.min(pasted.length, 5)].current?.focus();
+    }
+  };
+
+  return (
+    <div className="page">
+      <div className="sub-header">
+        <button className="back" onClick={back}><I.ChevronBack /></button>
+        <span className="title">Two-step verification</span>
+      </div>
+
+      <div style={{ padding: "48px var(--pad) 0", textAlign: "center" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--primary-soft-bg)", border: "1.5px solid var(--primary-soft)", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--primary)", marginBottom: 20 }}>
+          <I.IDCard style={{ width: 30, height: 30 }} />
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink-3)", lineHeight: 1.5, marginBottom: 40 }}>
+          Enter the 6-digit code from<br />your authenticator app
+        </div>
+
+        <div className="otp-row" style={{ marginBottom: 20 }}>
+          {digits.map((d, i) => (
+            <React.Fragment key={i}>
+              {i === 3 && <span className="otp-sep">·</span>}
+              <input
+                ref={inputRefs[i]}
+                className={"otp-digit" + (d ? " filled" : "") + (error ? " error" : "")}
+                type="tel"
+                inputMode="numeric"
+                maxLength={1}
+                value={d}
+                disabled={loading}
+                onChange={e => handleChange(i, e)}
+                onKeyDown={e => handleKey(i, e)}
+                onPaste={i === 0 ? handlePaste : undefined}
+              />
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div style={{ height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {loading && (
+            <span style={{ width: 20, height: 20, border: "2.5px solid var(--line-strong)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite", display: "inline-block" }} />
+          )}
+          {error && !loading && (
+            <span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--warn)" }}>Invalid code. </span>
+              <button onClick={() => { setError(false); setTimeout(() => inputRefs[0].current?.focus(), 50); }}
+                style={{ background: "none", border: "none", fontSize: 14, fontWeight: 700, color: "var(--primary)", cursor: "pointer", padding: 0 }}>
+                Try again
+              </button>
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.LoginScreen = LoginScreen;
+window.MFAScreen   = MFAScreen;
+
+  </script>
+
+  <script type="text/babel">
+/* global React, I, PROPERTIES */
+
+function PropertySelectScreen({ onSelect }) {
+  return (
+    <div className="login-page">
+      <div style={{ flex: 1, padding: "60px var(--pad) 0" }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--primary)", marginBottom: 8 }}>SabeeApp Go</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.02em", lineHeight: 1.15 }}>Select Property</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink-4)", marginTop: 6 }}>Choose a property to manage</div>
+        </div>
+
+        {PROPERTIES.map(p => (
+          <div key={p.id} className="card tap-anim tappable"
+            style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 14 }}
+            onClick={() => onSelect(p)}>
+            <div style={{ width: 44, height: 44, borderRadius: "var(--radius-sm)", background: "var(--primary-soft-bg)", border: "1.5px solid var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary)", flexShrink: 0 }}>
+              <I.Home style={{ width: 20, height: 20 }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.01em", lineHeight: 1.2 }}>{p.name}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-4)", marginTop: 2 }}>{p.type}</div>
+            </div>
+            <I.ChevronRight style={{ color: "var(--ink-4)", width: 18, height: 18, flexShrink: 0 }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+window.PropertySelectScreen = PropertySelectScreen;
+
+  </script>
+
+  <script type="text/babel">
+/* global React, I, Pill, RESERVATIONS, PROPERTIES */
+
+const { useState, useRef, useEffect } = React;
+
+function Segment({ tabs, value, onChange }) {
+  const refs = useRef({});
+  const [thumb, setThumb] = useState({ left: 3, width: 0 });
+  useEffect(() => {
+    const el = refs.current[value];
+    if (el) setThumb({ left: el.offsetLeft, width: el.offsetWidth });
+  }, [value, tabs]);
+  return (
+    <div className="segment">
+      <div className="seg-thumb" style={{ left: thumb.left, width: thumb.width }} />
+      {tabs.map(t => (
+        <button key={t} ref={el => (refs.current[t] = el)}
+          className={"seg" + (t === value ? " active" : "")}
+          onClick={() => onChange(t)}>{t}</button>
+      ))}
+    </div>
+  );
+}
+
+function ReservationCard({ r, onClick, dimmed }) {
+  return (
+    <div className={"card res-card tap-anim" + (onClick ? " tappable" : "")}
+      style={dimmed ? { opacity: 0.5 } : {}}
+      onClick={onClick}>
+      <div className="top">
+        <span className="res-code">{r.id}</span>
+        <Pill status={r.status} />
+      </div>
+      <div className="res-name">{r.name}</div>
+      <div className="res-email">{r.email}</div>
+      <div className="res-meta">
+        <span><span className="v">{r.date}</span> · {r.guests} guests / {r.nights} nights</span>
+        <span className="v">{r.room}</span>
+      </div>
+    </div>
+  );
+}
+
+function HomeScreen({ go, property, setProperty }) {
+  const [switchOpen, setSwitchOpen] = useState(false);
+  const [tab, setTab] = useState("Today");
+  const propName = property?.name || "Sunshine Hotel & Apartments";
+
+  return (
+    <div className="page">
+      <div className="page-header" style={{ paddingTop: 16 }}>
+        <button className="title-row" onClick={() => setSwitchOpen(true)}
+          style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, textAlign: "left" }}>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--ink)", lineHeight: 1.2, flex: 1, minWidth: 0 }}>{propName}</h1>
+          <I.ChevronDown style={{ color: "var(--primary)", width: 22, height: 22, flexShrink: 0 }} />
+        </button>
+        <div className="actions">
+          <button className="icon-btn" aria-label="Notifications"><I.Bell /></button>
+          <button className="icon-btn" aria-label="Settings"><I.Settings /></button>
+        </div>
+      </div>
+
+      {switchOpen && (
+        <div className="sheet-backdrop" onClick={() => setSwitchOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>Switch Property</h3>
+              <button className="icon-btn" onClick={() => setSwitchOpen(false)}><I.X /></button>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              {PROPERTIES.map(p => (
+                <button key={p.id} className="action-item" onClick={() => { setProperty(p); setSwitchOpen(false); }}>
+                  <span className="action-icon"><I.Home /></span>
+                  <span style={{ flex: 1, textAlign: "left" }}>
+                    <div>{p.name}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-4)", marginTop: 2 }}>{p.type}</div>
+                  </span>
+                  {property?.id === p.id && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--primary)", flexShrink: 0 }} />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button className="search-field" style={{ textAlign: "left", cursor: "pointer", width: "calc(100% - 32px)" }} onClick={() => go("search")}>
+        <I.Search />
+        <span style={{ flex: 1, color: "var(--ink-4)", fontSize: 16, fontWeight: 600 }}>Search</span>
+      </button>
+
+      <div className="app-scroll" style={{ paddingTop: 12, paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+        <Segment tabs={["Yesterday", "Today", "Tomorrow"]} value={tab} onChange={setTab} />
+
+        <div className="stat-block">
+          <div className="stat-card">
+            <div className="label"><I.Users style={{ width: 16, height: 16 }} /> Guests</div>
+            <div className="value">23 / 56</div>
+          </div>
+          <div className="stat-card">
+            <div className="label"><I.Briefcase style={{ width: 16, height: 16 }} /> Reservations</div>
+            <div className="value">6 / 17</div>
+          </div>
+        </div>
+
+        <div className="section-title">
+          <h2>{tab}'s Arrivals</h2>
+          <button className="icon-btn"><I.Filter /></button>
+        </div>
+
+        <div className="stagger">
+          {RESERVATIONS.map(r => (
+            <ReservationCard key={r.id} r={r} onClick={() => go("reservation", r.id)} dimmed={tab !== "Today" && r.status === "open"} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.Segment = Segment;
+window.ReservationCard = ReservationCard;
+window.HomeScreen = HomeScreen;
+
+  </script>
+
+  <script type="text/babel">
+/* global React, I, Pill, RESERVATIONS, Segment, ReservationCard */
+
+const { useState, useRef, useEffect } = React;
+
+function ArrivalsScreen({ go, back }) {
+  const [tab, setTab] = useState("Today");
+  const [collapsed, setCollapsed] = useState(false);
+  const sentinelRef = useRef(null);
+  const list = RESERVATIONS;
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setCollapsed(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div className="page">
+      <div className="sub-header">
+        <button className="back" onClick={back}><I.ChevronBack /></button>
+        <span className="title">{collapsed ? `${tab}'s Arrivals` : "Arrivals"}</span>
+      </div>
+
+      <div className="app-scroll" style={{ paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+        <Segment tabs={["Yesterday", "Today", "Tomorrow"]} value={tab} onChange={setTab} />
+
+        <div className="stat-block">
+          <div className="stat-card">
+            <div className="label"><I.Users style={{ width: 16, height: 16 }} /> Guests</div>
+            <div className="value">23 / 56</div>
+          </div>
+          <div className="stat-card">
+            <div className="label"><I.Briefcase style={{ width: 16, height: 16 }} /> Reservations</div>
+            <div className="value">6 / 17</div>
+          </div>
+        </div>
+
+        <div className="section-title" ref={sentinelRef}>
+          <h2>{tab}'s Arrivals</h2>
+          <button className="icon-btn"><I.Filter /></button>
+        </div>
+
+        <div className="stagger">
+          {list.map(r => (
+            <ReservationCard key={r.id} r={r} onClick={() => go("reservation", r.id)} dimmed={tab !== "Today" && r.status === "open"} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReservationDetailScreen({ id, go, back, addToast }) {
+  const r = RESERVATIONS.find(x => x.id === id) || RESERVATIONS[0];
+  const [status, setStatus] = useState(r.status);
+  const guests = (window.GUESTS[r.id] || []);
+
+  const cycle = () => {
+    const order = ["confirmed", "onboard", "check-in", "check-out"];
+    const i = order.indexOf(status);
+    const next = order[(i + 1) % order.length];
+    setStatus(next);
+    addToast(`Status → ${next === "check-in" ? "Check-in" : next === "check-out" ? "Check-out" : next === "onboard" ? "Onboard" : "Confirmed"}`);
+  };
+
+  return (
+    <div className="page">
+      <div className="sub-header">
+        <button className="back" onClick={back}><I.ChevronBack /></button>
+        <span className="title">Reservation Details</span>
+      </div>
+
+      <div className="app-scroll" style={{ paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+        <div className="detail-block">
+          <div className="header">
+            <span style={{ color: "var(--primary)", fontSize: 22, fontWeight: 800, letterSpacing: "0.02em" }}>{r.id}</span>
+            <button onClick={cycle} style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer" }} title="Tap to advance status">
+              <Pill status={status} />
+            </button>
+          </div>
+          <div className="name">{r.name}</div>
+          <div className="fact-grid">
+            <div className="fact"><div className="l"><I.Calendar style={{ width: 14, height: 14 }} /> Check-in</div><div className="v">{r.checkIn}</div></div>
+            <div className="fact"><div className="l"><I.Calendar style={{ width: 14, height: 14 }} /> Check-out</div><div className="v">{r.checkOut}</div></div>
+            <div className="fact"><div className="l"><I.Users style={{ width: 14, height: 14 }} /> Guests</div><div className="v">{r.composition}</div></div>
+            <div className="fact"><div className="l"><I.Briefcase style={{ width: 14, height: 14 }} /> Partner</div><div className="v">{r.partner}</div></div>
+            <div className="fact" style={{ gridColumn: "1 / -1" }}><div className="l"><I.Door style={{ width: 14, height: 14 }} /> Room / Type</div><div className="v">{r.roomNo} ({r.room})</div></div>
+          </div>
+        </div>
+
+        <div className="section-title">
+          <h2>Guests</h2>
+        </div>
+
+        <div className="stagger">
+          {guests.map(g => (
+            <div key={g.id} className="guest-card tap-anim tappable" onClick={() => go("guest", { resId: r.id, guestId: g.id })}>
+              <button className="scan-btn" onClick={(e) => { e.stopPropagation(); go("idscan"); }}>
+                <I.IDCard />
+              </button>
+              <div className="id">ID: {g.id}{g.booker && <span className="booker">(Booker)</span>}</div>
+              <div className="name">{g.name}</div>
+              <div className="fact-grid" style={{ gap: "8px 16px" }}>
+                <div><div style={{ fontSize: 13, color: "var(--ink-4)", fontWeight: 600 }}>Age</div><div style={{ fontSize: 17, fontWeight: 700 }}>{g.age}</div></div>
+                <div><div style={{ fontSize: 13, color: "var(--ink-4)", fontWeight: 600 }}>Gender</div><div style={{ fontSize: 17, fontWeight: 700 }}>{g.gender}</div></div>
+                <div><div style={{ fontSize: 13, color: "var(--ink-4)", fontWeight: 600 }}>Nationality</div><div style={{ fontSize: 17, fontWeight: 700 }}>{g.nationality}</div></div>
+                <div><div style={{ fontSize: 13, color: "var(--ink-4)", fontWeight: 600 }}>Reporting</div><div style={{ fontSize: 17, fontWeight: 700 }}>{g.reporting}</div></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.ArrivalsScreen = ArrivalsScreen;
+window.ReservationDetailScreen = ReservationDetailScreen;
+
+  </script>
+
+  <script type="text/babel">
+/* global React, I, StatusBar, Pill, RESERVATIONS, GUESTS */
+
+const { useState, useEffect, useMemo } = React;
+
+function GuestDetailScreen({ resId, guestId, back, go }) {
+  const list = GUESTS[resId] || [];
+  const g = list.find(x => x.id === guestId) || list[0];
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  if (!g) return null;
+  return (
+    <div className="page">
+      <div className="sub-header">
+        <button className="back" onClick={back}><I.ChevronBack /></button>
+        <span className="title">Guest details</span>
+      </div>
+
+      <div className="app-scroll" style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>
+        <div style={{ padding: "0 16px" }} className="stagger">
+          <div className="card" style={{ marginBottom: 16 }}>
+            <Row label={`ID: ${g.id}`} value={g.name} divider />
+            <Row label="Maiden full name" value={g.maiden || "—"} divider />
+            <Row label="Mother's full name" value={g.mother || "—"} divider />
+            <div style={{ display: "flex", gap: 24, padding: "12px 0", borderBottom: "1px solid var(--line)" }}>
+              <div style={{ flex: 1 }}><Tiny label="Birth date" value={g.birth} /></div>
+              <div style={{ flex: 1 }}><Tiny label="Birth Place" value={g.birthPlace} /></div>
+            </div>
+            <div style={{ padding: "12px 0 0" }}><Tiny label="Citizenship" value={g.citizenship} /></div>
+          </div>
+
+          <SectionTitle>Contact details</SectionTitle>
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+              <Tiny label="Phone" value={g.phone} />
+              <button className="icon-btn" style={{ color: "var(--primary)" }}><I.Phone /></button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
+              <Tiny label="Email" value={g.email} />
+              <button className="icon-btn" style={{ color: "var(--primary)" }}><I.Mail /></button>
+            </div>
+          </div>
+
+          <SectionTitle>Travelling document</SectionTitle>
+          <div className="card">
+            <div style={{ display: "flex", gap: 24, padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+              <div style={{ flex: 1 }}><Tiny label="Document Type" value={g.docType} /></div>
+              <div style={{ flex: 1 }}><Tiny label="Scanned" value={g.scanned ? "Yes" : "No"} /></div>
+            </div>
+            <div style={{ padding: "12px 0 0" }}><Tiny label="Number" value={g.docNo} /></div>
+          </div>
+        </div>
+      </div>
+
+      <button className="fab" onClick={() => setMenuOpen(true)}><I.GridFill /></button>
+
+      {menuOpen && (
+        <div className="sheet-backdrop" onClick={() => setMenuOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>{g.name}</h3>
+              <button className="icon-btn" onClick={() => setMenuOpen(false)}><I.X /></button>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <button className="action-item" onClick={() => { setMenuOpen(false); go("editguest", { resId, guestId }); }}>
+                <span className="action-icon"><I.Edit /></span>
+                Edit guest
+              </button>
+              <button className="action-item" onClick={() => { setMenuOpen(false); go("idscan"); }}>
+                <span className="action-icon"><I.Scan /></span>
+                ID Scan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EditGuestScreen({ resId, guestId, back, addToast }) {
+  const list = GUESTS[resId] || [];
+  const g = list.find(x => x.id === guestId) || list[0];
+  const [form, setForm] = React.useState({
+    name:        g?.name        || "",
+    maiden:      g?.maiden      || "",
+    mother:      g?.mother      || "",
+    birth:       g?.birth       || "",
+    birthPlace:  g?.birthPlace  || "",
+    citizenship: g?.citizenship || "",
+    phone:       g?.phone       || "",
+    email:       g?.email       || "",
+    docType:     g?.docType     || "Passport",
+    docNo:       g?.docNo       || "",
+  });
+  if (!g) return null;
+
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+
+  return (
+    <div className="page">
+      <div className="sub-header">
+        <button className="back" onClick={back}><I.ChevronBack /></button>
+        <span className="title">Edit Guest</span>
+      </div>
+
+      <div className="app-scroll" style={{ padding: "8px 16px 16px" }}>
+
+        <SectionTitle>Personal</SectionTitle>
+
+        <div className="form-group">
+          <input placeholder=" " value={form.name} onChange={set("name")} />
+          <label>First &amp; Last name</label>
+          <span className="form-icon"><I.IDCard style={{ width: 20, height: 20 }} /></span>
+        </div>
+
+        <div className="form-group">
+          <input placeholder=" " value={form.maiden} onChange={set("maiden")} />
+          <label>Maiden full name</label>
+          <span className="form-icon"><I.IDCard style={{ width: 20, height: 20 }} /></span>
+        </div>
+
+        <div className="form-group">
+          <input placeholder=" " value={form.mother} onChange={set("mother")} />
+          <label>Mother's full name</label>
+          <span className="form-icon"><I.IDCard style={{ width: 20, height: 20 }} /></span>
+        </div>
+
+        <div className="form-group">
+          <input placeholder=" " value={form.birth} onChange={set("birth")} />
+          <label>Birth Date</label>
+          <span className="form-icon">
+            <I.IDCard style={{ width: 20, height: 20 }} />
+            <I.Calendar style={{ width: 20, height: 20 }} />
+          </span>
+        </div>
+
+        <div className="form-group">
+          <input placeholder=" " value={form.birthPlace} onChange={set("birthPlace")} />
+          <label>Birth place</label>
+        </div>
+
+        <div className="form-group">
+          <input placeholder=" " value={form.citizenship} onChange={set("citizenship")} />
+          <label>Citizenship</label>
+        </div>
+
+        <SectionTitle>Contact Details</SectionTitle>
+
+        <div className="form-group">
+          <input placeholder=" " type="tel" value={form.phone} onChange={set("phone")} />
+          <label>Phone</label>
+        </div>
+
+        <div className="form-group">
+          <input placeholder=" " type="email" value={form.email} onChange={set("email")} />
+          <label>Email</label>
+        </div>
+
+        <SectionTitle>Travelling document</SectionTitle>
+
+        <div className="form-group">
+          <select value={form.docType} onChange={set("docType")}>
+            <option>Passport</option>
+            <option>ID Card</option>
+            <option>Driving Licence</option>
+            <option>Residence Permit</option>
+          </select>
+          <label>Document Type</label>
+          <span className="form-icon"><I.ChevronRight style={{ width: 18, height: 18 }} /></span>
+        </div>
+
+        <div className="form-group">
+          <input placeholder=" " value={form.docNo} onChange={set("docNo")} />
+          <label>Document Number</label>
+        </div>
+
+      </div>
+
+      <div style={{ padding: "12px 16px calc(28px + env(safe-area-inset-bottom, 0px))", background: "var(--bg)", borderTop: "1px solid var(--line)", flexShrink: 0, display: "flex" }}>
+        <button className="btn" onClick={() => { addToast("Guest details saved"); back(); }}>Save</button>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value, divider }) {
+  return (
+    <div style={{ padding: "12px 0", borderBottom: divider ? "1px solid var(--line)" : "none" }}>
+      <div style={{ fontSize: 13, color: "var(--ink-4)", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 19, color: "var(--ink)", fontWeight: 700, marginTop: 2 }}>{value}</div>
+    </div>
+  );
+}
+function Tiny({ label, value }) {
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: "var(--ink-4)", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 18, color: "var(--ink)", fontWeight: 700, marginTop: 2 }}>{value}</div>
+    </div>
+  );
+}
+function SectionTitle({ children }) {
+  return <h3 className="group-title">{children}</h3>;
+}
+
+function SearchScreen({ back, go }) {
+  const [q, setQ] = useState("");
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return [];
+    return RESERVATIONS.filter(r =>
+      r.name.toLowerCase().includes(s) ||
+      r.email.toLowerCase().includes(s) ||
+      r.id.toLowerCase().includes(s) ||
+      r.room.toLowerCase().includes(s) ||
+      r.roomNo.includes(s)
+    );
+  }, [q]);
+  return (
+    <div className="page">
+      <div className="sub-header">
+        <button className="back" onClick={back}><I.ChevronBack /></button>
+        <span className="title">Search</span>
+      </div>
+      <div className="search-field" style={{ marginTop: 0 }}>
+        <I.Search />
+        <input autoFocus placeholder="Search guests, rooms, codes…" value={q} onChange={e => setQ(e.target.value)} />
+        {q && <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setQ("")}><I.X style={{ width: 16, height: 16 }} /></button>}
+      </div>
+
+      <div className="app-scroll" style={{ paddingTop: 16 }}>
+        {!q && (
+          <div style={{ padding: "0 16px", color: "var(--ink-4)" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Suggestions</div>
+            {["Emma Williams", "68CXK25", "Junior Suit", "Booking.com"].map(s => (
+              <button key={s} onClick={() => setQ(s)}
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "12px 14px", background: "#fff", border: "1px solid var(--line)", borderRadius: 10, marginBottom: 8, fontSize: 16, fontWeight: 700, color: "var(--ink-2)", cursor: "pointer" }}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        {q && filtered.length === 0 && <div className="empty">No matches for "{q}"</div>}
+        {q && filtered.length > 0 && (
+          <div className="stagger">
+            {filtered.map(r => (
+              <div key={r.id} className="card res-card tap-anim tappable" onClick={() => go("reservation", r.id)}>
+                <div className="top">
+                  <span className="res-code">{r.id}</span>
+                  <Pill status={r.status} />
+                </div>
+                <div className="res-name">{r.name}</div>
+                <div className="res-email">{r.email}</div>
+                <div className="res-meta">
+                  <span><span className="v">{r.date}</span> · {r.guests} guests</span>
+                  <span className="v">{r.room}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function IDScanScreen({ back, addToast }) {
+  const [phase, setPhase] = useState("camera"); // camera | scanning | result
+  const onShoot = () => {
+    setPhase("scanning");
+    setTimeout(() => setPhase("result"), 1600);
+  };
+  return (
+    <div className="page scan-screen">
+      <div className="sub-header" style={{ color: "#fff" }}>
+        <button className="back" onClick={back} style={{ color: "#fff" }}><I.ChevronBack /></button>
+        <span className="title" style={{ color: "#fff" }}>ID Scan</span>
+      </div>
+
+      <div className="scan-viewfinder">
+        <div className="scan-frame"><div className="scan-corners" /></div>
+        {phase === "camera" && <div className="scan-laser" />}
+        {phase === "scanning" && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#fff" }}>
+            <div style={{ width: 48, height: 48, border: "4px solid rgba(255,255,255,0.2)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 0.9s linear infinite" }} />
+            <div style={{ fontWeight: 700 }}>Reading document…</div>
+          </div>
+        )}
+        <div style={{ position: "absolute", left: 16, right: 16, bottom: 24, color: "rgba(255,255,255,0.85)", textAlign: "center", fontSize: 14, fontWeight: 600 }}>
+          Align the document within the frame
+        </div>
+      </div>
+
+      <div className="scan-toolbar">
+        <button className="shutter-btn" onClick={onShoot} disabled={phase !== "camera"} />
+      </div>
+
+      {phase === "result" && (
+        <div className="sheet-backdrop" onClick={() => setPhase("camera")}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>ID Scan result</h3>
+              <button className="icon-btn" onClick={() => setPhase("camera")}><I.X /></button>
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <div className="field" style={{ marginBottom: 14 }}>
+                <div className="l">First & Last name</div>
+                <div className="v">Emma Smith</div>
+              </div>
+              <div className="grid-2">
+                <div className="field"><div className="l">Document type</div><div className="v">ID</div></div>
+                <div className="field"><div className="l">Document number</div><div className="v">519716IE</div></div>
+                <div className="field"><div className="l">Age</div><div className="v">48</div></div>
+                <div className="field"><div className="l">Gender</div><div className="v">Male</div></div>
+                <div className="field"><div className="l">Place of birth</div><div className="v">Kecskemet</div></div>
+                <div className="field"><div className="l">Date of birth</div><div className="v">1977.11.28</div></div>
+                <div className="field"><div className="l">Citizenship</div><div className="v">Hungary</div></div>
+              </div>
+              <div className="field" style={{ marginTop: 14 }}>
+                <div className="l">Mother's name</div>
+                <div className="v">Jenna Gabriel Goldsmith</div>
+              </div>
+            </div>
+            <div className="actions">
+              <button className="btn secondary" onClick={() => { addToast("Edit mode"); setPhase("camera"); }}>Edit</button>
+              <button className="btn" onClick={() => { addToast("Saved guest details"); back(); }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+window.GuestDetailScreen = GuestDetailScreen;
+window.EditGuestScreen = EditGuestScreen;
+window.SearchScreen = SearchScreen;
+window.IDScanScreen = IDScanScreen;
+
+  </script>
+
+  <script type="text/babel">
+
+// tweaks-panel.jsx
+// Reusable Tweaks shell + form-control helpers.
+//
+// Owns the host protocol (listens for __activate_edit_mode / __deactivate_edit_mode,
+// posts __edit_mode_available / __edit_mode_set_keys / __edit_mode_dismissed) so
+// individual prototypes don't re-roll it. Ships a consistent set of controls so you
+// don't hand-draw <input type="range">, segmented radios, steppers, etc.
+//
+// Usage (in an HTML file that loads React + Babel):
+//
+//   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+//     "primaryColor": "#D97757",
+//     "fontSize": 16,
+//     "density": "regular",
+//     "dark": false
+//   }/*EDITMODE-END*/;
+//
+//   function App() {
+//     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+//     return (
+//       <div style={{ fontSize: t.fontSize, color: t.primaryColor }}>
+//         Hello
+//         <TweaksPanel>
+//           <TweakSection label="Typography" />
+//           <TweakSlider label="Font size" value={t.fontSize} min={10} max={32} unit="px"
+//                        onChange={(v) => setTweak('fontSize', v)} />
+//           <TweakRadio  label="Density" value={t.density}
+//                        options={['compact', 'regular', 'comfy']}
+//                        onChange={(v) => setTweak('density', v)} />
+//           <TweakSection label="Theme" />
+//           <TweakColor  label="Primary" value={t.primaryColor}
+//                        onChange={(v) => setTweak('primaryColor', v)} />
+//           <TweakToggle label="Dark mode" value={t.dark}
+//                        onChange={(v) => setTweak('dark', v)} />
+//         </TweaksPanel>
+//       </div>
+//     );
+//   }
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-field{appearance:none;width:100%;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+  .twk-num{display:flex;align-items:center;height:26px;padding:0 0 0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
+  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
+    user-select:none;padding-right:8px}
+  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
+    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
+    outline:none;color:inherit;-moz-appearance:textfield}
+  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0}
+  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
+
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
+  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
+
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+`;
+
+// ── useTweaks ───────────────────────────────────────────────────────────────
+// Single source of truth for tweak values. setTweak persists via the host
+// (__edit_mode_set_keys → host rewrites the EDITMODE block on disk).
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  // Accepts either setTweak('key', value) or setTweak({ key: value, ... }) so a
+  // useState-style call doesn't write a "[object Object]" key into the persisted
+  // JSON block.
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+  }, []);
+  return [values, setTweak];
+}
+
+// ── TweaksPanel ─────────────────────────────────────────────────────────────
+// Floating shell. Registers the protocol listener BEFORE announcing
+// availability — if the announce ran first, the host's activate could land
+// before our handler exists and the toolbar toggle would silently no-op.
+// The close button posts __edit_mode_dismissed so the host's toolbar toggle
+// flips off in lockstep; the host echoes __deactivate_edit_mode back which
+// is what actually hides the panel.
+function TweaksPanel({ title = 'Tweaks', children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', clampToViewport);
+      return () => window.removeEventListener('resize', clampToViewport);
+    }
+    const ro = new ResizeObserver(clampToViewport);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" data-noncommentable=""
+           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">{children}</div>
+      </div>
+    </>
+  );
+}
+
+// ── Layout helpers ──────────────────────────────────────────────────────────
+
+function TweakSection({ label, children }) {
+  return (
+    <>
+      <div className="twk-sect">{label}</div>
+      {children}
+    </>
+  );
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Controls ────────────────────────────────────────────────────────────────
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+
+  // The active value is read by pointer-move handlers attached for the lifetime
+  // of a drag — ref it so a stale closure doesn't fire onChange for every move.
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
+
+function TweakText({ label, value, placeholder, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <input className="twk-field" type="text" value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)} />
+    </TweakRow>
+  );
+}
+
+function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
+  const clamp = (n) => {
+    if (min != null && n < min) return min;
+    if (max != null && n > max) return max;
+    return n;
+  };
+  const startRef = React.useRef({ x: 0, val: 0 });
+  const onScrubStart = (e) => {
+    e.preventDefault();
+    startRef.current = { x: e.clientX, val: value };
+    const decimals = (String(step).split('.')[1] || '').length;
+    const move = (ev) => {
+      const dx = ev.clientX - startRef.current.x;
+      const raw = startRef.current.val + dx * step;
+      const snapped = Math.round(raw / step) * step;
+      onChange(clamp(Number(snapped.toFixed(decimals))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="twk-num">
+      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
+      <input type="number" value={value} min={min} max={max} step={step}
+             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+      {unit && <span className="twk-num-unit">{unit}</span>}
+    </div>
+  );
+}
+
+function TweakColor({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <input type="color" className="twk-swatch" value={value}
+             onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function TweakButton({ label, onClick, secondary = false }) {
+  return (
+    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
+            onClick={onClick}>{label}</button>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
+  TweakText, TweakNumber, TweakColor, TweakButton,
+});
+
+  </script>
+
+  <script type="text/babel">
+/* global React, ReactDOM, I, StatusBar, Toast, LoginScreen, MFAScreen, PropertySelectScreen, HomeScreen, ArrivalsScreen, ReservationDetailScreen, GuestDetailScreen, EditGuestScreen, SearchScreen, IDScanScreen, useTweaks, TweaksPanel, TweakSection, TweakRadio */
+
+const { useState, useEffect, useRef } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "density": "comfy",
+  "card": "outlined",
+  "pill": "soft"
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [stack, setStack] = useState([{ name: "login" }]);
+  const [direction, setDirection] = useState("forward");
+  const [tab, setTab] = useState("home");
+  const [toasts, setToasts] = useState([]);
+  const [property, setProperty] = useState(null);
+
+  const top = stack[stack.length - 1];
+
+  const go = (name, payload) => {
+    setDirection("forward");
+    setStack(s => [...s, { name, payload }]);
+  };
+  const back = () => {
+    if (stack.length <= 1) return;
+    setDirection("back");
+    setStack(s => s.slice(0, -1));
+  };
+  const setRootTab = (name) => {
+    setTab(name);
+    setDirection("forward");
+    if (name === "home") setStack([{ name: "home" }]);
+    else if (name === "arrivals") setStack([{ name: "arrivals" }]);
+    else if (name === "search") setStack([{ name: "search" }]);
+    else if (name === "scan") setStack([{ name: "idscan" }]);
+  };
+
+  const addToast = (msg) => {
+    const id = Math.random();
+    setToasts(t => [...t, { id, msg }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 2200);
+  };
+
+  const renderScreen = (s) => {
+    if (!s) return null;
+    switch (s.name) {
+      case "login":    return <LoginScreen go={go} goHome={() => setStack([{ name: "property" }])} />;
+      case "mfa":      return <MFAScreen goHome={() => setStack([{ name: "property" }])} back={back} />;
+      case "property": return <PropertySelectScreen onSelect={p => { setProperty(p); setStack([{ name: "home" }]); }} />;
+      case "home": return <HomeScreen go={go} property={property} setProperty={setProperty} />;
+      case "arrivals": return <ArrivalsScreen go={go} back={back} />;
+      case "reservation": return <ReservationDetailScreen id={s.payload} go={go} back={back} addToast={addToast} />;
+      case "guest": return <GuestDetailScreen resId={s.payload.resId} guestId={s.payload.guestId} go={go} back={back} />;
+      case "editguest": return <EditGuestScreen resId={s.payload.resId} guestId={s.payload.guestId} back={back} addToast={addToast} />;
+      case "search": return <SearchScreen back={back} go={go} />;
+      case "idscan": return <IDScanScreen back={back} addToast={addToast} />;
+      case "blockdate": return <BlockDateScreen back={back} addToast={addToast} />;
+      default: return null;
+    }
+  };
+
+  // Bottom nav visibility — hide on full-screen modals like ID scan
+  const showNav = false;
+
+  return (
+    <div className="app-stage">
+      <div className="app-window"
+        data-density={tweaks.density}
+        data-card={tweaks.card}
+        data-pill={tweaks.pill}>
+        <div style={{ position: "relative", flex: 1, overflow: "hidden" }}>
+          <PageTransitions stack={stack} direction={direction} renderScreen={renderScreen} />
+          <div className="toast-stack">
+            {toasts.map(t => <Toast key={t.id} msg={t.msg} />)}
+          </div>
+        </div>
+        {showNav && <BottomNav active={top.name} setRootTab={setRootTab} />}
+      </div>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Density">
+          <TweakRadio value={tweaks.density} options={[{value: "comfy", label: "Comfy"}, {value: "compact", label: "Compact"}]} onChange={v => setTweak("density", v)} />
+        </TweakSection>
+        <TweakSection title="Card style">
+          <TweakRadio value={tweaks.card} options={[{value: "outlined", label: "Outlined"}, {value: "soft", label: "Soft"}, {value: "elevated", label: "Elevated"}]} onChange={v => setTweak("card", v)} />
+        </TweakSection>
+        <TweakSection title="Status pill">
+          <TweakRadio value={tweaks.pill} options={[{value: "soft", label: "Soft"}, {value: "solid", label: "Solid"}, {value: "outline", label: "Outline"}]} onChange={v => setTweak("pill", v)} />
+        </TweakSection>
+      </TweaksPanel>
+    </div>
+  );
+}
+
+function PageTransitions({ stack, direction, renderScreen }) {
+  // Render last 2 stack frames during transition
+  const [rendered, setRendered] = useState(stack);
+  const prevLen = useRef(stack.length);
+
+  useEffect(() => {
+    if (stack.length === prevLen.current && stack[stack.length - 1] === rendered[rendered.length - 1]) return;
+    setRendered(stack);
+    prevLen.current = stack.length;
+  }, [stack]);
+
+  const top = rendered[rendered.length - 1];
+  return (
+    <div style={{ position: "absolute", inset: 0 }}>
+      <PageHost key={top ? top.name + JSON.stringify(top.payload || "") : "x"} direction={direction}>
+        {renderScreen(top)}
+      </PageHost>
+    </div>
+  );
+}
+
+function PageHost({ children, direction }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const enterClass = direction === "back" ? "page-back-enter" : "page-enter";
+    const activeClass = direction === "back" ? "page-back-enter-active" : "page-enter-active";
+    el.classList.add(enterClass);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.classList.add(activeClass);
+        el.classList.remove(enterClass);
+      });
+    });
+    const t = setTimeout(() => el.classList.remove(activeClass), 360);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div ref={ref} style={{ position: "absolute", inset: 0 }}>
+      {children}
+    </div>
+  );
+}
+
+function BottomNav({ active, setRootTab }) {
+  const items = [
+    { id: "home", label: "Home", Icon: I.Home, IconActive: I.HomeFill },
+    { id: "arrivals", label: "Arrivals", Icon: I.ArrowIn, IconActive: I.ArrowIn },
+    { id: "scan", label: "Scan", Icon: I.Scan, IconActive: I.Scan },
+    { id: "search", label: "Search", Icon: I.Search, IconActive: I.Search },
+  ];
+  return (
+    <div className="bottom-nav">
+      {items.map(it => {
+        const isActive = it.id === active || (it.id === "arrivals" && active === "arrivals");
+        const Icon = isActive ? it.IconActive : it.Icon;
+        return (
+          <button key={it.id} className={"nav-item" + (isActive ? " active" : "")} onClick={() => setRootTab(it.id)}>
+            <Icon className="nav-icon" />
+            <span>{it.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BlockDateScreen({ back, addToast }) {
+  const today = new Date();
+  const [start, setStart] = useState(null);
+  const [end, setEnd] = useState(null);
+  const days = [];
+  const first = new Date(today.getFullYear(), today.getMonth(), 1);
+  const lead = (first.getDay() + 6) % 7;
+  for (let i = 0; i < lead; i++) days.push(null);
+  const total = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  for (let d = 1; d <= total; d++) days.push(d);
+
+  const pick = (d) => {
+    if (!start || (start && end)) { setStart(d); setEnd(null); }
+    else if (d < start) setStart(d);
+    else setEnd(d);
+  };
+
+  const inRange = (d) => start && end && d >= start && d <= end;
+  const isEdge = (d) => d === start || d === end;
+
+  return (
+    <div className="page">
+      <div className="sub-header">
+        <button className="back" onClick={back}><I.ChevronBack /></button>
+        <span className="title">Block Date</span>
+      </div>
+      <div className="app-scroll" style={{ padding: "0 16px calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "var(--ink)", marginBottom: 12 }}>
+            {today.toLocaleString(undefined, { month: "long", year: "numeric" })}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, fontSize: 12, fontWeight: 700, color: "var(--ink-4)", textAlign: "center", marginBottom: 6 }}>
+            {["Mo","Tu","We","Th","Fr","Sa","Su"].map(d => <div key={d}>{d}</div>)}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+            {days.map((d, i) => (
+              <button key={i} disabled={!d}
+                onClick={() => d && pick(d)}
+                style={{
+                  aspectRatio: "1 / 1",
+                  border: 0,
+                  background: d && isEdge(d) ? "var(--primary)" : d && inRange(d) ? "var(--primary-soft-bg)" : "transparent",
+                  color: d && isEdge(d) ? "#fff" : d && inRange(d) ? "var(--primary-strong)" : "var(--ink)",
+                  fontWeight: 700,
+                  borderRadius: 999,
+                  cursor: d ? "pointer" : "default",
+                  fontSize: 15,
+                }}>
+                {d || ""}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div><div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-4)" }}>From</div><div style={{ fontSize: 18, fontWeight: 800 }}>{start ? `${String(start).padStart(2,"0")} ${today.toLocaleString(undefined,{month:"short"})}` : "—"}</div></div>
+            <div><div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-4)" }}>To</div><div style={{ fontSize: 18, fontWeight: 800 }}>{end ? `${String(end).padStart(2,"0")} ${today.toLocaleString(undefined,{month:"short"})}` : "—"}</div></div>
+          </div>
+        </div>
+        <button className="btn" disabled={!start || !end} onClick={() => { addToast("Date blocked"); back(); }} style={{ opacity: (!start || !end) ? 0.5 : 1 }}>Block selected dates</button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+  </script>
+</body>
+</html>
