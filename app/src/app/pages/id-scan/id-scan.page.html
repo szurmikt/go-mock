@@ -1,0 +1,147 @@
+<ion-content [fullscreen]="true">
+  <div class="scan-screen">
+
+    <!-- Back button -->
+    <button class="back" (click)="back()"
+      style="position: absolute; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 8px; z-index: 10; color: #fff; background: rgba(0,0,0,0.35); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+    </button>
+
+    <!-- Viewfinder -->
+    <div class="scan-viewfinder">
+      @if (!isNative) {
+        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 32px; text-align: center;">
+          <p style="color: rgba(255,255,255,0.6); font-size: 15px; font-weight: 600; line-height: 1.6;">
+            ID scanning is only available<br>in the native app.
+          </p>
+        </div>
+      } @else {
+        <div class="scan-frame">
+          <div class="scan-corners"></div>
+          @if (phase() === 'scanning') {
+            <span class="spin" style="position: absolute; inset: 0; margin: auto; width: 36px; height: 36px; border-width: 3px;"></span>
+          } @else {
+            <div class="scan-laser"></div>
+          }
+        </div>
+        <p style="color: rgba(255,255,255,0.55); text-align: center; font-size: 13px; font-weight: 600; margin-top: 24px; padding: 0 32px;">
+          @if (initializing()) {
+            Initializing scanner…
+          } @else {
+            Hold the document inside the frame
+          }
+        </p>
+      }
+    </div>
+
+    <!-- Shutter toolbar -->
+    <div class="scan-toolbar">
+      <button class="shutter-btn" [disabled]="shutterDisabled()" (click)="scan()"
+        [style.opacity]="shutterDisabled() ? '0.4' : '1'"></button>
+    </div>
+
+  </div>
+
+  <!-- Result overlay (white, covers scan screen) -->
+  @if (phase() === 'result') {
+    <div style="position: absolute; inset: 0; background: #fff; z-index: 20; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px);">
+
+      <!-- Header -->
+      <div style="display: flex; align-items: center; padding: 0 4px 0 16px; height: 52px; border-bottom: 1px solid var(--line); flex-shrink: 0;">
+        <span style="font-size: 17px; font-weight: 700; color: var(--ink); flex: 1;">ID Scan result</span>
+        <button class="icon-btn" (click)="back()" style="color: var(--ink-3);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Scrollable result fields -->
+      <div class="app-scroll" style="padding: 0 var(--pad);">
+
+        @if (fullName()) {
+          <div style="padding: 14px 0; border-bottom: 1px solid var(--line);">
+            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">First &amp; Last name</div>
+            <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ fullName() }}</div>
+          </div>
+        }
+
+        @if (docType()) {
+          <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line);">
+            <div style="flex: 1;">
+              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Document type</div>
+              <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ docType() }}</div>
+            </div>
+            @if (result()?.document?.document_number) {
+              <div style="flex: 1;">
+                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Document number</div>
+                <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ result()!.document!.document_number }}</div>
+              </div>
+            }
+          </div>
+        }
+
+        @if (resultField('age') || resultField('gender')) {
+          <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line);">
+            @if (resultField('age')) {
+              <div style="flex: 1;">
+                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Age</div>
+                <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('age') }}</div>
+              </div>
+            }
+            @if (resultField('gender')) {
+              <div style="flex: 1;">
+                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Gender</div>
+                <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('gender') }}</div>
+              </div>
+            }
+          </div>
+        }
+
+        @if (resultField('birth_place') || resultField('birth_date')) {
+          <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line);">
+            @if (resultField('birth_place')) {
+              <div style="flex: 1;">
+                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Place of birth</div>
+                <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('birth_place') }}</div>
+              </div>
+            }
+            @if (resultField('birth_date')) {
+              <div style="flex: 1;">
+                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Date of birth</div>
+                <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('birth_date') }}</div>
+              </div>
+            }
+          </div>
+        }
+
+        @if (resultField('citizenship')) {
+          <div style="padding: 14px 0; border-bottom: 1px solid var(--line);">
+            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Citizenship</div>
+            <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('citizenship') }}</div>
+          </div>
+        }
+
+        @if (resultField('mother_name')) {
+          <div style="padding: 14px 0;">
+            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Mother's name</div>
+            <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('mother_name') }}</div>
+          </div>
+        }
+
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display: flex; gap: 12px; padding: 12px var(--pad); padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); flex-shrink: 0;">
+        <button class="btn secondary" style="flex: 1; width: auto;">Edit</button>
+        <button class="btn" style="flex: 1; width: auto;">Save</button>
+      </div>
+
+    </div>
+  }
+
+</ion-content>

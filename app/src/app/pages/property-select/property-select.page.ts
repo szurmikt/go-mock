@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent, AlertController } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth';
+import { OptionsService } from '../../services/options.service';
 import { PropertyInterface } from '../../models/property.interface';
 
 @Component({
@@ -19,6 +20,7 @@ export class PropertySelectPage implements OnInit {
     private auth: AuthService,
     private router: Router,
     private alertCtrl: AlertController,
+    private options: OptionsService,
   ) {}
 
   async ngOnInit() {
@@ -42,7 +44,9 @@ export class PropertySelectPage implements OnInit {
   }
 
   async select(property: PropertyInterface) {
+    this.options.clear();
     await this.auth.selectProperty(property);
+    try { await this.options.load(); } catch { /* non-fatal */ }
     await this.router.navigate(['/home'], { replaceUrl: true });
   }
 }

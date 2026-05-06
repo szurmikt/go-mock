@@ -52,7 +52,8 @@ sabeeapp-go/
 │       │   ├── auth.ts               # AuthService — Signals-based auth state + all auth API calls
 │       │   ├── api.ts                # ApiService — thin HttpClient wrapper (get/post + query params)
 │       │   ├── storage.ts            # StorageService — Capacitor Preferences wrapper
-│       │   └── reservation.ts        # ReservationService — fetch/filter reservations + pillStatus()
+│       │   ├── reservation.ts        # ReservationService — fetch/filter reservations + pillStatus()
+│       │   └── options.service.ts    # OptionsService — app-wide static options (countries); loaded once at property selection
 │       ├── interceptors/
 │       │   └── api.interceptor.ts    # Functional interceptor: headers + proactive/reactive token refresh
 │       ├── guards/
@@ -348,7 +349,49 @@ await res.fetchReservations()   // GET /reservations?start_date&end_date (±14 d
 
 ---
 
-## 9. API Contract
+## 9. Options Service
+
+`OptionsService` (`src/app/services/options.service.ts`) holds app-wide static reference data fetched from `GET /options`. It is a `providedIn: 'root'` singleton — one instance for the lifetime of the app.
+
+### Lifecycle rule: load once, clear on property switch
+
+```typescript
+// Called once in PropertySelectPage.select(), after auth.selectProperty():
+await options.load();    // fetches /options, populates signal
+
+// Called at the top of PropertySelectPage.select() before selectProperty():
+options.clear();         // resets signal to [] so re-selecting a property always re-fetches
+```
+
+**Why here and not at app boot:** `Property-Id` is added to request headers only after `auth.selectProperty()` completes. Loading options before that would send the request without the correct property context.
+
+### Reading data in components
+
+```typescript
+// Inject the service
+constructor(public options: OptionsService) {}
+
+// Use the signal directly in the template (synchronous — already populated by the time any guarded screen loads)
+@for (c of options.countries(); track c.country_code) {
+  <option [value]="c.country_code">{{ c.name }}</option>
+}
+```
+
+**Do not fetch `/options` inside individual components.** By the time any `authGuard`-protected page loads, `options.countries()` is already populated.
+
+### Exported types
+
+```typescript
+export interface CountryOption {
+  id: number;
+  name: string;
+  country_code: string;   // stored value, e.g. "HU", "DE"
+}
+```
+
+---
+
+## 10. API Contract
 
 **Base URL:** `https://smart.sabeeapp.com/api2/go`
 
@@ -373,6 +416,7 @@ Property-Id:  <property_id>         (omitted until property is selected)
 | Refresh | POST | `/token` | `{ grant_type: "refresh_token", refresh_token }` |
 | Properties | GET | `/properties` | — |
 | Reservations | GET | `/reservations` | `?start_date=yyyy-MM-dd&end_date=yyyy-MM-dd` |
+| Options | GET | `/options` | — · returns `{ data: { options: { country, gender, document_type } } }` · fetched once via `OptionsService.load()` at property selection |
 
 **API response wrapper:**
 ```typescript
@@ -381,7 +425,7 @@ interface ApiResponse<T> { success: boolean; data: T; errors: unknown; }
 
 ---
 
-## 9. Bugs Fixed Versus Old App — Do Not Reintroduce
+## 11. Bugs Fixed Versus Old App — Do Not Reintroduce
 
 | # | Old bug | Correct behaviour |
 |---|---------|-------------------|
@@ -392,7 +436,7 @@ interface ApiResponse<T> { success: boolean; data: T; errors: unknown; }
 
 ---
 
-## 10. Ionic Component Rules
+## 12. Ionic Component Rules
 
 **Use Ionic components sparingly** — only for things that need native behaviour:
 
@@ -414,7 +458,7 @@ import { IonContent, AlertController } from '@ionic/angular/standalone';
 
 ---
 
-## 11. Routing Reference
+## 13. Routing Reference
 
 ```typescript
 // app.routes.ts — current routes
@@ -438,7 +482,7 @@ import { IonContent, AlertController } from '@ionic/angular/standalone';
 
 ---
 
-## 12. Running the App
+## 14. Running the App
 
 ```bash
 cd /Users/tamas/SabeeAppGO/sabeeapp-go

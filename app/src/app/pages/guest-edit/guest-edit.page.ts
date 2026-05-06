@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { ReservationService } from '../../services/reservation';
 import { GuestInterface } from '../../models/guest.interface';
+import { OptionsService } from '../../services/options.service';
 
 @Component({
   selector: 'app-guest-edit',
@@ -47,6 +48,7 @@ export class GuestEditPage implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private res: ReservationService,
+    public options: OptionsService,
   ) {}
 
   async ngOnInit() {
@@ -55,7 +57,7 @@ export class GuestEditPage implements OnInit {
 
     try {
       const guests = await this.res.fetchGuests(this.reservationCode);
-      const found = guests.find(g => g.reservation_guest_id === this.guestId);
+      const found = guests.find((g: GuestInterface) => g.reservation_guest_id === this.guestId);
       if (!found) { this.error.set('Guest not found'); return; }
       this.guest.set(found);
       this.form = {

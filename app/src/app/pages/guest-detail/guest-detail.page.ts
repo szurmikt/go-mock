@@ -53,6 +53,13 @@ export class GuestDetailPage implements OnInit {
     }, 300);
   }
 
+  goScan() {
+    this.menuOpen.set(false);
+    setTimeout(() => {
+      this.router.navigate(['/guest', this.reservationCode, this.guestId, 'scan']);
+    }, 300);
+  }
+
   guestName(g: GuestInterface): string {
     return `${g.first_name} ${g.last_name}`.trim();
   }
