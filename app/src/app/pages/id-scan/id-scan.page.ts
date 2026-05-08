@@ -1,9 +1,8 @@
-import { Component, OnInit, computed, effect, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { DocumentReaderService, ReaderStatus } from '../../services/document-reader';
-import { DocuscanService } from '../../services/docuscan';
 import { ScannedDataInterface } from '../../models/guest.interface';
 
 type Phase = 'camera' | 'scanning' | 'result';
@@ -15,7 +14,7 @@ type Phase = 'camera' | 'scanning' | 'result';
   standalone: true,
   imports: [IonContent],
 })
-export class IdScanPage implements OnInit {
+export class IdScanPage implements OnInit, OnDestroy {
   phase = signal<Phase>('camera');
   result = signal<ScannedDataInterface | null>(null);
 
@@ -38,36 +37,18 @@ export class IdScanPage implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private documentReader: DocumentReaderService,
-    private docuscan: DocuscanService,
-  ) {
-    effect(() => {
-      const status = this.documentReader.status();
-      if (status === ReaderStatus.FINISHED) {
-        const raw = this.documentReader.scanResult();
-        if (raw) {
-          this.result.set(this.docuscan.scannedGuestDataToScannedData(raw.scannedData));
-        }
-        this.phase.set('result');
-      } else if (
-        status === ReaderStatus.CANCELLED ||
-        status === ReaderStatus.TIMEOUT ||
-        status === ReaderStatus.INTERRUPTED ||
-        status === ReaderStatus.ERROR
-      ) {
-        this.phase.set('camera');
-      }
-    });
-  }
+  ) {}
 
   async ngOnInit(): Promise<void> {
     this.reservationCode = this.route.snapshot.paramMap.get('code')!;
     this.guestId = this.route.snapshot.paramMap.get('guestId')!;
-
-    await this.docuscan.load();
-    await this.documentReader.init();
   }
 
-  ngOnDestroy(): void {}
+  private timeouts: ReturnType<typeof setTimeout>[] = [];
+
+  ngOnDestroy(): void {
+    this.timeouts.forEach(clearTimeout);
+  }
 
   async scan(): Promise<void> {
     this.phase.set('scanning');

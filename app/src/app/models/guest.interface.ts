@@ -13,6 +13,12 @@ export interface GuestInterface {
   citizenship: string;
   email: string;
   phone_number: string;
+  address: {
+    country_code: string | null;
+    zip: string | null;
+    city: string | null;
+    address_line: string | null;
+  } | null;
   document: {
     document_type: string;
     document_number: string;

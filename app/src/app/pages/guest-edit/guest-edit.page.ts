@@ -18,6 +18,7 @@ export class GuestEditPage implements OnInit {
   loading = signal(true);
   saving = signal(false);
   error = signal<string | null>(null);
+  saveError = signal<string | null>(null);
 
   // form model — flat, two-way bound
   form = {
@@ -84,6 +85,7 @@ export class GuestEditPage implements OnInit {
     const g = this.guest();
     if (!g) return;
     this.saving.set(true);
+    this.saveError.set(null);
     try {
       const updated: GuestInterface = {
         ...g,
@@ -103,9 +105,9 @@ export class GuestEditPage implements OnInit {
         },
       };
       await this.res.updateGuest(this.reservationCode, updated);
-      window.history.back();
+      this.router.navigate(['..'], { relativeTo: this.route, replaceUrl: true });
     } catch (e: any) {
-      this.error.set(e.message ?? 'Failed to save');
+      this.saveError.set(e.message ?? 'Failed to save');
     } finally {
       this.saving.set(false);
     }

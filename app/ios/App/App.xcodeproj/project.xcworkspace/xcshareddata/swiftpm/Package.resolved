@@ -1,5 +1,5 @@
 {
-  "originHash" : "eda99798495d6d24e88fba49d7909e916beb2f9d9ea0884fe0d1ae85b7528c40",
+  "originHash" : "355990e5da7c6938cd2dd513e6d017fd492a2d96a871a442ae9781ad39bddfcf",
   "pins" : [
     {
       "identity" : "capacitor-swift-pm",
@@ -8,33 +8,6 @@
       "state" : {
         "revision" : "f1a8fadf1437c23b825c818fb6509c9dbbae2f61",
         "version" : "8.3.1"
-      }
-    },
-    {
-      "identity" : "documentreader-swift-package",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/regulaforensics/DocumentReader-Swift-Package.git",
-      "state" : {
-        "revision" : "ad65dcc407085236d71c54b92b777677d691fb31",
-        "version" : "9.4.6317"
-      }
-    },
-    {
-      "identity" : "documentreaderocr-swift-package",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/regulaforensics/DocumentReaderOCR-Swift-Package.git",
-      "state" : {
-        "revision" : "53e6ae1676dbd6227cd7d5d9b513856f5912a2b8",
-        "version" : "9.4.17650"
-      }
-    },
-    {
-      "identity" : "regulacommon-swift-package",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/regulaforensics/RegulaCommon-Swift-Package.git",
-      "state" : {
-        "revision" : "f6f97b4cc5d97e12234590096d065fa1c2d1d6e5",
-        "version" : "9.4.2239"
       }
     }
   ],

@@ -30,7 +30,7 @@
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/status-bar": "8.0.2",
     "@ionic/angular": "^8.0.0",
-    "@regulaforensics/document-reader": "^9.4.761",
+    "capacitor-native-biometric": "^4.2.2",
     "ionicons": "^7.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

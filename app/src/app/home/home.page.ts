@@ -1,9 +1,10 @@
-import { Component, OnInit, signal, computed, ElementRef, QueryList, ViewChildren, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, ElementRef, QueryList, ViewChildren, AfterViewInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { LowerCasePipe } from '@angular/common';
-import { IonContent } from '@ionic/angular/standalone';
+import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
 import { AuthService } from '../services/auth';
 import { ReservationService, pillStatus, pillLabel } from '../services/reservation';
+import { OptionsService } from '../services/options.service';
 import { PropertyInterface } from '../models/property.interface';
 import { ReservationInterface } from '../models/reservation.interface';
 
@@ -23,10 +24,13 @@ function localDateStr(offset: number): string {
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
   standalone: true,
-  imports: [IonContent, LowerCasePipe],
+  imports: [IonContent, IonRefresher, IonRefresherContent, LowerCasePipe],
 })
-export class HomePage implements OnInit, AfterViewInit {
+export class HomePage implements OnInit, AfterViewInit, OnDestroy {
   @ViewChildren('segBtn') segBtns!: QueryList<ElementRef<HTMLButtonElement>>;
+
+  private timeouts: ReturnType<typeof setTimeout>[] = [];
+  private t(fn: () => void, ms: number) { this.timeouts.push(setTimeout(fn, ms)); }
 
   readonly tabs: Tab[] = ['Yesterday', 'Today', 'Tomorrow'];
   tab = signal<Tab>('Today');
@@ -53,6 +57,8 @@ export class HomePage implements OnInit, AfterViewInit {
   );
   readonly totalReservations = computed(() => this.res.reservations().length);
 
+  private options = inject(OptionsService);
+
   constructor(
     public auth: AuthService,
     public res: ReservationService,
@@ -64,12 +70,16 @@ export class HomePage implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    setTimeout(() => this.updateThumb(), 50);
+    this.t(() => this.updateThumb(), 50);
+  }
+
+  ngOnDestroy() {
+    this.timeouts.forEach(clearTimeout);
   }
 
   setTab(t: Tab) {
     this.tab.set(t);
-    setTimeout(() => this.updateThumb(), 0);
+    this.t(() => this.updateThumb(), 0);
   }
 
   private updateThumb() {
@@ -80,9 +90,22 @@ export class HomePage implements OnInit, AfterViewInit {
     if (el) this.thumb.set({ left: el.offsetLeft, width: el.offsetWidth });
   }
 
-  selectProperty(p: PropertyInterface) {
-    this.auth.selectProperty(p);
+  async selectProperty(p: PropertyInterface) {
+    if (this.auth.selectedProperty()?.property_id !== p.property_id) {
+      this.options.clear();
+      this.res.clear();
+    }
+    await this.auth.selectProperty(p);
     this.switchOpen.set(false);
+    await Promise.all([
+      this.res.fetchReservations(),
+      this.options.countries().length === 0 ? this.options.load().catch(() => {}) : Promise.resolve(),
+    ]);
+  }
+
+  async handleRefresh(event: CustomEvent) {
+    await this.res.fetchReservations(true);
+    (event.target as HTMLIonRefresherElement).complete();
   }
 
   goSettings() {

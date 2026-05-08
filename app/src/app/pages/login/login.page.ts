@@ -41,7 +41,7 @@ export class LoginPage {
     this.loading = true;
     try {
       const { mfaToken } = await this.auth.login(this.email.trim(), this.password);
-      await this.router.navigate(['/mfa'], { state: { mfaToken, email: this.email.trim() } });
+      await this.router.navigate(['/mfa'], { state: { mfaToken, email: this.email.trim() }, replaceUrl: true });
     } catch (err: unknown) {
       this.errorMessage = this.extractMessage(err);
       this.errorOpen = true;

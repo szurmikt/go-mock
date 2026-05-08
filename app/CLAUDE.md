@@ -39,7 +39,7 @@ sabeeapp-go/
 │   │   ├── environment.ts            # { production: false, apiUrl: '...' }
 │   │   └── environment.prod.ts
 │   └── app/
-│       ├── app.component.ts          # Boot logic: loadStoredAuth → redirect
+│       ├── app.component.ts          # Boot logic: loadStoredAuth → biometric check → redirect; inactivity timer; App lifecycle listener
 │       ├── app.config.ts             # provideRouter, provideHttpClient(withInterceptors), provideIonicAngular
 │       ├── app.routes.ts             # All routes (lazy loadComponent)
 │       ├── config/
@@ -48,11 +48,14 @@ sabeeapp-go/
 │       │   ├── auth.interfaces.ts      # AuthState, TokenResponse, MfaTokenResponse, ApiResponse<T>
 │       │   ├── property.interface.ts   # PropertyInterface
 │       │   └── reservation.interface.ts # ReservationInterface, BookerInterface
+│       ├── components/
+│       │   └── lock-overlay/         # LockOverlayComponent — biometric session-lock screen
 │       ├── services/
 │       │   ├── auth.ts               # AuthService — Signals-based auth state + all auth API calls
 │       │   ├── api.ts                # ApiService — thin HttpClient wrapper (get/post + query params)
 │       │   ├── storage.ts            # StorageService — Capacitor Preferences wrapper
 │       │   ├── reservation.ts        # ReservationService — fetch/filter reservations + pillStatus()
+│       │   ├── biometric.ts          # BiometricService — session lock signal + native biometric auth
 │       │   └── options.service.ts    # OptionsService — app-wide static options (countries); loaded once at property selection
 │       ├── interceptors/
 │       │   └── api.interceptor.ts    # Functional interceptor: headers + proactive/reactive token refresh
@@ -430,7 +433,7 @@ interface ApiResponse<T> { success: boolean; data: T; errors: unknown; }
 | # | Old bug | Correct behaviour |
 |---|---------|-------------------|
 | 1 | Proactive token refresh triggered with ~10 s remaining (`expiresAt - 3590s`) | Refresh when **< 5 min remain**: `auth.needsRefresh()` → `expiresAt - Date.now() < 300_000` |
-| 2 | Biometric inactivity timer: `diffLimit = 60 * 0.5` = 30 seconds | Should be `30 * 60 * 1000` ms (30 minutes) — fix when biometric is added |
+| 2 | Biometric inactivity timer: `diffLimit = 60 * 0.5` = 30 seconds | Lock threshold is **60 seconds** (`LOCK_AFTER_MS = 60_000` in `AppComponent` and `BiometricService`) |
 | 3 | Auth stored as 5 separate Preferences keys | Stored as **one JSON blob** under `Config.STORAGE_AUTH_KEY` |
 | 4 | `Property-Id` header sent with empty value during login flow | Interceptor only adds it **when `auth.selectedProperty()` is non-null** |
 
@@ -476,18 +479,58 @@ import { IonContent, AlertController } from '@ionic/angular/standalone';
 
 **Boot redirect** (`app.component.ts` `ngOnInit`):
 1. `await auth.loadStoredAuth()` — restores tokens + selected property from Capacitor Preferences
-2. If authenticated + property selected → `/home`
-3. If authenticated + no property → `/property-select`
-4. Else → `/login`
+2. If authenticated → `await biometric.checkAndLock()` — lock if backgrounded for ≥ 1 min before cold start
+3. If authenticated + property selected → `/home`
+4. If authenticated + no property → `/property-select`
+5. Else → `/login`
 
 ---
 
-## 14. Running the App
+## 14. Biometric Session Lock
+
+`BiometricService` (`src/app/services/biometric.ts`) owns the session-lock state. It is a **session lock** (not a login replacement) — tokens remain valid, no server round-trip on unlock.
+
+### Lock triggers
+
+| Trigger | Mechanism |
+|---|---|
+| Inactivity ≥ 1 min | `setTimeout` in `AppComponent`, reset by `@HostListener('touchstart'/'click')` |
+| Background ≥ 1 min | `App.addListener('appStateChange')` in `AppComponent`; timestamp persisted to `Config.STORAGE_BACKGROUND_AT_KEY` |
+| Cold start after long background | `biometric.checkAndLock()` called in boot sequence after `loadStoredAuth()` |
+
+### BiometricService API
+
+```typescript
+biometric.sessionLocked()          // signal<boolean> — read in templates
+biometric.lockSession()            // set locked = true
+biometric.unlockSession()          // set locked = false
+await biometric.recordBackground() // persist Date.now() to storage (called on appStateChange pause)
+await biometric.checkAndLock()     // read stored timestamp; lock if elapsed ≥ 60s; clear timestamp
+await biometric.isAvailable()      // boolean — device has enrolled biometrics
+await biometric.authenticate()     // boolean — true on success, false on failure/cancel
+```
+
+### Lock overlay
+
+`LockOverlayComponent` (`src/app/components/lock-overlay/`) renders in `AppComponent` template when `biometric.sessionLocked() && auth.isAuthenticated()`. It auto-calls `authenticate()` on `ngOnInit`. After 3 failures, a "Use password instead" button appears that calls `auth.logout()` and navigates to `/login`.
+
+### In-browser behaviour
+
+The native biometric plugin is unavailable in the browser. `authenticate()` catches the error and returns `false`, so the lock overlay appears but every unlock attempt registers as failure. This is expected — test the actual biometric flow on a device or simulator.
+
+### Plugin
+
+`capacitor-native-biometric@4.2.2` — supports iOS Face ID + Touch ID. `NSFaceIDUsageDescription` is set in `ios/App/App/Info.plist`.
+
+---
+
+## 15. Running the App
 
 ```bash
-cd /Users/tamas/SabeeAppGO/sabeeapp-go
-ionic serve              # dev server at http://localhost:8100
+cd /Users/tamas/SabeeAppGO/app
+ionic serve              # dev server at http://localhost:4200
 npx ng build             # production build check (must be zero errors, zero warnings)
+npx cap sync ios         # sync Capacitor plugins after npm install
 ```
 
 The CLI (`ionic`) must be installed globally: `npm install -g @ionic/cli`

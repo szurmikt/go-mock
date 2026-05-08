@@ -7,4 +7,5 @@ export const Config = {
   STORAGE_PROPERTY_KEY: 'selectedProperty',
   STORAGE_PROPERTIES_KEY: 'properties',
   STORAGE_SEARCH_HISTORY_KEY: 'searchHistory',
+  STORAGE_BACKGROUND_AT_KEY: 'backgroundAt',
 } as const;

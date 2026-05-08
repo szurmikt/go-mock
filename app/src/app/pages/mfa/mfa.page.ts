@@ -1,6 +1,7 @@
 import {
   Component,
   AfterViewInit,
+  OnDestroy,
   ViewChildren,
   QueryList,
   ElementRef,
@@ -16,7 +17,7 @@ import { AuthService } from '../../services/auth';
   standalone: true,
   imports: [IonContent],
 })
-export class MfaPage implements AfterViewInit {
+export class MfaPage implements AfterViewInit, OnDestroy {
   @ViewChildren('digitInput') digitInputs!: QueryList<ElementRef<HTMLInputElement>>;
 
   digits = ['', '', '', '', '', ''];
@@ -24,6 +25,9 @@ export class MfaPage implements AfterViewInit {
   hasError = false;
   mfaToken = '';
   email = '';
+
+  private timeouts: ReturnType<typeof setTimeout>[] = [];
+  private t(fn: () => void, ms: number) { this.timeouts.push(setTimeout(fn, ms)); }
 
   constructor(
     private auth: AuthService,
@@ -36,7 +40,11 @@ export class MfaPage implements AfterViewInit {
 
   ngAfterViewInit() {
     // Delay to preserve iOS gesture context across the slide-in animation
-    setTimeout(() => this.focusAt(0), 350);
+    this.t(() => this.focusAt(0), 350);
+  }
+
+  ngOnDestroy() {
+    this.timeouts.forEach(clearTimeout);
   }
 
   onInput(event: Event, index: number) {
@@ -90,13 +98,13 @@ export class MfaPage implements AfterViewInit {
       this.hasError = true;
       this.digits = ['', '', '', '', '', ''];
       this.digitInputs.forEach(ref => (ref.nativeElement.value = ''));
-      setTimeout(() => this.focusAt(0), 50);
+      this.t(() => this.focusAt(0), 50);
     }
   }
 
   retryError() {
     this.hasError = false;
-    setTimeout(() => this.focusAt(0), 50);
+    this.t(() => this.focusAt(0), 50);
   }
 
   private focusAt(index: number) {

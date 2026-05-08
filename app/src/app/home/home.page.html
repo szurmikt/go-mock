@@ -1,8 +1,12 @@
 <ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
   <div class="page" style="background: var(--bg)">
 
     <!-- Page header -->
-    <div class="page-header" style="padding-top: 16px">
+    <div class="page-header">
       <button class="title-row"
         style="background: none; border: 0; padding: 0; cursor: pointer; display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; text-align: left"
         (click)="switchOpen.set(true)">

@@ -1,7 +1,9 @@
-import { Component, OnInit, AfterViewInit, ViewChild, ElementRef, signal, computed } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef, Signal, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs/operators';
 import { ReservationService, pillStatus, pillLabel } from '../../services/reservation';
 import { StorageService } from '../../services/storage';
 import { Config } from '../../config/config';
@@ -14,14 +16,18 @@ import { ReservationInterface } from '../../models/reservation.interface';
   standalone: true,
   imports: [IonContent, FormsModule],
 })
-export class SearchPage implements OnInit, AfterViewInit {
+export class SearchPage implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
 
   query = signal('');
   recentSearches = signal<string[]>([]);
 
+  private debouncedQuery!: Signal<string>;
+  private timeouts: ReturnType<typeof setTimeout>[] = [];
+  private t(fn: () => void, ms: number) { this.timeouts.push(setTimeout(fn, ms)); }
+
   readonly results = computed(() => {
-    const q = this.query().trim().toLowerCase();
+    const q = (this.debouncedQuery() ?? '').trim().toLowerCase();
     if (q.length < 3) return [];
     const today = new Date().toISOString().slice(0, 10);
     return this.res.reservations()
@@ -53,7 +59,12 @@ export class SearchPage implements OnInit, AfterViewInit {
     private res: ReservationService,
     private storage: StorageService,
     private router: Router,
-  ) {}
+  ) {
+    this.debouncedQuery = toSignal(
+      toObservable(this.query).pipe(debounceTime(200)),
+      { initialValue: '' },
+    );
+  }
 
   async ngOnInit() {
     if (this.res.reservations().length === 0) {
@@ -64,7 +75,11 @@ export class SearchPage implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    setTimeout(() => this.searchInputRef?.nativeElement.focus(), 100);
+    this.t(() => this.searchInputRef?.nativeElement.focus(), 100);
+  }
+
+  ngOnDestroy() {
+    this.timeouts.forEach(clearTimeout);
   }
 
   setQuery(value: string) {
@@ -73,7 +88,7 @@ export class SearchPage implements OnInit, AfterViewInit {
 
   clearQuery() {
     this.query.set('');
-    setTimeout(() => this.searchInputRef?.nativeElement.focus(), 50);
+    this.t(() => this.searchInputRef?.nativeElement.focus(), 50);
   }
 
   onEnter() {

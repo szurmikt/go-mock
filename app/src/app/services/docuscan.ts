@@ -7,12 +7,18 @@ import { ScannedDataInterface, ScannedGuestDataInterface } from '../models/guest
 
 const STORAGE_KEY = 'fieldsToScan';
 
+export interface ScanField {
+  name: string;
+  regula_id: number;
+  lc_id: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DocuscanService {
   private api = inject(ApiService);
   private storage = inject(StorageService);
 
-  private fieldsToScan: any[] = [];
+  private fieldsToScan: ScanField[] = [];
 
   async load(): Promise<void> {
     if (this.fieldsToScan.length > 0) return;
@@ -27,7 +33,7 @@ export class DocuscanService {
     await this.storage.set(STORAGE_KEY, this.fieldsToScan);
   }
 
-  get(): any[] {
+  get(): ScanField[] {
     return this.fieldsToScan;
   }
 
@@ -37,7 +43,7 @@ export class DocuscanService {
     await this.load();
   }
 
-  private async fetchScanFields(): Promise<any[]> {
+  private async fetchScanFields(): Promise<ScanField[]> {
     const resp = await firstValueFrom(
       this.api.get<ApiResponse<{ scan_fields: any[] }>>('properties/settings'),
     );

@@ -44,9 +44,14 @@ export class PropertySelectPage implements OnInit {
   }
 
   async select(property: PropertyInterface) {
-    this.options.clear();
+    const current = this.auth.selectedProperty();
+    if (current?.property_id !== property.property_id) {
+      this.options.clear();
+    }
     await this.auth.selectProperty(property);
-    try { await this.options.load(); } catch { /* non-fatal */ }
+    if (this.options.countries().length === 0) {
+      try { await this.options.load(); } catch { /* non-fatal */ }
+    }
     await this.router.navigate(['/home'], { replaceUrl: true });
   }
 }

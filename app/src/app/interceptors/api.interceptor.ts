@@ -1,11 +1,11 @@
 import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { from, switchMap, catchError, throwError } from 'rxjs';
+import { BehaviorSubject, filter, take, from, switchMap, catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth';
 import { Config } from '../config/config';
 
-let isRefreshing = false;
+const refreshing$ = new BehaviorSubject<boolean>(false);
 
 export const apiInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
@@ -21,34 +21,32 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
     };
 
     const token = auth.accessToken();
-    if (token) {
-      headers['Token'] = token;
-    }
+    if (token) headers['Token'] = token;
 
     const property = auth.selectedProperty();
-    if (property) {
-      headers['Property-Id'] = String(property.property_id);
-    }
+    if (property) headers['Property-Id'] = String(property.property_id);
 
     return request.clone({ setHeaders: headers });
   };
 
-  const handleRefreshAndRetry = (
-    request: HttpRequest<unknown>,
-    handler: HttpHandlerFn,
-  ) => {
-    if (isRefreshing) {
-      return handler(addHeaders(request));
+  const refreshAndRetry = (request: HttpRequest<unknown>, handler: HttpHandlerFn) => {
+    if (refreshing$.value) {
+      // Another refresh is already in flight — wait for it, then retry with fresh headers
+      return refreshing$.pipe(
+        filter(v => !v),
+        take(1),
+        switchMap(() => handler(addHeaders(request))),
+      );
     }
 
-    isRefreshing = true;
+    refreshing$.next(true);
     return from(auth.refreshAccessToken()).pipe(
       switchMap(() => {
-        isRefreshing = false;
+        refreshing$.next(false);
         return handler(addHeaders(request));
       }),
       catchError(err => {
-        isRefreshing = false;
+        refreshing$.next(false);
         auth.logout();
         router.navigateByUrl('/login', { replaceUrl: true });
         return throwError(() => err);
@@ -56,15 +54,13 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
     );
   };
 
-  if (auth.needsRefresh() && !isRefreshing) {
-    return handleRefreshAndRetry(req, next);
+  if (auth.needsRefresh() && !refreshing$.value) {
+    return refreshAndRetry(req, next);
   }
 
   return next(addHeaders(req)).pipe(
     catchError((err: HttpErrorResponse) => {
-      if (err.status === 401) {
-        return handleRefreshAndRetry(req, next);
-      }
+      if (err.status === 401) return refreshAndRetry(req, next);
       return throwError(() => err);
     }),
   );

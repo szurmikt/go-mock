@@ -1,0 +1,50 @@
+<div style="position: fixed; inset: 0; z-index: 9999; background: var(--bg);
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 20px;
+            padding: calc(32px + env(safe-area-inset-top, 0px)) var(--pad) calc(32px + env(safe-area-inset-bottom, 0px))">
+
+  <!-- Face ID / biometric icon -->
+  <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+    style="color: var(--primary)">
+    <path d="M2 7V5a2 2 0 0 1 2-2h2"/>
+    <path d="M22 7V5a2 2 0 0 0-2-2h-2"/>
+    <path d="M2 17v2a2 2 0 0 0 2 2h2"/>
+    <path d="M22 17v2a2 2 0 0 1-2 2h-2"/>
+    <path d="M9 9h.01"/>
+    <path d="M15 9h.01"/>
+    <path d="M9 15a3 3 0 0 0 6 0"/>
+  </svg>
+
+  <div style="text-align: center">
+    <h2 style="font-size: var(--font-xl); font-weight: 800; color: var(--ink); margin: 0 0 6px">
+      SabeeApp Go
+    </h2>
+    <p style="color: var(--ink-3); font-size: var(--font-base); margin: 0">
+      Verify your identity to continue
+    </p>
+  </div>
+
+  @if (attempting()) {
+    <span class="spin-primary" style="width: 28px; height: 28px; border-width: 3px"></span>
+  }
+
+  @if (!attempting() && failCount() > 0) {
+    <p style="color: var(--warn); font-weight: 700; font-size: var(--font-sm); margin: 0">
+      Authentication failed. Try again.
+    </p>
+  }
+
+  @if (!attempting()) {
+    <button class="btn tap-anim" style="max-width: 280px; width: 100%" (click)="tryUnlock()">
+      Unlock
+    </button>
+  }
+
+  @if (failCount() >= 3) {
+    <button class="btn secondary tap-anim" style="max-width: 280px; width: 100%" (click)="forceLogout()">
+      Use password instead
+    </button>
+  }
+
+</div>

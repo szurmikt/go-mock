@@ -1,3 +1,12 @@
 <ion-app>
-  <ion-router-outlet></ion-router-outlet>
+  @if (loading()) {
+    <div style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg, #f9fafb);">
+      <span class="spin-primary" style="width: 32px; height: 32px; border-width: 3px;"></span>
+    </div>
+  } @else {
+    <ion-router-outlet></ion-router-outlet>
+  }
+  @if (biometric.sessionLocked() && auth.isAuthenticated()) {
+    <app-lock-overlay />
+  }
 </ion-app>

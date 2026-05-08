@@ -40,6 +40,10 @@ export function pillLabel(apiStatus: string): string {
 export class ReservationService {
   private api = inject(ApiService);
 
+  private static readonly STALE_MS = 60_000;
+  private _fetchedAt: number | null = null;
+  private _guestCache = new Map<string, GuestInterface[]>();
+
   private _reservations = signal<ReservationInterface[]>([]);
   private _loading = signal(false);
   private _error = signal<string | null>(null);
@@ -51,7 +55,16 @@ export class ReservationService {
   readonly forDate = (dateStr: string) =>
     computed(() => this._reservations().filter(r => r.arrival_date === dateStr));
 
-  async fetchReservations(): Promise<void> {
+  clear(): void {
+    this._reservations.set([]);
+    this._fetchedAt = null;
+    this._guestCache.clear();
+  }
+
+  async fetchReservations(force = false): Promise<void> {
+    if (!force && this._fetchedAt !== null && Date.now() - this._fetchedAt < ReservationService.STALE_MS) {
+      return;
+    }
     this._loading.set(true);
     this._error.set(null);
     try {
@@ -74,6 +87,7 @@ export class ReservationService {
       }
 
       this._reservations.set(resp.data.reservations.map(r => this.convert(r)));
+      this._fetchedAt = Date.now();
     } catch {
       this._error.set('Network error');
     } finally {
@@ -90,18 +104,25 @@ export class ReservationService {
   }
 
   async updateGuest(reservationCode: string, guest: GuestInterface): Promise<void> {
+    const payload = { reservation_code: reservationCode, guest: nullifyEmpty(guest) };
     const resp = await firstValueFrom(
-      this.api.post<ApiResponse<unknown>>('guests', { reservation_code: reservationCode, guest }),
+      this.api.post<ApiResponse<unknown>>('guests', payload),
     );
     if (!resp.success) throw new Error('Failed to save guest');
+    this._guestCache.delete(reservationCode);
   }
 
   async fetchGuests(reservationCode: string): Promise<GuestInterface[]> {
+    const cached = this._guestCache.get(reservationCode);
+    if (cached) return cached;
+
     const resp = await firstValueFrom(
       this.api.get<ApiResponse<{ guests: any[] }>>('guests', { reservation_code: reservationCode }),
     );
     if (!resp.success) throw new Error('Failed to load guests');
-    return (resp.data.guests ?? []).map(g => this.convertGuest(g));
+    const guests = (resp.data.guests ?? []).map(g => this.convertGuest(g));
+    this._guestCache.set(reservationCode, guests);
+    return guests;
   }
 
   private convertGuest(g: any): GuestInterface {
@@ -120,6 +141,7 @@ export class ReservationService {
       citizenship: g.citizenship ?? '',
       email: g.email ?? '',
       phone_number: g.phone_number ?? '',
+      address: g.address ?? { country_code: null, zip: null, city: null, address_line: null },
       document: g.document ?? null,
       scanned_data: g.scanned_data ?? null,
       locked: g.locked ?? false,
@@ -162,4 +184,15 @@ export class ReservationService {
       nights,
     };
   }
+}
+
+// Converts empty strings to null recursively so the API receives proper nulls
+// instead of "" for optional enum/nullable fields (avoids 500 on save).
+function nullifyEmpty(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'string') return obj === '' ? null : obj;
+  if (typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  const result: any = {};
+  for (const [k, v] of Object.entries(obj)) result[k] = nullifyEmpty(v);
+  return result;
 }

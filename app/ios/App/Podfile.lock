@@ -1,0 +1,20 @@
+PODS:
+  - DocumentReader (9.4.6317):
+    - RegulaCommon (= 9.4.2239)
+  - RegulaCommon (9.4.2239)
+
+DEPENDENCIES:
+  - DocumentReader (= 9.4.6317)
+
+SPEC REPOS:
+  trunk:
+    - DocumentReader
+    - RegulaCommon
+
+SPEC CHECKSUMS:
+  DocumentReader: 7313b95446f45733c499668d60867e8097e51687
+  RegulaCommon: 7176eac86d34ef015aef3ac7f852366ad896089f
+
+PODFILE CHECKSUM: 086b1f57d29dc9b7741041c30d0afe5be910825e
+
+COCOAPODS: 1.16.2

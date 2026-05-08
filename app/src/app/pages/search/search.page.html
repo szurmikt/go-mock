@@ -8,8 +8,8 @@
           <path d="M15 18l-6-6 6-6"/>
         </svg>
       </button>
-      <div style="flex: 1; display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-sm); padding: 0 12px; height: 40px">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+      <div class="search-field" style="flex: 1; margin: 0 8px 0 0; cursor: default">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
           style="color: var(--ink-4); flex-shrink: 0">
           <circle cx="11" cy="11" r="8"/>
           <path d="M21 21l-4.35-4.35"/>
@@ -24,7 +24,7 @@
           autocorrect="off"
           autocapitalize="off"
           spellcheck="false"
-          style="flex: 1; border: none; background: none; outline: none; font-size: 15px; font-weight: 600; color: var(--ink); font-family: inherit" />
+          style="flex: 1; border: none; background: none; outline: none; font-size: 16px; font-weight: 600; color: var(--ink); font-family: inherit" />
         @if (query().length > 0) {
           <button (click)="clearQuery()" style="background: none; border: none; padding: 0; cursor: pointer; color: var(--ink-4); display: flex; align-items: center">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
