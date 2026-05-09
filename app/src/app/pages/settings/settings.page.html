@@ -26,6 +26,9 @@
           </div>
         </div>
 
+        <!-- Lock -->
+        <button class="btn secondary" (click)="lock()">Lock screen</button>
+
         <!-- Logout -->
         <button class="btn danger" (click)="logout()" [disabled]="loggingOut()">
           @if (loggingOut()) {

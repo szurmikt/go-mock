@@ -47,8 +47,13 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
       }),
       catchError(err => {
         refreshing$.next(false);
-        auth.logout();
-        router.navigateByUrl('/login', { replaceUrl: true });
+        // Only force logout when the refresh token itself is rejected (401).
+        // Network errors, timeouts, and server errors are transient — keep the
+        // stored session so the user can try again without re-logging in.
+        if (err instanceof HttpErrorResponse && err.status === 401) {
+          auth.logout();
+          router.navigateByUrl('/login', { replaceUrl: true });
+        }
         return throwError(() => err);
       }),
     );

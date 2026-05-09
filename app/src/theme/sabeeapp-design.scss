@@ -560,7 +560,7 @@ ion-content {
   position: relative; background: var(--surface);
   border: 1.5px solid var(--line-strong); border-radius: var(--radius);
   height: 60px; display: flex; align-items: flex-end;
-  padding: 0 14px 10px; gap: 8px; margin-bottom: 12px;
+  padding: 0 14px 12px; gap: 8px; margin-bottom: 12px;
   transition: border-color 0.18s;
 
   &:focus-within { border-color: var(--primary); }
@@ -577,7 +577,7 @@ ion-content {
   &:focus-within label,
   input:not(:placeholder-shown) ~ label,
   select ~ label {
-    top: 10px; transform: none;
+    top: 8px; transform: none;
     font-size: var(--font-xs); color: var(--ink-4);
   }
 
@@ -666,17 +666,8 @@ ion-content {
 .tappable:active { transform: scale(0.985); }
 
 .stagger > * {
-  opacity: 0;
-  animation: slide-fade-in 0.42s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  animation: slide-fade-in 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
-.stagger > *:nth-child(1) { animation-delay: 0.04s; }
-.stagger > *:nth-child(2) { animation-delay: 0.09s; }
-.stagger > *:nth-child(3) { animation-delay: 0.14s; }
-.stagger > *:nth-child(4) { animation-delay: 0.19s; }
-.stagger > *:nth-child(5) { animation-delay: 0.24s; }
-.stagger > *:nth-child(6) { animation-delay: 0.29s; }
-.stagger > *:nth-child(7) { animation-delay: 0.34s; }
-.stagger > *:nth-child(8) { animation-delay: 0.39s; }
 
 /* ─── Tile grid ───────────────────────────────────────────── */
 

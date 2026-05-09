@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth';
+import { BiometricService } from '../../services/biometric';
 
 @Component({
   selector: 'app-settings',
@@ -14,11 +15,16 @@ export class SettingsPage {
 
   constructor(
     public auth: AuthService,
+    private biometric: BiometricService,
     private router: Router,
   ) {}
 
   back() {
     window.history.back();
+  }
+
+  lock() {
+    this.biometric.lockSession();
   }
 
   async logout() {

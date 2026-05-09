@@ -37,9 +37,9 @@ export class AuthService {
   async loadStoredAuth(): Promise<void> {
     await this.loadDeviceId();
     const auth = await this.storage.get<AuthState>(Config.STORAGE_AUTH_KEY);
-    if (auth?.accessToken) {
+    if (auth?.refreshToken) {
       this._auth.set(auth);
-      if (!auth.name) await this.fetchUser();
+      if (auth.accessToken && !auth.name) await this.fetchUser();
     }
     const property = await this.storage.get<PropertyInterface>(Config.STORAGE_PROPERTY_KEY);
     if (property) {
