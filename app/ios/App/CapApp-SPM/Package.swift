@@ -18,7 +18,8 @@ let package = Package(
         .package(name: "CapacitorKeyboard", path: "../../../node_modules/@capacitor/keyboard"),
         .package(name: "CapacitorPreferences", path: "../../../node_modules/@capacitor/preferences"),
         .package(name: "CapacitorStatusBar", path: "../../../node_modules/@capacitor/status-bar"),
-        .package(name: "CapacitorNativeBiometric", path: "../../../node_modules/capacitor-native-biometric")
+        .package(name: "CapacitorNativeBiometric", path: "../../../node_modules/capacitor-native-biometric"),
+        .package(name: "DocumentReaderPlugin", path: "../DocumentReaderPlugin")
     ],
     targets: [
         .target(
@@ -32,7 +33,8 @@ let package = Package(
                 .product(name: "CapacitorKeyboard", package: "CapacitorKeyboard"),
                 .product(name: "CapacitorPreferences", package: "CapacitorPreferences"),
                 .product(name: "CapacitorStatusBar", package: "CapacitorStatusBar"),
-                .product(name: "CapacitorNativeBiometric", package: "CapacitorNativeBiometric")
+                .product(name: "CapacitorNativeBiometric", package: "CapacitorNativeBiometric"),
+                .product(name: "DocumentReaderPlugin", package: "DocumentReaderPlugin")
             ]
         )
     ]
