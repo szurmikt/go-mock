@@ -1,1 +1,18 @@
 // Component styles — layout handled globally in sabeeapp-design.scss
+
+// Hide default Ionic refresher visual; keep the element for gesture detection
+ion-refresher-content {
+  display: none;
+}
+
+.ptr-chip {
+  position: fixed;
+  left: calc(50% - 16px);
+  top: calc(env(safe-area-inset-top, 0px) / 2 + 16px);
+  width: 32px;
+  height: 44px;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}

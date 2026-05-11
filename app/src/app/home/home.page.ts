@@ -35,6 +35,15 @@ export class HomePage implements OnInit, AfterViewInit, OnDestroy {
   readonly tabs: Tab[] = ['Yesterday', 'Today', 'Tomorrow'];
   tab = signal<Tab>('Today');
   switchOpen = signal(false);
+  ptrState = signal<'idle' | 'pulling' | 'refreshing'>('idle');
+  pullProgress = signal(0);
+  private ptrResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly pageTranslateY = computed(() => {
+    if (this.ptrState() === 'idle') return 0;
+    if (this.ptrState() === 'refreshing') return 80;
+    return Math.min(this.pullProgress(), 1) * 80;
+  });
 
   thumb = signal({ left: 3, width: 0 });
 
@@ -75,6 +84,7 @@ export class HomePage implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     this.timeouts.forEach(clearTimeout);
+    if (this.ptrResetTimer) clearTimeout(this.ptrResetTimer);
   }
 
   setTab(t: Tab) {
@@ -103,9 +113,27 @@ export class HomePage implements OnInit, AfterViewInit, OnDestroy {
     ]);
   }
 
+  onPull(event: CustomEvent) {
+    if (this.ptrResetTimer) clearTimeout(this.ptrResetTimer);
+    this.ptrState.set('pulling');
+    (event.target as HTMLIonRefresherElement).getProgress().then(p => {
+      this.pullProgress.set(Math.min(p, 1));
+    });
+    this.ptrResetTimer = setTimeout(() => {
+      if (this.ptrState() === 'pulling') {
+        this.ptrState.set('idle');
+        this.pullProgress.set(0);
+      }
+    }, 500);
+  }
+
   async handleRefresh(event: CustomEvent) {
+    if (this.ptrResetTimer) clearTimeout(this.ptrResetTimer);
+    this.ptrState.set('refreshing');
     await this.res.fetchReservations(true);
     (event.target as HTMLIonRefresherElement).complete();
+    this.ptrState.set('idle');
+    this.pullProgress.set(0);
   }
 
   goSettings() {
