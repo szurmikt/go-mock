@@ -714,6 +714,10 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-05-11 — Build 17
+
+- **Pull-to-refresh indicator position fix:** moved `ptr-chip` div outside `<ion-content>` — `position: fixed` inside ion-content's shadow DOM slots anchors relative to the content area (safe-area + pull offset), not the viewport, placing the indicator ~160pt down instead of ~45pt. Moving it outside makes it truly viewport-fixed.
+
 ### 2026-05-11 — Build 16
 
 - **Pull-to-refresh fixes:** fixed broken spinner animation by replacing CSS `transform-box`/`transform-origin` with SVG `animateTransform` (explicit rotation centre `(16,28)`); reduced max content translation from 100px → 80px; resized SVG from 32×56 to 32×44 with ring moved to cy=28; reduced dot travel from 38 → 22 SVG units; added pale outlined target dot at ring centre as pull indicator.
