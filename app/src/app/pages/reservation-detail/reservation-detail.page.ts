@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
+import { ViewWillEnter } from '@ionic/angular';
 import { ReservationService, pillStatus, pillLabel } from '../../services/reservation';
 import { ReservationInterface } from '../../models/reservation.interface';
 import { GuestInterface } from '../../models/guest.interface';
@@ -12,7 +13,7 @@ import { GuestInterface } from '../../models/guest.interface';
   standalone: true,
   imports: [IonContent],
 })
-export class ReservationDetailPage implements OnInit {
+export class ReservationDetailPage implements OnInit, ViewWillEnter {
   reservation = signal<ReservationInterface | null>(null);
   guests = signal<GuestInterface[]>([]);
   loading = signal(true);
@@ -48,6 +49,19 @@ export class ReservationDetailPage implements OnInit {
       this.error.set(e.message ?? 'Failed to load reservation');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  async ionViewWillEnter() {
+    if (!this.reservationCode) return;
+    // Re-fetch guests — cache is cleared after any guest edit so this gets fresh data.
+    try {
+      this.guests.set(await this.res.fetchGuests(this.reservationCode));
+    } catch { /* keep existing list */ }
+    // Sync booker name from service signal (updated optimistically by updateGuest).
+    const synced = this.res.reservations().find(r => r.reservation_code === this.reservationCode);
+    if (synced) {
+      this.reservation.update(prev => prev ? { ...prev, booker: synced.booker } : prev);
     }
   }
 
