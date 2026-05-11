@@ -390,6 +390,39 @@ export interface CountryOption {
   name: string;
   country_code: string;   // stored value, e.g. "HU", "DE"
 }
+
+export interface SelectOption {
+  value: string;   // stringified numeric id
+  label: string;   // display name
+}
+```
+
+### Available signals
+
+```typescript
+options.countries()      // CountryOption[]  — from options.country
+options.documentTypes()  // SelectOption[]   — from options.document_type
+options.genders()        // SelectOption[]   — from options.gender
+```
+
+Usage in templates:
+
+```html
+<!-- Document type dropdown -->
+<select [(ngModel)]="form.document_type">
+  @for (dt of options.documentTypes(); track dt.value) {
+    <option [value]="dt.value">{{ dt.label }}</option>
+  }
+</select>
+
+<!-- Gender dropdown (guard against empty to avoid orphan label) -->
+@if (options.genders().length) {
+  <select [(ngModel)]="form.gender">
+    @for (g of options.genders(); track g.value) {
+      <option [value]="g.value">{{ g.label }}</option>
+    }
+  </select>
+}
 ```
 
 ---
@@ -420,6 +453,9 @@ Property-Id:  <property_id>         (omitted until property is selected)
 | Properties | GET | `/properties` | — |
 | Reservations | GET | `/reservations` | `?start_date=yyyy-MM-dd&end_date=yyyy-MM-dd` |
 | Options | GET | `/options` | — · returns `{ data: { options: { country, gender, document_type } } }` · fetched once via `OptionsService.load()` at property selection |
+| Reservation detail | GET | `/reservations/:code` | — |
+| Guests | GET | `/reservations/:code/guests` | — |
+| Update guest | PUT/PATCH | `/guests/:guestId` | guest fields |
 
 **API response wrapper:**
 ```typescript
@@ -536,3 +572,167 @@ npx cap sync ios         # sync Capacitor plugins after npm install
 The CLI (`ionic`) must be installed globally: `npm install -g @ionic/cli`
 
 Node version: v25 (odd, non-LTS) — produces a deprecation warning from Angular CLI but builds correctly.
+
+---
+
+## 16. iOS Build & TestFlight
+
+### Build flow
+
+```bash
+cd /Users/tamas/SabeeAppGO/app
+npm run build -- --configuration production
+npx cap sync ios
+# ⚠️  ALWAYS re-add DocumentReaderPlugin after cap sync (see below)
+
+xcodebuild -workspace ios/App/App.xcworkspace \
+  -scheme SabeeAppGo \
+  -configuration Release \
+  -destination generic/platform=iOS \
+  -archivePath /tmp/SabeeAppGo-<N>.xcarchive \
+  archive
+
+xcodebuild -archivePath /tmp/SabeeAppGo-<N>.xcarchive \
+  -exportArchive \
+  -exportOptionsPlist /tmp/ExportOptions.plist \
+  -exportPath /tmp/SabeeAppGo-<N>-export
+```
+
+ExportOptions.plist (create in `/tmp` — not committed):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store-connect</string>
+    <key>destination</key>
+    <string>upload</string>
+</dict>
+</plist>
+```
+
+### ⚠️ DocumentReaderPlugin — must be re-added after every `cap sync`
+
+`cap sync ios` regenerates `ios/App/CapApp-SPM/Package.swift` and **removes** the local `DocumentReaderPlugin` entry every time. After each sync, manually restore it:
+
+```swift
+// In dependencies array:
+.package(name: "DocumentReaderPlugin", path: "../DocumentReaderPlugin"),
+
+// In targets[0].dependencies array:
+.product(name: "DocumentReaderPlugin", package: "DocumentReaderPlugin"),
+```
+
+This will keep happening until the plugin is published as a proper Swift Package. Do not forget this step — the build will fail with "unable to resolve module dependency: 'DocumentReaderPlugin'" if omitted.
+
+### Build number
+
+`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **16**.
+
+### App Store requirements
+
+- `NSCameraUsageDescription` must be in `Info.plist` — Regula SDK references camera APIs even if you don't call `AVCaptureSession` directly.
+- `NSFaceIDUsageDescription` must be in `Info.plist` — for biometric authentication.
+
+---
+
+## 17. Pull-to-Refresh (Home Screen)
+
+The home screen uses `ion-refresher slot="fixed"` with a fully custom visual indicator — the default Ionic refresher UI is hidden via `ion-refresher-content { display: none }` in `home.page.scss`.
+
+### State machine
+
+```typescript
+ptrState: 'idle' | 'pulling' | 'refreshing'
+pullProgress: 0→1  // from ion-refresher.getProgress()
+```
+
+`onPull($event)` — fired by `(ionPull)` — updates `ptrState('pulling')` and `pullProgress`.  
+`handleRefresh($event)` — fired by `(ionRefresh)` — sets `ptrState('refreshing')`, awaits fetch, then resets.  
+A 500ms debounce timer in `onPull` resets back to `idle` if the user releases without triggering.
+
+### Content translation
+
+`.page` div gets a `translateY` transform driven by `pageTranslateY` computed signal:
+
+```typescript
+readonly pageTranslateY = computed(() => {
+  if (this.ptrState() === 'idle') return 0;
+  if (this.ptrState() === 'refreshing') return 80;
+  return Math.min(this.pullProgress(), 1) * 80;
+});
+```
+
+Transition is `0.3s ease` only during the return to idle (no transition while pulling, to stay in sync with the gesture).
+
+### Indicator geometry (`.ptr-chip`)
+
+Position: `fixed`, `left: calc(50% - 16px)`, `top: calc(env(safe-area-inset-top, 0px) / 2 + 16px)`. This centres it horizontally and vertically in the gap between the notch and the content edge when fully pulled.
+
+SVG (32×44px, `viewBox="0 0 32 44"`):
+- **Faint track ring** — `cx=16 cy=28 r=12`, always visible during pulling (destination guide)
+- **Pale target dot** — `cx=16 cy=28 r=5`, outlined, shows where the travelling dot is headed
+- **Travelling filled dot** — `cx=16`, `cy = 6 + pullProgress() * 22`, moves from top to ring centre
+- **Spinner arc** — same ring dimensions, driven by `animateTransform` (not CSS animation — CSS `transform-box: fill-box` is unreliable in WebKit for SVG circles not centred in the viewBox)
+
+```html
+<circle cx="16" cy="28" r="12" fill="none"
+        stroke="rgb(0,142,255)" stroke-width="2.5"
+        stroke-dasharray="75.4" stroke-dashoffset="19"
+        stroke-linecap="round">
+  <animateTransform attributeName="transform" type="rotate"
+                    from="-90 16 28" to="270 16 28"
+                    dur="0.75s" repeatCount="indefinite"/>
+</circle>
+```
+
+---
+
+## 18. Reservation Detail — Fresh Guest Data on Back-Navigation
+
+`ReservationDetailPage` implements `ionViewWillEnter` (from `@ionic/angular`) in addition to `ngOnInit`. `ngOnInit` only fires once; `ionViewWillEnter` fires every time the page comes into view (including on back-navigation from GuestEditPage).
+
+```typescript
+async ionViewWillEnter() {
+  if (!this.reservationCode) return;
+  try {
+    this.guests.set(await this.res.fetchGuests(this.reservationCode));
+  } catch { /* keep existing list */ }
+  // Sync booker name from service signal (updated optimistically by updateGuest)
+  const synced = this.res.reservations().find(r => r.reservation_code === this.reservationCode);
+  if (synced) {
+    this.reservation.update(prev => prev ? { ...prev, booker: synced.booker } : prev);
+  }
+}
+```
+
+`ReservationService.updateGuest()` patches the `_reservations` signal in-place after a successful save, matching on `booker.booker_id === guest.guest_id`. This means the home screen reservation list also reflects name changes without a full re-fetch.
+
+---
+
+## 19. Changelog
+
+### 2026-05-11 — Build 16
+
+- **Pull-to-refresh fixes:** fixed broken spinner animation by replacing CSS `transform-box`/`transform-origin` with SVG `animateTransform` (explicit rotation centre `(16,28)`); reduced max content translation from 100px → 80px; resized SVG from 32×56 to 32×44 with ring moved to cy=28; reduced dot travel from 38 → 22 SVG units; added pale outlined target dot at ring centre as pull indicator.
+- Uploaded build 16 to TestFlight.
+
+### 2026-05-09 — Build 15
+
+- **Booker name sync:** `ReservationService.updateGuest()` now patches the `_reservations` signal after save, matching `booker.booker_id === guest.guest_id`. Home screen reservation list reflects name edits without a full refresh.
+- **Reservation detail stale data:** added `ionViewWillEnter()` hook to `ReservationDetailPage` — re-fetches guests and syncs booker name on every back-navigation from guest edit.
+- **Options-backed dropdowns:** `OptionsService` extended with `documentTypes` and `genders` signals fetched from `GET /options`. `GuestEditPage` document type and gender selects now use these signals instead of hardcoded values.
+- Uploaded build 15 to TestFlight.
+
+### 2026-05-08 — Build 13 / 14
+
+- Added `NSCameraUsageDescription` to `Info.plist` (build 13 was rejected by App Store Connect — error 90683).
+- Established pattern: `DocumentReaderPlugin` must be manually re-added to `CapApp-SPM/Package.swift` after every `cap sync ios`.
+- Build 14 uploaded and accepted.
+
+### 2026-05-07 — Build 11 (initial TestFlight)
+
+- First TestFlight upload. Core flows working: login → MFA → property select → home → reservation detail → guest detail → guest edit → ID scan.
+- `OTHER_LDFLAGS = "$(inherited) -ObjC"` required for Regula DocumentReader SDK linkage.
