@@ -10,7 +10,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",
-    "postinstall": "node scripts/patch-native-biometric.js"
+    "postinstall": "node scripts/patch-native-biometric.js",
+    "sync:ios": "cap sync ios && node scripts/patch-package-swift.js"
   },
   "private": true,
   "dependencies": {

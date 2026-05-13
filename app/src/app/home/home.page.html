@@ -1,11 +1,9 @@
 <ion-content>
-  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)" (ionPull)="onPull($event)">
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  <div class="page" style="background: var(--bg)"
-       [style.transform]="pageTranslateY() > 0 ? 'translateY(' + pageTranslateY() + 'px)' : ''"
-       [style.transition]="ptrState() === 'idle' ? 'transform 0.3s ease' : 'none'">
+  <div class="page" style="background: var(--bg)">
 
     <!-- Page header -->
     <div class="page-header">
@@ -170,31 +168,3 @@
   </div>
 
 </ion-content>
-
-<!-- Pull-to-refresh indicator — outside ion-content so position:fixed anchors to the viewport -->
-<div class="ptr-chip"
-     [style.opacity]="ptrState() !== 'idle' ? '1' : '0'">
-  <svg viewBox="0 0 32 44" width="32" height="44">
-    <!-- Faint track ring -->
-    <circle cx="16" cy="28" r="12" fill="none" stroke="rgba(0,142,255,0.2)" stroke-width="2.5"/>
-    <!-- Target: pale outlined dot at ring centre, shows where the travelling dot is headed -->
-    @if (ptrState() !== 'refreshing') {
-      <circle cx="16" cy="28" r="5" fill="none" stroke="rgba(0,142,255,0.3)" stroke-width="1.5"/>
-    }
-    <!-- Small filled dot: travels from top down to ring center as user pulls -->
-    @if (ptrState() !== 'refreshing') {
-      <circle cx="16" [attr.cy]="6 + pullProgress() * 22" r="5" fill="rgb(0,142,255)"/>
-    }
-    <!-- Spinner arc: only during refreshing; animateTransform rotates around ring center (16,28) -->
-    @if (ptrState() === 'refreshing') {
-      <circle cx="16" cy="28" r="12" fill="none"
-              stroke="rgb(0,142,255)" stroke-width="2.5"
-              stroke-dasharray="75.4" stroke-dashoffset="19"
-              stroke-linecap="round">
-        <animateTransform attributeName="transform" type="rotate"
-                          from="-90 16 28" to="270 16 28"
-                          dur="0.75s" repeatCount="indefinite"/>
-      </circle>
-    }
-  </svg>
-</div>

@@ -566,7 +566,7 @@ The native biometric plugin is unavailable in the browser. `authenticate()` catc
 cd /Users/tamas/SabeeAppGO/app
 ionic serve              # dev server at http://localhost:4200
 npx ng build             # production build check (must be zero errors, zero warnings)
-npx cap sync ios         # sync Capacitor plugins after npm install
+npm run sync:ios         # sync Capacitor plugins after npm install (auto-patches Package.swift)
 ```
 
 The CLI (`ionic`) must be installed globally: `npm install -g @ionic/cli`
@@ -582,8 +582,8 @@ Node version: v25 (odd, non-LTS) — produces a deprecation warning from Angular
 ```bash
 cd /Users/tamas/SabeeAppGO/app
 npm run build -- --configuration production
-npx cap sync ios
-# ⚠️  ALWAYS re-add DocumentReaderPlugin after cap sync (see below)
+npm run sync:ios
+# ✔  DocumentReaderPlugin is patched back automatically
 
 xcodebuild -workspace ios/App/App.xcworkspace \
   -scheme SabeeAppGo \
@@ -613,23 +613,13 @@ ExportOptions.plist (create in `/tmp` — not committed):
 </plist>
 ```
 
-### ⚠️ DocumentReaderPlugin — must be re-added after every `cap sync`
+### DocumentReaderPlugin — patched automatically by `npm run sync:ios`
 
-`cap sync ios` regenerates `ios/App/CapApp-SPM/Package.swift` and **removes** the local `DocumentReaderPlugin` entry every time. After each sync, manually restore it:
-
-```swift
-// In dependencies array:
-.package(name: "DocumentReaderPlugin", path: "../DocumentReaderPlugin"),
-
-// In targets[0].dependencies array:
-.product(name: "DocumentReaderPlugin", package: "DocumentReaderPlugin"),
-```
-
-This will keep happening until the plugin is published as a proper Swift Package. Do not forget this step — the build will fail with "unable to resolve module dependency: 'DocumentReaderPlugin'" if omitted.
+`cap sync ios` regenerates `ios/App/CapApp-SPM/Package.swift` and removes the local `DocumentReaderPlugin` entry every time. **Always use `npm run sync:ios` instead of `npx cap sync ios`** — it runs `scripts/patch-package-swift.js` immediately after sync to restore both entries. Running bare `cap sync ios` will break the build.
 
 ### Build number
 
-`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **16**.
+`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **18**.
 
 ### App Store requirements
 
@@ -640,53 +630,22 @@ This will keep happening until the plugin is published as a proper Swift Package
 
 ## 17. Pull-to-Refresh (Home Screen)
 
-The home screen uses `ion-refresher slot="fixed"` with a fully custom visual indicator — the default Ionic refresher UI is hidden via `ion-refresher-content { display: none }` in `home.page.scss`.
-
-### State machine
-
-```typescript
-ptrState: 'idle' | 'pulling' | 'refreshing'
-pullProgress: 0→1  // from ion-refresher.getProgress()
-```
-
-`onPull($event)` — fired by `(ionPull)` — updates `ptrState('pulling')` and `pullProgress`.  
-`handleRefresh($event)` — fired by `(ionRefresh)` — sets `ptrState('refreshing')`, awaits fetch, then resets.  
-A 500ms debounce timer in `onPull` resets back to `idle` if the user releases without triggering.
-
-### Content translation
-
-`.page` div gets a `translateY` transform driven by `pageTranslateY` computed signal:
-
-```typescript
-readonly pageTranslateY = computed(() => {
-  if (this.ptrState() === 'idle') return 0;
-  if (this.ptrState() === 'refreshing') return 80;
-  return Math.min(this.pullProgress(), 1) * 80;
-});
-```
-
-Transition is `0.3s ease` only during the return to idle (no transition while pulling, to stay in sync with the gesture).
-
-### Indicator geometry (`.ptr-chip`)
-
-Position: `fixed`, `left: calc(50% - 16px)`, `top: calc(env(safe-area-inset-top, 0px) / 2 + 16px)`. This centres it horizontally and vertically in the gap between the notch and the content edge when fully pulled.
-
-SVG (32×44px, `viewBox="0 0 32 44"`):
-- **Faint track ring** — `cx=16 cy=28 r=12`, always visible during pulling (destination guide)
-- **Pale target dot** — `cx=16 cy=28 r=5`, outlined, shows where the travelling dot is headed
-- **Travelling filled dot** — `cx=16`, `cy = 6 + pullProgress() * 22`, moves from top to ring centre
-- **Spinner arc** — same ring dimensions, driven by `animateTransform` (not CSS animation — CSS `transform-box: fill-box` is unreliable in WebKit for SVG circles not centred in the viewBox)
+Uses standard `ion-refresher slot="fixed"` with `ion-refresher-content` — no custom visual overrides. The Ionic native refresher handles gesture detection, animation, and the spinner.
 
 ```html
-<circle cx="16" cy="28" r="12" fill="none"
-        stroke="rgb(0,142,255)" stroke-width="2.5"
-        stroke-dasharray="75.4" stroke-dashoffset="19"
-        stroke-linecap="round">
-  <animateTransform attributeName="transform" type="rotate"
-                    from="-90 16 28" to="270 16 28"
-                    dur="0.75s" repeatCount="indefinite"/>
-</circle>
+<ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+  <ion-refresher-content></ion-refresher-content>
+</ion-refresher>
 ```
+
+```typescript
+async handleRefresh(event: CustomEvent) {
+  await this.res.fetchReservations(true);
+  (event.target as HTMLIonRefresherElement).complete();
+}
+```
+
+No custom state, no page translation, no ptr-chip. Previous custom implementation caused: needing to pull too far (page translateY fought the gesture), intermittent missing animation (async getProgress() race), intermittent missing spinner (500ms reset timer race).
 
 ---
 
@@ -713,6 +672,11 @@ async ionViewWillEnter() {
 ---
 
 ## 19. Changelog
+
+### 2026-05-13 — Build 18
+
+- **Pull-to-refresh simplified:** removed custom PTR machinery (ptrState, pullProgress, pageTranslateY, ptr-chip SVG, onPull handler). Now uses stock `ion-refresher` + `ion-refresher-content` with no overrides. Fixes: had to pull too far (page translateY was fighting the gesture), pull animation sometimes missing (async getProgress() race), spinner sometimes missing (500ms reset timer could fire before refreshing state was set).
+- Uploaded build 18 to TestFlight.
 
 ### 2026-05-11 — Build 17
 

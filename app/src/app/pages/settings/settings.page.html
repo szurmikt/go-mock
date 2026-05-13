@@ -12,19 +12,22 @@
     </div>
 
     <div class="app-scroll" style="padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px))">
-      <div style="padding: 24px var(--pad) 0; display: flex; flex-direction: column; gap: 24px">
+      <div style="padding: 24px var(--pad) 0; display: flex; flex-direction: column; gap: 16px">
 
-        <!-- Account card -->
-        <div class="card">
-          <div style="padding: 4px 0">
-            @if (auth.name()) {
-              <div style="font-size: 18px; color: var(--ink); font-weight: 700">{{ auth.name() }}</div>
-              <div style="font-size: 14px; color: var(--ink-4); font-weight: 600; margin-top: 3px">{{ auth.email() }}</div>
-            } @else {
-              <div style="font-size: 16px; color: var(--ink); font-weight: 700">{{ auth.email() }}</div>
-            }
+        <!-- Profile -->
+        <div style="text-align: center">
+          <div style="font-size: 22px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em">
+            {{ auth.name() || auth.email() }}
           </div>
+          @if (auth.name()) {
+            <div style="font-size: 14px; font-weight: 600; color: var(--ink); margin-top: 4px">
+              {{ auth.email() }}
+            </div>
+          }
         </div>
+
+        <!-- Separator -->
+        <div style="border-top: 1.5px solid var(--line-strong); margin: 16px 0"></div>
 
         <!-- Lock -->
         <button class="btn secondary" (click)="lock()">Lock screen</button>
