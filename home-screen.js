@@ -44,6 +44,8 @@ function HomeScreen({ go, property, setProperty }) {
   const [switchOpen, setSwitchOpen] = useState(false);
   const [tab, setTab] = useState("Today");
   const propName = property?.name || "Sunshine Hotel & Apartments";
+  const totalGuests = RESERVATIONS.reduce((sum, r) => sum + r.guests, 0);
+  const totalReservations = RESERVATIONS.length;
 
   return (
     <div className="page">
@@ -93,11 +95,11 @@ function HomeScreen({ go, property, setProperty }) {
         <div className="stat-block">
           <div className="stat-card">
             <div className="label"><I.Users style={{ width: 16, height: 16 }} /> Guests</div>
-            <div className="value">23 / 56</div>
+            <div className="value">{totalGuests}</div>
           </div>
           <div className="stat-card">
             <div className="label"><I.Briefcase style={{ width: 16, height: 16 }} /> Reservations</div>
-            <div className="value">6 / 17</div>
+            <div className="value">{totalReservations}</div>
           </div>
         </div>
 
