@@ -1,5 +1,5 @@
 <ion-content>
-  <div class="page" style="background: var(--bg)">
+  <div class="page">
 
     <div class="sub-header">
       <button class="back" (click)="back()">
@@ -12,11 +12,11 @@
     </div>
 
     @if (loading()) {
-      <div style="display: flex; justify-content: center; padding-top: 48px">
+      <div class="page-loading">
         <span class="spin-primary" style="width: 28px; height: 28px; border-width: 3px"></span>
       </div>
     } @else if (error()) {
-      <div style="text-align: center; padding: 48px var(--pad); color: var(--ink-3); font-size: 15px; font-weight: 600">
+      <div class="empty" style="color: var(--ink-3)">
         {{ error() }}
       </div>
     } @else if (guest(); as g) {
@@ -28,30 +28,30 @@
           <!-- Personal info card -->
           <div class="card" style="margin-bottom: 16px">
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">ID: {{ g.reservation_guest_id }}</div>
-              <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ guestName(g) }}</div>
+              <div class="detail-label">ID: {{ g.reservation_guest_id }}</div>
+              <div class="detail-value">{{ guestName(g) }}</div>
             </div>
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Maiden full name</div>
-              <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.maiden_name || '—' }}</div>
+              <div class="detail-label">Maiden full name</div>
+              <div class="detail-value">{{ g.maiden_name || '—' }}</div>
             </div>
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Mother's full name</div>
-              <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.mother_name || '—' }}</div>
+              <div class="detail-label">Mother's full name</div>
+              <div class="detail-value">{{ g.mother_name || '—' }}</div>
             </div>
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
               <div style="flex: 1">
-                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Birth date</div>
-                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.birth_date || '—' }}</div>
+                <div class="detail-label">Birth date</div>
+                <div class="detail-value">{{ g.birth_date || '—' }}</div>
               </div>
               <div style="flex: 1">
-                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Birth place</div>
-                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.birth_place || '—' }}</div>
+                <div class="detail-label">Birth place</div>
+                <div class="detail-value">{{ g.birth_place || '—' }}</div>
               </div>
             </div>
             <div style="padding: 12px 0 0">
-              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Citizenship</div>
-              <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.citizenship || '—' }}</div>
+              <div class="detail-label">Citizenship</div>
+              <div class="detail-value">{{ g.citizenship || '—' }}</div>
             </div>
           </div>
 
@@ -60,8 +60,8 @@
           <div class="card" style="margin-bottom: 16px">
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line)">
               <div>
-                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Phone</div>
-                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.phone_number || '—' }}</div>
+                <div class="detail-label">Phone</div>
+                <div class="detail-value">{{ g.phone_number || '—' }}</div>
               </div>
               <a [href]="'tel:' + g.phone_number" class="icon-btn" style="color: var(--primary)">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -71,8 +71,8 @@
             </div>
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0">
               <div>
-                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Email</div>
-                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.email || '—' }}</div>
+                <div class="detail-label">Email</div>
+                <div class="detail-value">{{ g.email || '—' }}</div>
               </div>
               <a [href]="'mailto:' + g.email" class="icon-btn" style="color: var(--primary)">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -88,17 +88,17 @@
           <div class="card">
             <div style="display: flex; gap: 24px; padding: 8px 0; border-bottom: 1px solid var(--line)">
               <div style="flex: 1">
-                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Document Type</div>
-                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ docTypeName(g.document?.document_type || '') }}</div>
+                <div class="detail-label">Document Type</div>
+                <div class="detail-value">{{ docTypeName(g.document?.document_type || '') }}</div>
               </div>
               <div style="flex: 1">
-                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Scanned</div>
-                <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.scanned_data ? 'Yes' : 'No' }}</div>
+                <div class="detail-label">Scanned</div>
+                <div class="detail-value">{{ g.scanned_data ? 'Yes' : 'No' }}</div>
               </div>
             </div>
             <div style="padding: 12px 0 0">
-              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Number</div>
-              <div style="font-size: 18px; color: var(--ink); font-weight: 700; margin-top: 2px">{{ g.document?.document_number || '—' }}</div>
+              <div class="detail-label">Number</div>
+              <div class="detail-value">{{ g.document?.document_number || '—' }}</div>
             </div>
           </div>
 

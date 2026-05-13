@@ -1,5 +1,5 @@
 <ion-content>
-  <div class="page" style="background: var(--bg); display: flex; flex-direction: column">
+  <div class="page" style="display: flex; flex-direction: column">
 
     <div class="sub-header">
       <button class="back" (click)="back()">
@@ -12,11 +12,11 @@
     </div>
 
     @if (loading()) {
-      <div style="display: flex; justify-content: center; padding-top: 48px">
+      <div class="page-loading">
         <span class="spin-primary" style="width: 28px; height: 28px; border-width: 3px"></span>
       </div>
     } @else if (error() && !guest()) {
-      <div style="text-align: center; padding: 48px var(--pad); color: var(--ink-3); font-size: 15px; font-weight: 600">
+      <div class="empty" style="color: var(--ink-3)">
         {{ error() }}
       </div>
     } @else {

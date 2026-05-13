@@ -131,6 +131,16 @@ Use the **exact same class names** as the prototype. Every class from `Design/st
 <!-- Spinners -->
 .spin            (white spinner — use inside .btn)
 .spin-primary    (blue spinner — use on white backgrounds)
+
+<!-- States -->
+.page-loading    (centered spinner container, padding-top 48px)
+.empty           (centered error text, padding 48px, font-weight 600)
+.empty-state     (centered hint/empty text, padding 32px, font-sm, font-weight 600)
+
+<!-- Card row detail -->
+.detail-label    (13px / ink-4 / 600 — row label in info cards)
+.detail-value    (19px / ink / 700 — row value in full-size detail cards)
+.fact-value      (17px / ink / 700 — compact value in fact grids)
 ```
 
 ### Design tokens (all available as CSS custom properties)
@@ -208,7 +218,7 @@ Use `IonContent` as the only Ionic wrapper. Everything inside is plain HTML with
 ```html
 <!-- Scrollable screen with sub-header (detail screens) -->
 <ion-content>
-  <div class="page" style="background: var(--bg)">
+  <div class="page">
 
     <div class="sub-header">
       <button class="back" (click)="back()">
@@ -230,7 +240,7 @@ Use `IonContent` as the only Ionic wrapper. Everything inside is plain HTML with
 ```html
 <!-- Root screen (no back button, has page-header) -->
 <ion-content>
-  <div class="page" style="background: var(--bg)">
+  <div class="page">
 
     <div class="page-header">
       <div class="title-row">
@@ -301,6 +311,8 @@ The pill visual mode (soft/solid/outline) is controlled by a `[data-pill]` attri
 // Signals (readable in templates without async pipe)
 auth.isAuthenticated()        // boolean
 auth.accessToken()            // string | null
+auth.name()                   // string | null — from GET /users/me, populated after property selection
+auth.email()                  // string | null
 auth.roles()                  // string[]
 auth.selectedProperty()       // PropertyInterface | null
 auth.properties()             // PropertyInterface[] — populated by loadProperties(), persisted
@@ -310,7 +322,8 @@ auth.deviceId()               // string
 await auth.login(email, password)          // → { mfaToken: string }
 await auth.verifyMfa(mfaToken, code)       // sets auth state
 await auth.loadProperties()               // → PropertyInterface[]
-await auth.selectProperty(property)       // persists selection
+await auth.selectProperty(property)       // persists selection + calls fetchUser() if name missing
+await auth.fetchUser()                    // GET /users/me → stores name; called by selectProperty() and loadStoredAuth()
 await auth.refreshAccessToken()           // called automatically by interceptor
 await auth.logout()                       // clears state + storage
 await auth.loadStoredAuth()              // called once at app boot
@@ -453,6 +466,7 @@ Property-Id:  <property_id>         (omitted until property is selected)
 | Properties | GET | `/properties` | — |
 | Reservations | GET | `/reservations` | `?start_date=yyyy-MM-dd&end_date=yyyy-MM-dd` |
 | Options | GET | `/options` | — · returns `{ data: { options: { country, gender, document_type } } }` · fetched once via `OptionsService.load()` at property selection |
+| Current user | GET | `/users/me` | — · requires `Property-Id` header · returns `{ data: [{ user_id, name, email, role }] }` (array) · called by `auth.fetchUser()` after property selection |
 | Reservation detail | GET | `/reservations/:code` | — |
 | Guests | GET | `/reservations/:code/guests` | — |
 | Update guest | PUT/PATCH | `/guests/:guestId` | guest fields |
@@ -672,6 +686,13 @@ async ionViewWillEnter() {
 ---
 
 ## 19. Changelog
+
+### 2026-05-13 — (unreleased)
+
+- **Settings profile section:** top of Settings page now shows name + email fetched from `GET /users/me` (centered, name 22px/800, email 14px/600 below). Requires `Property-Id` header — endpoint returns 403 without it.
+- **`auth.fetchUser()` lifecycle:** `loadStoredAuth()` reordered to restore selected property *before* calling `fetchUser()`, so the header is available on cold start. `verifyMfa()` no longer calls `fetchUser()` (no property yet). `selectProperty()` calls `fetchUser()` when name is missing (covers first login and property switch). Response is an array — parsed as `res.data?.[0]`.
+- **`npm run sync:ios` + `scripts/patch-package-swift.js`:** `cap sync ios` regenerates `Package.swift` and drops `DocumentReaderPlugin` every time. `scripts/patch-package-swift.js` re-inserts both entries (dependency + product) immediately after sync. Always use `npm run sync:ios` instead of bare `cap sync ios`.
+- **Inline CSS refactoring:** extracted repeated patterns into utility classes in `sabeeapp-design.scss`: `.page` (background), `.page-loading` (spinner container), `.empty` (48px error state), `.empty-state` (32px hint state), `.detail-label`, `.detail-value`, `.fact-value`. Applied across all templates — `guest-detail`, `id-scan`, `reservation-detail`, `guest-edit`, `home`, `search`, `property-select`.
 
 ### 2026-05-13 — Build 18
 

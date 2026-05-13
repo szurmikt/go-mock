@@ -1,5 +1,5 @@
 <ion-content>
-  <div class="page" style="background: var(--bg)">
+  <div class="page">
 
     <div class="sub-header">
       <button class="back" (click)="back()">
@@ -12,11 +12,11 @@
     </div>
 
     @if (loading() && !reservation()) {
-      <div style="display: flex; justify-content: center; padding-top: 48px">
+      <div class="page-loading">
         <span class="spin-primary" style="width: 28px; height: 28px; border-width: 3px"></span>
       </div>
     } @else if (error() && !reservation()) {
-      <div style="text-align: center; padding: 48px var(--pad); color: var(--ink-3); font-size: 15px; font-weight: 600">
+      <div class="empty" style="color: var(--ink-3)">
         {{ error() }}
       </div>
     } @else if (reservation(); as r) {
@@ -124,28 +124,26 @@
                 <div class="name">{{ guestName(g) }}</div>
                 <div class="fact-grid" style="gap: 8px 16px">
                   <div>
-                    <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Age</div>
-                    <div style="font-size: 17px; font-weight: 700">{{ g.guest_age || '—' }}</div>
+                    <div class="detail-label">Age</div>
+                    <div class="fact-value">{{ g.guest_age || '—' }}</div>
                   </div>
                   <div>
-                    <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Gender</div>
-                    <div style="font-size: 17px; font-weight: 700">{{ g.gender || '—' }}</div>
+                    <div class="detail-label">Gender</div>
+                    <div class="fact-value">{{ g.gender || '—' }}</div>
                   </div>
                   <div>
-                    <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Nationality</div>
-                    <div style="font-size: 17px; font-weight: 700">{{ g.citizenship || '—' }}</div>
+                    <div class="detail-label">Nationality</div>
+                    <div class="fact-value">{{ g.citizenship || '—' }}</div>
                   </div>
                   <div>
-                    <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">Reporting</div>
-                    <div style="font-size: 17px; font-weight: 700">{{ g.city_tax_liable || '—' }}</div>
+                    <div class="detail-label">Reporting</div>
+                    <div class="fact-value">{{ g.city_tax_liable || '—' }}</div>
                   </div>
                 </div>
               </div>
             }
             @if (guests().length === 0) {
-              <div style="text-align: center; padding: 24px var(--pad); color: var(--ink-4); font-size: 14px; font-weight: 600">
-                No guests registered
-              </div>
+              <div class="empty-state">No guests registered</div>
             }
           </div>
         }
