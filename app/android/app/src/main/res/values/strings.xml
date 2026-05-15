@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SabeeApp Go</string>
+    <string name="title_activity_main">SabeeApp Go</string>
+    <string name="package_name">com.sabeeapp.goapp</string>
+    <string name="custom_url_scheme">com.sabeeapp.goapp</string>
+</resources>
