@@ -1,8 +1,10 @@
-import { Component, signal } from '@angular/core';
+import { Component, ErrorHandler, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth';
 import { BiometricService } from '../../services/biometric';
+import { LanguageService } from '../../services/language.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-settings',
@@ -12,6 +14,11 @@ import { BiometricService } from '../../services/biometric';
 })
 export class SettingsPage {
   loggingOut = signal(false);
+  loadingLangs = signal(false);
+  langOpen = signal(false);
+  lang = inject(LanguageService);
+  readonly isDev = !environment.production;
+  private errorHandler = inject(ErrorHandler);
 
   constructor(
     public auth: AuthService,
@@ -19,12 +26,25 @@ export class SettingsPage {
     private router: Router,
   ) {}
 
-  back() {
-    window.history.back();
+  back() { window.history.back(); }
+  lock() { this.biometric.lockSession(); }
+
+  async openLangPicker() {
+    this.langOpen.set(true);
+    this.loadingLangs.set(true);
+    await this.lang.fetchLanguages().catch(() => {});
+    this.loadingLangs.set(false);
   }
 
-  lock() {
-    this.biometric.lockSession();
+  closeLangPicker() { this.langOpen.set(false); }
+
+  async selectLang(code: string) {
+    await this.lang.setLanguage(code);
+    this.langOpen.set(false);
+  }
+
+  testSentry() {
+    this.errorHandler.handleError(new Error('Sentry test — triggered manually from Settings'));
   }
 
   async logout() {

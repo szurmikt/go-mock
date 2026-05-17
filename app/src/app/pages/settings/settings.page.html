@@ -11,6 +11,49 @@
       <span class="title">Settings</span>
     </div>
 
+    <!-- Language picker sheet -->
+    @if (langOpen()) {
+      <div class="sheet-backdrop" (click)="closeLangPicker()">
+        <div class="sheet" (click)="$event.stopPropagation()">
+          <div class="head">
+            <h3>Language</h3>
+            <button class="icon-btn" (click)="closeLangPicker()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div style="margin-top: 8px">
+            @if (loadingLangs()) {
+              <div class="page-loading">
+                <span class="spin-primary" style="width: 28px; height: 28px; border-width: 3px"></span>
+              </div>
+            } @else if (lang.availableLanguages().length === 0) {
+              <div style="text-align: center; color: var(--ink-4); font-size: var(--font-sm); padding: 24px 0">
+                No languages available
+              </div>
+            } @else {
+              @for (l of lang.availableLanguages(); track l.code) {
+                <button class="action-item" (click)="selectLang(l.code)">
+                  <span class="action-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                  </span>
+                  <span style="flex: 1; text-align: left">{{ l.name }}</span>
+                  @if (lang.currentLanguage() === l.code) {
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex-shrink: 0"></span>
+                  }
+                </button>
+              }
+            }
+          </div>
+        </div>
+      </div>
+    }
+
     <div class="app-scroll" style="padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px))">
       <div style="padding: 24px var(--pad) 0; display: flex; flex-direction: column; gap: 16px">
 
@@ -29,6 +72,9 @@
         <!-- Separator -->
         <div style="border-top: 1.5px solid var(--line-strong); margin: 16px 0"></div>
 
+        <!-- Language -->
+        <button class="btn secondary" (click)="openLangPicker()">Language</button>
+
         <!-- Lock -->
         <button class="btn secondary" (click)="lock()">Lock screen</button>
 
@@ -40,6 +86,14 @@
             Log out
           }
         </button>
+
+        <!-- Dev only: Sentry test -->
+        @if (isDev) {
+          <button class="btn secondary" (click)="testSentry()"
+                  style="border-color: var(--ink-4); color: var(--ink-4); font-size: var(--font-sm)">
+            Test Sentry
+          </button>
+        }
 
       </div>
     </div>
