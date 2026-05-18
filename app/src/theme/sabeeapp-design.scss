@@ -426,8 +426,8 @@ ion-content {
   flex: 1; background: var(--surface);
   border-radius: var(--radius-xs); padding: 12px 14px;
 
-  .label { font-size: var(--font-sm); font-weight: 600; color: var(--ink-4); display: flex; align-items: center; gap: 8px; }
-  .value { font-size: var(--font-xl); font-weight: 800; color: var(--ink-2); letter-spacing: -0.01em; margin-top: 4px; }
+  .label { font-size: var(--font-sm); font-weight: 600; color: var(--ink-4); display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .value { font-size: var(--font-xl); font-weight: 800; color: var(--ink-2); letter-spacing: -0.01em; margin-top: 4px; text-align: center; }
 }
 
 /* ─── Section title ───────────────────────────────────────── */
@@ -560,7 +560,7 @@ ion-content {
   position: relative; background: var(--surface);
   border: 1.5px solid var(--line-strong); border-radius: var(--radius);
   height: 60px; display: flex; align-items: flex-end;
-  padding: 0 14px 10px; gap: 8px; margin-bottom: 12px;
+  padding: 0 14px 12px; gap: 8px; margin-bottom: 12px;
   transition: border-color 0.18s;
 
   &:focus-within { border-color: var(--primary); }
@@ -577,7 +577,7 @@ ion-content {
   &:focus-within label,
   input:not(:placeholder-shown) ~ label,
   select ~ label {
-    top: 10px; transform: none;
+    top: 8px; transform: none;
     font-size: var(--font-xs); color: var(--ink-4);
   }
 
@@ -666,17 +666,8 @@ ion-content {
 .tappable:active { transform: scale(0.985); }
 
 .stagger > * {
-  opacity: 0;
-  animation: slide-fade-in 0.42s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  animation: slide-fade-in 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
-.stagger > *:nth-child(1) { animation-delay: 0.04s; }
-.stagger > *:nth-child(2) { animation-delay: 0.09s; }
-.stagger > *:nth-child(3) { animation-delay: 0.14s; }
-.stagger > *:nth-child(4) { animation-delay: 0.19s; }
-.stagger > *:nth-child(5) { animation-delay: 0.24s; }
-.stagger > *:nth-child(6) { animation-delay: 0.29s; }
-.stagger > *:nth-child(7) { animation-delay: 0.34s; }
-.stagger > *:nth-child(8) { animation-delay: 0.39s; }
 
 /* ─── Tile grid ───────────────────────────────────────────── */
 
@@ -757,9 +748,21 @@ ion-content {
   &:active::before { transform: scale(1); }
 }
 
-/* ─── Empty state ─────────────────────────────────────────── */
+/* ─── Page shell ──────────────────────────────────────────── */
 
-.empty { text-align: center; padding: 48px var(--pad); color: var(--ink-4); font-weight: 600; }
+.page { background: var(--bg); }
+
+/* ─── Empty / loading states ─────────────────────────────── */
+
+.empty        { text-align: center; padding: 48px var(--pad); color: var(--ink-4); font-weight: 600; }
+.empty-state  { text-align: center; padding: 32px var(--pad); color: var(--ink-4); font-size: var(--font-sm); font-weight: 600; }
+.page-loading { display: flex; justify-content: center; padding-top: 48px; }
+
+/* ─── Detail row (label + value pairs in info cards) ─────── */
+
+.detail-label { font-size: var(--font-sm); color: var(--ink-4); font-weight: 600; }
+.detail-value { font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 2px; }
+.fact-value   { font-size: 17px; font-weight: 700; }
 
 /* ─── Animations ──────────────────────────────────────────── */
 

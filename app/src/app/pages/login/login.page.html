@@ -2,9 +2,11 @@
   <div class="login-page">
 
     <div class="login-header">
-      <select class="lang-select" [(ngModel)]="lang">
-        @for (l of languages; track l.code) {
-          <option [value]="l.code">{{ l.label }}</option>
+      <select class="lang-select"
+              [value]="lang.currentLanguage()"
+              (change)="changeLang($event)">
+        @for (l of lang.displayLanguages(); track l.code) {
+          <option [value]="l.code">{{ l.code.toUpperCase() }}</option>
         }
       </select>
     </div>

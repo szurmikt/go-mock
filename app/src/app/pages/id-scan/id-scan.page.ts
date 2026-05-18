@@ -42,6 +42,9 @@ export class IdScanPage implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     this.reservationCode = this.route.snapshot.paramMap.get('code')!;
     this.guestId = this.route.snapshot.paramMap.get('guestId')!;
+    if (this.isNative) {
+      await this.documentReader.init().catch(() => {});
+    }
   }
 
   private timeouts: ReturnType<typeof setTimeout>[] = [];
@@ -52,8 +55,17 @@ export class IdScanPage implements OnInit, OnDestroy {
 
   async scan(): Promise<void> {
     this.phase.set('scanning');
-    const started = await this.documentReader.scan();
-    if (!started) {
+    let started = false;
+    try {
+      started = await this.documentReader.scan();
+    } catch {
+      this.phase.set('camera');
+      return;
+    }
+    if (started) {
+      this.result.set(this.documentReader.scanResult());
+      this.phase.set('result');
+    } else {
       this.phase.set('camera');
     }
   }

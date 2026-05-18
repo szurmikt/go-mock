@@ -65,21 +65,21 @@
 
         @if (fullName()) {
           <div style="padding: 14px 0; border-bottom: 1px solid var(--line);">
-            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">First &amp; Last name</div>
-            <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ fullName() }}</div>
+            <div class="detail-label">First &amp; Last name</div>
+            <div class="detail-value">{{ fullName() }}</div>
           </div>
         }
 
         @if (docType()) {
           <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line);">
             <div style="flex: 1;">
-              <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Document type</div>
-              <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ docType() }}</div>
+              <div class="detail-label">Document type</div>
+              <div class="detail-value">{{ docType() }}</div>
             </div>
             @if (result()?.document?.document_number) {
               <div style="flex: 1;">
-                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Document number</div>
-                <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ result()!.document!.document_number }}</div>
+                <div class="detail-label">Document number</div>
+                <div class="detail-value">{{ result()!.document!.document_number }}</div>
               </div>
             }
           </div>
@@ -89,14 +89,14 @@
           <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line);">
             @if (resultField('age')) {
               <div style="flex: 1;">
-                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Age</div>
-                <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('age') }}</div>
+                <div class="detail-label">Age</div>
+                <div class="detail-value">{{ resultField('age') }}</div>
               </div>
             }
             @if (resultField('gender')) {
               <div style="flex: 1;">
-                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Gender</div>
-                <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('gender') }}</div>
+                <div class="detail-label">Gender</div>
+                <div class="detail-value">{{ resultField('gender') }}</div>
               </div>
             }
           </div>
@@ -106,14 +106,14 @@
           <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line);">
             @if (resultField('birth_place')) {
               <div style="flex: 1;">
-                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Place of birth</div>
-                <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('birth_place') }}</div>
+                <div class="detail-label">Place of birth</div>
+                <div class="detail-value">{{ resultField('birth_place') }}</div>
               </div>
             }
             @if (resultField('birth_date')) {
               <div style="flex: 1;">
-                <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Date of birth</div>
-                <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('birth_date') }}</div>
+                <div class="detail-label">Date of birth</div>
+                <div class="detail-value">{{ resultField('birth_date') }}</div>
               </div>
             }
           </div>
@@ -121,15 +121,15 @@
 
         @if (resultField('citizenship')) {
           <div style="padding: 14px 0; border-bottom: 1px solid var(--line);">
-            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Citizenship</div>
-            <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('citizenship') }}</div>
+            <div class="detail-label">Citizenship</div>
+            <div class="detail-value">{{ resultField('citizenship') }}</div>
           </div>
         }
 
         @if (resultField('mother_name')) {
           <div style="padding: 14px 0;">
-            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600;">Mother's name</div>
-            <div style="font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 3px;">{{ resultField('mother_name') }}</div>
+            <div class="detail-label">Mother's name</div>
+            <div class="detail-value">{{ resultField('mother_name') }}</div>
           </div>
         }
 

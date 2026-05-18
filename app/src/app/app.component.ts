@@ -1,11 +1,39 @@
 import { Component, HostListener, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { App } from '@capacitor/app';
-import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
+import { IonApp, IonRouterOutlet, createAnimation, Animation } from '@ionic/angular/standalone';
 import { LockOverlayComponent } from './components/lock-overlay/lock-overlay.component';
 import { AuthService } from './services/auth';
 import { BiometricService } from './services/biometric';
 import { OptionsService } from './services/options.service';
+
+const SLIDE_DURATION = 280;
+const SLIDE_EASING = 'cubic-bezier(0.3, 0, 0, 1)';
+
+const slideTransition = (_: HTMLElement, opts: any): Animation => {
+  const forward = opts.direction !== 'back';
+
+  const enterAnim = createAnimation()
+    .addElement(opts.enteringEl)
+    .duration(SLIDE_DURATION)
+    .easing(SLIDE_EASING)
+    .beforeRemoveClass('ion-page-invisible')
+  .beforeStyles({ 'z-index': forward ? '1' : '0', position: 'absolute', width: '100%', height: '100%' })
+    .afterClearStyles(['z-index', 'position', 'width', 'height'])
+    .fromTo('transform', `translateX(${forward ? '100%' : '-30%'})`, 'translateX(0)');
+
+  if (!opts.leavingEl) return createAnimation().addAnimation([enterAnim]);
+
+  const leaveAnim = createAnimation()
+    .addElement(opts.leavingEl)
+    .duration(SLIDE_DURATION)
+    .easing(SLIDE_EASING)
+    .beforeStyles({ 'z-index': forward ? '0' : '1', position: 'absolute', width: '100%', height: '100%' })
+    .afterClearStyles(['z-index', 'position', 'width', 'height'])
+    .fromTo('transform', 'translateX(0)', `translateX(${forward ? '-30%' : '100%'})`);
+
+  return createAnimation().addAnimation([enterAnim, leaveAnim]);
+};
 
 @Component({
   selector: 'app-root',
@@ -16,6 +44,7 @@ import { OptionsService } from './services/options.service';
 })
 export class AppComponent implements OnInit, OnDestroy {
   loading = signal(true);
+  readonly slideTransition = slideTransition;
 
   private inactivityTimer?: ReturnType<typeof setTimeout>;
   private readonly LOCK_AFTER_MS = 10 * 60 * 1000; // 10 minutes
@@ -33,7 +62,7 @@ export class AppComponent implements OnInit, OnDestroy {
       if (this.auth.isAuthenticated()) {
         await this.biometric.checkAndLock();
         if (this.auth.selectedProperty()) {
-          await this.options.load();
+          await this.options.load().catch(() => {});
         }
       }
 

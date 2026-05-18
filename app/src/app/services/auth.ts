@@ -37,9 +37,8 @@ export class AuthService {
   async loadStoredAuth(): Promise<void> {
     await this.loadDeviceId();
     const auth = await this.storage.get<AuthState>(Config.STORAGE_AUTH_KEY);
-    if (auth?.accessToken) {
+    if (auth?.refreshToken) {
       this._auth.set(auth);
-      if (!auth.name) await this.fetchUser();
     }
     const property = await this.storage.get<PropertyInterface>(Config.STORAGE_PROPERTY_KEY);
     if (property) {
@@ -48,6 +47,10 @@ export class AuthService {
     const properties = await this.storage.get<PropertyInterface[]>(Config.STORAGE_PROPERTIES_KEY);
     if (properties?.length) {
       this._properties.set(properties);
+    }
+    // Property-Id header is required by /users/me — fetch only after property is restored
+    if (auth?.accessToken && !auth.name && property) {
+      await this.fetchUser();
     }
   }
 
@@ -73,7 +76,6 @@ export class AuthService {
       }),
     );
     const { access_token, refresh_token, expires_in, roles } = res.data;
-    // Store token first so the interceptor can attach it to the /users/me call
     await this.setAuth({
       accessToken: access_token,
       refreshToken: refresh_token,
@@ -82,19 +84,18 @@ export class AuthService {
       email,
       name: '',
     });
-    await this.fetchUser();
   }
 
   async fetchUser(): Promise<void> {
     try {
       const res = await firstValueFrom(
-        this.http.get<ApiResponse<{ id: string; name: string; email: string }[]>>(
+        this.http.get<ApiResponse<{ user_id: string; name: string; email: string; role: string }[]>>(
           `${environment.apiUrl}/users/me`,
         ),
       );
-      if (res.success && res.data[0]) {
-        const { name, email } = res.data[0];
-        await this.setAuth({ ...this._auth()!, name, email });
+      const user = res.data?.[0];
+      if (res.success && user?.name) {
+        await this.setAuth({ ...this._auth()!, name: user.name, email: user.email });
       }
     } catch {
       // Non-fatal — email is already stored, name stays empty
@@ -131,6 +132,7 @@ export class AuthService {
   async selectProperty(property: PropertyInterface): Promise<void> {
     this._selectedProperty.set(property);
     await this.storage.set(Config.STORAGE_PROPERTY_KEY, property);
+    if (!this._auth()?.name) await this.fetchUser();
   }
 
   async logout(): Promise<void> {

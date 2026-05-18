@@ -9,7 +9,12 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "postinstall": "node scripts/patch-native-biometric.js",
+    "sync:ios": "cap sync ios && node scripts/patch-package-swift.js",
+    "sync:android": "cap sync android",
+    "publish:ios": "bash scripts/publish-ios.sh",
+    "publish:android": "bash scripts/publish-android.sh"
   },
   "private": true,
   "dependencies": {
@@ -21,7 +26,7 @@
     "@angular/platform-browser": "^20.0.0",
     "@angular/platform-browser-dynamic": "^20.0.0",
     "@angular/router": "^20.0.0",
-    "@capacitor/android": "8.3.1",
+    "@capacitor/android": "^8.3.4",
     "@capacitor/app": "8.1.0",
     "@capacitor/core": "8.3.1",
     "@capacitor/device": "^8.0.2",
@@ -31,6 +36,7 @@
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/status-bar": "8.0.2",
     "@ionic/angular": "^8.0.0",
+    "@sentry/angular": "^10.53.1",
     "capacitor-native-biometric": "^4.2.2",
     "ionicons": "^7.0.0",
     "rxjs": "~7.8.0",

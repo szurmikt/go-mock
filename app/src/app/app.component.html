@@ -4,7 +4,7 @@
       <span class="spin-primary" style="width: 32px; height: 32px; border-width: 3px;"></span>
     </div>
   } @else {
-    <ion-router-outlet></ion-router-outlet>
+    <ion-router-outlet [animation]="slideTransition"></ion-router-outlet>
   }
   @if (biometric.sessionLocked() && auth.isAuthenticated()) {
     <app-lock-overlay />

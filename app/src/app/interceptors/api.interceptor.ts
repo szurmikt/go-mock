@@ -4,11 +4,13 @@ import { Router } from '@angular/router';
 import { BehaviorSubject, filter, take, from, switchMap, catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth';
 import { Config } from '../config/config';
+import { LanguageService } from '../services/language.service';
 
 const refreshing$ = new BehaviorSubject<boolean>(false);
 
 export const apiInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
+  const lang = inject(LanguageService);
   const router = inject(Router);
 
   const addHeaders = (request: HttpRequest<unknown>): HttpRequest<unknown> => {
@@ -17,7 +19,7 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
       'App-Version': Config.APP_VERSION,
       'Ci-Version': Config.CI_VERSION,
       'Device-Id': auth.deviceId() || 'web-dev-device',
-      'Lang': 'en',
+      'Lang': lang.currentLanguage(),
     };
 
     const token = auth.accessToken();
@@ -47,8 +49,13 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
       }),
       catchError(err => {
         refreshing$.next(false);
-        auth.logout();
-        router.navigateByUrl('/login', { replaceUrl: true });
+        // Only force logout when the refresh token itself is rejected (401).
+        // Network errors, timeouts, and server errors are transient — keep the
+        // stored session so the user can try again without re-logging in.
+        if (err instanceof HttpErrorResponse && err.status === 401) {
+          auth.logout();
+          router.navigateByUrl('/login', { replaceUrl: true });
+        }
         return throwError(() => err);
       }),
     );

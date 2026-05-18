@@ -52,10 +52,6 @@ export class HomePage implements OnInit, AfterViewInit, OnDestroy {
   readonly guestCount = computed(() =>
     this.arrivals().reduce((s, r) => s + r.number_of_guests, 0),
   );
-  readonly totalGuests = computed(() =>
-    this.res.reservations().reduce((s, r) => s + r.number_of_guests, 0),
-  );
-  readonly totalReservations = computed(() => this.res.reservations().length);
 
   private options = inject(OptionsService);
 

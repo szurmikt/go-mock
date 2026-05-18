@@ -131,6 +131,16 @@ Use the **exact same class names** as the prototype. Every class from `Design/st
 <!-- Spinners -->
 .spin            (white spinner — use inside .btn)
 .spin-primary    (blue spinner — use on white backgrounds)
+
+<!-- States -->
+.page-loading    (centered spinner container, padding-top 48px)
+.empty           (centered error text, padding 48px, font-weight 600)
+.empty-state     (centered hint/empty text, padding 32px, font-sm, font-weight 600)
+
+<!-- Card row detail -->
+.detail-label    (13px / ink-4 / 600 — row label in info cards)
+.detail-value    (19px / ink / 700 — row value in full-size detail cards)
+.fact-value      (17px / ink / 700 — compact value in fact grids)
 ```
 
 ### Design tokens (all available as CSS custom properties)
@@ -208,7 +218,7 @@ Use `IonContent` as the only Ionic wrapper. Everything inside is plain HTML with
 ```html
 <!-- Scrollable screen with sub-header (detail screens) -->
 <ion-content>
-  <div class="page" style="background: var(--bg)">
+  <div class="page">
 
     <div class="sub-header">
       <button class="back" (click)="back()">
@@ -230,7 +240,7 @@ Use `IonContent` as the only Ionic wrapper. Everything inside is plain HTML with
 ```html
 <!-- Root screen (no back button, has page-header) -->
 <ion-content>
-  <div class="page" style="background: var(--bg)">
+  <div class="page">
 
     <div class="page-header">
       <div class="title-row">
@@ -301,6 +311,8 @@ The pill visual mode (soft/solid/outline) is controlled by a `[data-pill]` attri
 // Signals (readable in templates without async pipe)
 auth.isAuthenticated()        // boolean
 auth.accessToken()            // string | null
+auth.name()                   // string | null — from GET /users/me, populated after property selection
+auth.email()                  // string | null
 auth.roles()                  // string[]
 auth.selectedProperty()       // PropertyInterface | null
 auth.properties()             // PropertyInterface[] — populated by loadProperties(), persisted
@@ -310,7 +322,8 @@ auth.deviceId()               // string
 await auth.login(email, password)          // → { mfaToken: string }
 await auth.verifyMfa(mfaToken, code)       // sets auth state
 await auth.loadProperties()               // → PropertyInterface[]
-await auth.selectProperty(property)       // persists selection
+await auth.selectProperty(property)       // persists selection + calls fetchUser() if name missing
+await auth.fetchUser()                    // GET /users/me → stores name; called by selectProperty() and loadStoredAuth()
 await auth.refreshAccessToken()           // called automatically by interceptor
 await auth.logout()                       // clears state + storage
 await auth.loadStoredAuth()              // called once at app boot
@@ -390,6 +403,39 @@ export interface CountryOption {
   name: string;
   country_code: string;   // stored value, e.g. "HU", "DE"
 }
+
+export interface SelectOption {
+  value: string;   // stringified numeric id
+  label: string;   // display name
+}
+```
+
+### Available signals
+
+```typescript
+options.countries()      // CountryOption[]  — from options.country
+options.documentTypes()  // SelectOption[]   — from options.document_type
+options.genders()        // SelectOption[]   — from options.gender
+```
+
+Usage in templates:
+
+```html
+<!-- Document type dropdown -->
+<select [(ngModel)]="form.document_type">
+  @for (dt of options.documentTypes(); track dt.value) {
+    <option [value]="dt.value">{{ dt.label }}</option>
+  }
+</select>
+
+<!-- Gender dropdown (guard against empty to avoid orphan label) -->
+@if (options.genders().length) {
+  <select [(ngModel)]="form.gender">
+    @for (g of options.genders(); track g.value) {
+      <option [value]="g.value">{{ g.label }}</option>
+    }
+  </select>
+}
 ```
 
 ---
@@ -420,6 +466,10 @@ Property-Id:  <property_id>         (omitted until property is selected)
 | Properties | GET | `/properties` | — |
 | Reservations | GET | `/reservations` | `?start_date=yyyy-MM-dd&end_date=yyyy-MM-dd` |
 | Options | GET | `/options` | — · returns `{ data: { options: { country, gender, document_type } } }` · fetched once via `OptionsService.load()` at property selection |
+| Current user | GET | `/users/me` | — · requires `Property-Id` header · returns `{ data: [{ user_id, name, email, role }] }` (array) · called by `auth.fetchUser()` after property selection |
+| Reservation detail | GET | `/reservations/:code` | — |
+| Guests | GET | `/reservations/:code/guests` | — |
+| Update guest | PUT/PATCH | `/guests/:guestId` | guest fields |
 
 **API response wrapper:**
 ```typescript
@@ -530,9 +580,148 @@ The native biometric plugin is unavailable in the browser. `authenticate()` catc
 cd /Users/tamas/SabeeAppGO/app
 ionic serve              # dev server at http://localhost:4200
 npx ng build             # production build check (must be zero errors, zero warnings)
-npx cap sync ios         # sync Capacitor plugins after npm install
+npm run sync:ios         # sync Capacitor plugins after npm install (auto-patches Package.swift)
 ```
 
 The CLI (`ionic`) must be installed globally: `npm install -g @ionic/cli`
 
 Node version: v25 (odd, non-LTS) — produces a deprecation warning from Angular CLI but builds correctly.
+
+---
+
+## 16. iOS Build & TestFlight
+
+### Build flow
+
+```bash
+cd /Users/tamas/SabeeAppGO/app
+npm run build -- --configuration production
+npm run sync:ios
+# ✔  DocumentReaderPlugin is patched back automatically
+
+xcodebuild -workspace ios/App/App.xcworkspace \
+  -scheme SabeeAppGo \
+  -configuration Release \
+  -destination generic/platform=iOS \
+  -archivePath /tmp/SabeeAppGo-<N>.xcarchive \
+  archive
+
+xcodebuild -archivePath /tmp/SabeeAppGo-<N>.xcarchive \
+  -exportArchive \
+  -exportOptionsPlist /tmp/ExportOptions.plist \
+  -exportPath /tmp/SabeeAppGo-<N>-export
+```
+
+ExportOptions.plist (create in `/tmp` — not committed):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store-connect</string>
+    <key>destination</key>
+    <string>upload</string>
+</dict>
+</plist>
+```
+
+### DocumentReaderPlugin — patched automatically by `npm run sync:ios`
+
+`cap sync ios` regenerates `ios/App/CapApp-SPM/Package.swift` and removes the local `DocumentReaderPlugin` entry every time. **Always use `npm run sync:ios` instead of `npx cap sync ios`** — it runs `scripts/patch-package-swift.js` immediately after sync to restore both entries. Running bare `cap sync ios` will break the build.
+
+### Build number
+
+`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **18**.
+
+### App Store requirements
+
+- `NSCameraUsageDescription` must be in `Info.plist` — Regula SDK references camera APIs even if you don't call `AVCaptureSession` directly.
+- `NSFaceIDUsageDescription` must be in `Info.plist` — for biometric authentication.
+
+---
+
+## 17. Pull-to-Refresh (Home Screen)
+
+Uses standard `ion-refresher slot="fixed"` with `ion-refresher-content` — no custom visual overrides. The Ionic native refresher handles gesture detection, animation, and the spinner.
+
+```html
+<ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+  <ion-refresher-content></ion-refresher-content>
+</ion-refresher>
+```
+
+```typescript
+async handleRefresh(event: CustomEvent) {
+  await this.res.fetchReservations(true);
+  (event.target as HTMLIonRefresherElement).complete();
+}
+```
+
+No custom state, no page translation, no ptr-chip. Previous custom implementation caused: needing to pull too far (page translateY fought the gesture), intermittent missing animation (async getProgress() race), intermittent missing spinner (500ms reset timer race).
+
+---
+
+## 18. Reservation Detail — Fresh Guest Data on Back-Navigation
+
+`ReservationDetailPage` implements `ionViewWillEnter` (from `@ionic/angular`) in addition to `ngOnInit`. `ngOnInit` only fires once; `ionViewWillEnter` fires every time the page comes into view (including on back-navigation from GuestEditPage).
+
+```typescript
+async ionViewWillEnter() {
+  if (!this.reservationCode) return;
+  try {
+    this.guests.set(await this.res.fetchGuests(this.reservationCode));
+  } catch { /* keep existing list */ }
+  // Sync booker name from service signal (updated optimistically by updateGuest)
+  const synced = this.res.reservations().find(r => r.reservation_code === this.reservationCode);
+  if (synced) {
+    this.reservation.update(prev => prev ? { ...prev, booker: synced.booker } : prev);
+  }
+}
+```
+
+`ReservationService.updateGuest()` patches the `_reservations` signal in-place after a successful save, matching on `booker.booker_id === guest.guest_id`. This means the home screen reservation list also reflects name changes without a full re-fetch.
+
+---
+
+## 19. Changelog
+
+### 2026-05-13 — (unreleased)
+
+- **Settings profile section:** top of Settings page now shows name + email fetched from `GET /users/me` (centered, name 22px/800, email 14px/600 below). Requires `Property-Id` header — endpoint returns 403 without it.
+- **`auth.fetchUser()` lifecycle:** `loadStoredAuth()` reordered to restore selected property *before* calling `fetchUser()`, so the header is available on cold start. `verifyMfa()` no longer calls `fetchUser()` (no property yet). `selectProperty()` calls `fetchUser()` when name is missing (covers first login and property switch). Response is an array — parsed as `res.data?.[0]`.
+- **`npm run sync:ios` + `scripts/patch-package-swift.js`:** `cap sync ios` regenerates `Package.swift` and drops `DocumentReaderPlugin` every time. `scripts/patch-package-swift.js` re-inserts both entries (dependency + product) immediately after sync. Always use `npm run sync:ios` instead of bare `cap sync ios`.
+- **Inline CSS refactoring:** extracted repeated patterns into utility classes in `sabeeapp-design.scss`: `.page` (background), `.page-loading` (spinner container), `.empty` (48px error state), `.empty-state` (32px hint state), `.detail-label`, `.detail-value`, `.fact-value`. Applied across all templates — `guest-detail`, `id-scan`, `reservation-detail`, `guest-edit`, `home`, `search`, `property-select`.
+
+### 2026-05-13 — Build 18
+
+- **Pull-to-refresh simplified:** removed custom PTR machinery (ptrState, pullProgress, pageTranslateY, ptr-chip SVG, onPull handler). Now uses stock `ion-refresher` + `ion-refresher-content` with no overrides. Fixes: had to pull too far (page translateY was fighting the gesture), pull animation sometimes missing (async getProgress() race), spinner sometimes missing (500ms reset timer could fire before refreshing state was set).
+- Uploaded build 18 to TestFlight.
+
+### 2026-05-11 — Build 17
+
+- **Pull-to-refresh indicator position fix:** moved `ptr-chip` div outside `<ion-content>` — `position: fixed` inside ion-content's shadow DOM slots anchors relative to the content area (safe-area + pull offset), not the viewport, placing the indicator ~160pt down instead of ~45pt. Moving it outside makes it truly viewport-fixed.
+
+### 2026-05-11 — Build 16
+
+- **Pull-to-refresh fixes:** fixed broken spinner animation by replacing CSS `transform-box`/`transform-origin` with SVG `animateTransform` (explicit rotation centre `(16,28)`); reduced max content translation from 100px → 80px; resized SVG from 32×56 to 32×44 with ring moved to cy=28; reduced dot travel from 38 → 22 SVG units; added pale outlined target dot at ring centre as pull indicator.
+- Uploaded build 16 to TestFlight.
+
+### 2026-05-09 — Build 15
+
+- **Booker name sync:** `ReservationService.updateGuest()` now patches the `_reservations` signal after save, matching `booker.booker_id === guest.guest_id`. Home screen reservation list reflects name edits without a full refresh.
+- **Reservation detail stale data:** added `ionViewWillEnter()` hook to `ReservationDetailPage` — re-fetches guests and syncs booker name on every back-navigation from guest edit.
+- **Options-backed dropdowns:** `OptionsService` extended with `documentTypes` and `genders` signals fetched from `GET /options`. `GuestEditPage` document type and gender selects now use these signals instead of hardcoded values.
+- Uploaded build 15 to TestFlight.
+
+### 2026-05-08 — Build 13 / 14
+
+- Added `NSCameraUsageDescription` to `Info.plist` (build 13 was rejected by App Store Connect — error 90683).
+- Established pattern: `DocumentReaderPlugin` must be manually re-added to `CapApp-SPM/Package.swift` after every `cap sync ios`.
+- Build 14 uploaded and accepted.
+
+### 2026-05-07 — Build 11 (initial TestFlight)
+
+- First TestFlight upload. Core flows working: login → MFA → property select → home → reservation detail → guest detail → guest edit → ID scan.
+- `OTHER_LDFLAGS = "$(inherited) -ObjC"` required for Regula DocumentReader SDK linkage.

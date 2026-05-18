@@ -29,18 +29,12 @@ export class GuestEditPage implements OnInit {
     birth_date: '',
     birth_place: '',
     citizenship: '',
+    gender: '',
     phone_number: '',
     email: '',
     document_type: '',
     document_number: '',
   };
-
-  readonly docTypes = [
-    { value: 'passport',          label: 'Passport' },
-    { value: 'idcard',            label: 'ID Card' },
-    { value: 'drivinglicence',    label: 'Driving Licence' },
-    { value: 'residencepermit',   label: 'Residence Permit' },
-  ];
 
   private reservationCode!: string;
   private guestId!: string;
@@ -69,6 +63,7 @@ export class GuestEditPage implements OnInit {
         birth_date:      found.birth_date ?? '',
         birth_place:     found.birth_place ?? '',
         citizenship:     found.citizenship ?? '',
+        gender:          found.gender ?? '',
         phone_number:    found.phone_number ?? '',
         email:           found.email ?? '',
         document_type:   found.document?.document_type ?? '',
@@ -96,6 +91,7 @@ export class GuestEditPage implements OnInit {
         birth_date:   this.form.birth_date,
         birth_place:  this.form.birth_place,
         citizenship:  this.form.citizenship,
+        gender:       this.form.gender,
         phone_number: this.form.phone_number,
         email:        this.form.email,
         document: {

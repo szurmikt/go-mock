@@ -3,7 +3,7 @@
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  <div class="page" style="background: var(--bg)">
+  <div class="page">
 
     <!-- Page header -->
     <div class="page-header">
@@ -101,7 +101,7 @@
             </svg>
             Guests
           </div>
-          <div class="value">{{ guestCount() }} / {{ totalGuests() }}</div>
+          <div class="value">{{ guestCount() }}</div>
         </div>
         <div class="stat-card">
           <div class="label">
@@ -111,7 +111,7 @@
             </svg>
             Reservations
           </div>
-          <div class="value">{{ arrivals().length }} / {{ totalReservations() }}</div>
+          <div class="value">{{ arrivals().length }}</div>
         </div>
       </div>
 
@@ -129,15 +129,15 @@
 
       <!-- Loading state -->
       @if (res.loading()) {
-        <div style="display: flex; justify-content: center; padding: 32px 0">
+        <div class="page-loading">
           <span class="spin-primary" style="width: 28px; height: 28px; border-width: 3px"></span>
         </div>
       } @else if (res.error()) {
-        <div style="text-align: center; padding: 32px var(--pad); color: var(--ink-3); font-size: 14px; font-weight: 600">
+        <div class="empty-state" style="color: var(--ink-3)">
           {{ res.error() }}
         </div>
       } @else if (arrivals().length === 0) {
-        <div style="text-align: center; padding: 32px var(--pad); color: var(--ink-4); font-size: 14px; font-weight: 600">
+        <div class="empty-state">
           No arrivals for {{ tab() | lowercase }}
         </div>
       } @else {
@@ -166,4 +166,5 @@
 
     </div>
   </div>
+
 </ion-content>

@@ -1,5 +1,5 @@
 <ion-content>
-  <div class="page" style="background: var(--bg)">
+  <div class="page">
 
     <div class="sub-header">
       <button class="back" (click)="back()">
@@ -52,11 +52,11 @@
           </div>
         }
       } @else if (query().trim().length < 3) {
-        <div style="text-align: center; padding: 32px var(--pad); color: var(--ink-4); font-size: 14px; font-weight: 600">
+        <div class="empty-state">
           Type at least 3 characters to search
         </div>
       } @else if (results().length === 0) {
-        <div style="text-align: center; padding: 32px var(--pad); color: var(--ink-4); font-size: 14px; font-weight: 600">
+        <div class="empty-state">
           No results for "{{ query() }}"
         </div>
       } @else {

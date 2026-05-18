@@ -110,6 +110,16 @@ export class ReservationService {
     );
     if (!resp.success) throw new Error('Failed to save guest');
     this._guestCache.delete(reservationCode);
+    this._reservations.update(list =>
+      list.map(r => {
+        if (r.reservation_code !== reservationCode) return r;
+        if (r.booker.booker_id !== guest.guest_id) return r;
+        return {
+          ...r,
+          booker: { ...r.booker, first_name: guest.first_name, last_name: guest.last_name, email: guest.email },
+        };
+      }),
+    );
   }
 
   async fetchGuests(reservationCode: string): Promise<GuestInterface[]> {

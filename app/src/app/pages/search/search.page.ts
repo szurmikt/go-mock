@@ -37,8 +37,8 @@ export class SearchPage implements OnInit, AfterViewInit, OnDestroy {
         const last  = (r.booker.last_name  ?? '').toLowerCase();
         const email = (r.booker.email      ?? '').toLowerCase();
         return code.startsWith(q) ||
-          first.startsWith(q) ||
-          last.startsWith(q) ||
+          first.split(' ').some(w => w.startsWith(q)) ||
+          last.split(' ').some(w => w.startsWith(q)) ||
           `${first} ${last}`.startsWith(q) ||
           email.includes(q);
       })
