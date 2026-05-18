@@ -13,8 +13,8 @@ import { LanguageService } from '../../services/language.service';
   imports: [FormsModule, IonContent],
 })
 export class LoginPage {
-  email = '';
-  password = '';
+  email = 'csaba@szurmik.com';
+  password = 'BaddPsv9rd63!';
   loading = false;
   errorMessage = '';
   errorOpen = false;
@@ -37,8 +37,14 @@ export class LoginPage {
 
     this.loading = true;
     try {
-      const { mfaToken } = await this.auth.login(this.email.trim(), this.password);
-      await this.router.navigate(['/mfa'], { state: { mfaToken, email: this.email.trim() }, replaceUrl: true });
+      const { mfaToken } = await this.auth.login(
+        this.email.trim(),
+        this.password,
+      );
+      await this.router.navigate(['/mfa'], {
+        state: { mfaToken, email: this.email.trim() },
+        replaceUrl: true,
+      });
     } catch (err: unknown) {
       this.errorMessage = this.extractMessage(err);
       this.errorOpen = true;
@@ -53,7 +59,8 @@ export class LoginPage {
 
   private extractMessage(err: unknown): string {
     if (err && typeof err === 'object' && 'error' in err) {
-      const e = (err as { error?: { errors?: string; message?: string } }).error;
+      const e = (err as { error?: { errors?: string; message?: string } })
+        .error;
       if (e?.errors) return e.errors;
       if (e?.message) return e.message;
     }

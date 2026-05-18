@@ -1,147 +1,458 @@
-<ion-content [fullscreen]="true">
-  <div class="scan-screen">
+<ion-content>
+  <div class="page">
+    <div class="sub-header">
+      <button class="back" (click)="back()">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+      </button>
+      <span class="title">Id Scan</span>
+    </div>
+    <div class="app-scroll">
+      @if (readerStatus() != ReaderStatus.FINISHED ) {
+      <div class="scan-screen">
+        @if ( readerStatus() == ReaderStatus.INIT || readerStatus() ==
+        ReaderStatus.READY || readerStatus() == ReaderStatus.PROCESSING ) {
+        <div class="loader">
+          <div class="spinner-container">
+            <ion-spinner></ion-spinner>
+          </div>
+        </div>
+        } @if (readerStatus() == ReaderStatus.TIMEOUT) {
+        <div class="not-processed">Scan Timeout</div>
+        <div class="button-container row-view">
+          <ion-button class="blue" expand="block" (click)="scan()">
+            <span class="btn-text">
+              <!-- {{ "scanModalComponent.btnIdScan" | translateIT }} -->
+              Scan Again
+            </span>
+          </ion-button>
+          <ion-button class="grey" expand="block" (click)="back()">
+            <span class="btn-text">
+              <!-- {{ "global.btnCancel" | translateIT }} -->
+              Cancel
+            </span>
+          </ion-button>
+        </div>
+        } @if (readerStatus() == ReaderStatus.CANCELLED) {
+        <div class="not-processed">Scan Cancelled</div>
+        <div class="button-container row-view">
+          <ion-button class="blue" expand="block" (click)="scan()">
+            <span class="btn-text">
+              <!-- {{ "scanModalComponent.btnIdScan" | translateIT }} -->
+              Scan Again
+            </span>
+          </ion-button>
+          <ion-button class="grey" expand="block" (click)="back()">
+            <span class="btn-text">
+              <!-- {{ "global.btnCancel" | translateIT }} -->
+              Cancel
+            </span>
+          </ion-button>
+        </div>
+        } @if (readerStatus() == ReaderStatus.INTERRUPTED) {
+        <div class="not-processed">Scan Interrupted</div>
+        <div class="button-container row-view">
+          <ion-button class="blue" expand="block" (click)="scan()">
+            <span class="btn-text">
+              <!-- {{ "scanModalComponent.btnIdScan" | translateIT }} -->
+              Scan Again
+            </span>
+          </ion-button>
+          <ion-button class="grey" expand="block" (click)="back()">
+            <span class="btn-text">
+              <!-- {{ "global.btnCancel" | translateIT }} -->
+              Cancel
+            </span>
+          </ion-button>
+        </div>
+        }
 
-    <!-- Back button -->
-    <button class="back" (click)="back()"
-      style="position: absolute; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 8px; z-index: 10; color: #fff; background: rgba(0,0,0,0.35); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M15 18l-6-6 6-6"/>
+        <!-- <button
+      class="back"
+      (click)="back()"
+      style="
+        position: absolute;
+        top: calc(env(safe-area-inset-top, 0px) + 8px);
+        left: 8px;
+        z-index: 10;
+        color: #fff;
+        background: rgba(0, 0, 0, 0.35);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M15 18l-6-6 6-6" />
       </svg>
     </button>
 
-    <!-- Viewfinder -->
     <div class="scan-viewfinder">
       @if (!isNative) {
-        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 32px; text-align: center;">
-          <p style="color: rgba(255,255,255,0.6); font-size: 15px; font-weight: 600; line-height: 1.6;">
-            ID scanning is only available<br>in the native app.
-          </p>
-        </div>
-      } @else {
-        <div class="scan-frame">
-          <div class="scan-corners"></div>
-          @if (phase() === 'scanning') {
-            <span class="spin" style="position: absolute; inset: 0; margin: auto; width: 36px; height: 36px; border-width: 3px;"></span>
-          } @else {
-            <div class="scan-laser"></div>
-          }
-        </div>
-        <p style="color: rgba(255,255,255,0.55); text-align: center; font-size: 13px; font-weight: 600; margin-top: 24px; padding: 0 32px;">
-          @if (initializing()) {
-            Initializing scanner…
-          } @else {
-            Hold the document inside the frame
-          }
+      <div
+        style="
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 32px;
+          text-align: center;
+        "
+      >
+        <p
+          style="
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.6;
+          "
+        >
+          ID scanning is only available<br />in the native app.
         </p>
+      </div>
+      } @else {
+      <div class="scan-frame">
+        <div class="scan-corners"></div>
+        @if (phase() === 'scanning') {
+        <span
+          class="spin"
+          style="
+            position: absolute;
+            inset: 0;
+            margin: auto;
+            width: 36px;
+            height: 36px;
+            border-width: 3px;
+          "
+        ></span>
+        } @else {
+        <div class="scan-laser"></div>
+        }
+      </div>
+      <p
+        style="
+          color: rgba(255, 255, 255, 0.55);
+          text-align: center;
+          font-size: 13px;
+          font-weight: 600;
+          margin-top: 24px;
+          padding: 0 32px;
+        "
+      >
+        @if (initializing()) { Initializing scanner… } @else { Hold the document
+        inside the frame }
+      </p>
       }
     </div>
 
-    <!-- Shutter toolbar -->
     <div class="scan-toolbar">
-      <button class="shutter-btn" [disabled]="shutterDisabled()" (click)="scan()"
-        [style.opacity]="shutterDisabled() ? '0.4' : '1'"></button>
-    </div>
-
-  </div>
-
-  <!-- Result overlay (white, covers scan screen) -->
-  @if (phase() === 'result') {
-    <div style="position: absolute; inset: 0; background: #fff; z-index: 20; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px);">
-
-      <!-- Header -->
-      <div style="display: flex; align-items: center; padding: 0 4px 0 16px; height: 52px; border-bottom: 1px solid var(--line); flex-shrink: 0;">
-        <span style="font-size: 17px; font-weight: 700; color: var(--ink); flex: 1;">ID Scan result</span>
-        <button class="icon-btn" (click)="back()" style="color: var(--ink-3);">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 6L6 18M6 6l12 12"/>
-          </svg>
-        </button>
+      <button
+        class="shutter-btn"
+        [disabled]="shutterDisabled()"
+        (click)="scan()"
+        [style.opacity]="shutterDisabled() ? '0.4' : '1'"
+      ></button>
+    </div> -->
       </div>
+      }
+      <!-- Result overlay (white, covers scan screen) -->
+      @if (readerStatus() == ReaderStatus.FINISHED) { @let _result =
+      scanResult(); @let _scannedData = _result.scannedData; @let _documentData
+      = _result.documentData;
+      <div
+        style="
+          position: absolute;
+          inset: 0;
+          background: #fff;
+          z-index: 20;
+          display: flex;
+          flex-direction: column;
+          padding-top: env(safe-area-inset-top, 0px);
+        "
+      >
+        <!-- Header -->
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            padding: 0 4px 0 16px;
+            height: 52px;
+            border-bottom: 1px solid var(--line);
+            flex-shrink: 0;
+          "
+        >
+          <span
+            style="
+              font-size: 17px;
+              font-weight: 700;
+              color: var(--ink);
+              flex: 1;
+            "
+            >ID Scan result</span
+          >
+          <button class="icon-btn" (click)="back()" style="color: var(--ink-3)">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-      <!-- Scrollable result fields -->
-      <div class="app-scroll" style="padding: 0 var(--pad);">
-
-        @if (fullName()) {
-          <div style="padding: 14px 0; border-bottom: 1px solid var(--line);">
-            <div class="detail-label">First &amp; Last name</div>
-            <div class="detail-value">{{ fullName() }}</div>
-          </div>
-        }
-
-        @if (docType()) {
-          <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line);">
-            <div style="flex: 1;">
-              <div class="detail-label">Document type</div>
-              <div class="detail-value">{{ docType() }}</div>
+        <!-- Scrollable result fields -->
+        <div class="app-scroll" style="padding: 0 var(--pad)">
+          @if (_scannedData?.['first_name']?.['value']) { @let fullName =
+          `${_scannedData?.['first_name']?.['value'] || ''}
+          ${_scannedData?.['last_name']?.['value'] || ''}`;
+          <div style="padding: 14px 0; border-bottom: 1px solid var(--line)">
+            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">
+              First &amp; Last name
             </div>
-            @if (result()?.document?.document_number) {
-              <div style="flex: 1;">
-                <div class="detail-label">Document number</div>
-                <div class="detail-value">{{ result()!.document!.document_number }}</div>
+            <div
+              style="
+                font-size: 19px;
+                color: var(--ink);
+                font-weight: 700;
+                margin-top: 3px;
+              "
+            >
+              {{ fullName | dashIfEmpty }}
+            </div>
+          </div>
+          } @if (_documentData?.['document_type']) {
+          <div
+            style="
+              display: flex;
+              gap: 16px;
+              padding: 14px 0;
+              border-bottom: 1px solid var(--line);
+            "
+          >
+            <div style="flex: 1">
+              <div
+                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
+              >
+                Document type
               </div>
+              <div
+                style="
+                  font-size: 19px;
+                  color: var(--ink);
+                  font-weight: 700;
+                  margin-top: 3px;
+                "
+              >
+                {{ _documentData?.document_type ?? "" | defaultValue: options :
+                "document_type" : "" | dashIfEmpty }}
+              </div>
+            </div>
+            @if (_scannedData?.['document_number']?.['value']) {
+            <div style="flex: 1">
+              <div
+                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
+              >
+                Document number
+              </div>
+              <div
+                style="
+                  font-size: 19px;
+                  color: var(--ink);
+                  font-weight: 700;
+                  margin-top: 3px;
+                "
+              >
+                {{ _scannedData?.['document_number']?.['value'] ?? "" |
+                defaultValue: options : "document_number" : "" | dashIfEmpty }}
+              </div>
+            </div>
             }
           </div>
-        }
-
-        @if (resultField('age') || resultField('gender')) {
-          <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line);">
-            @if (resultField('age')) {
-              <div style="flex: 1;">
-                <div class="detail-label">Age</div>
-                <div class="detail-value">{{ resultField('age') }}</div>
+          } @if (_scannedData?.['age']?.['value'] ||
+          _scannedData?.['gender']?.['value']) {
+          <div
+            style="
+              display: flex;
+              gap: 16px;
+              padding: 14px 0;
+              border-bottom: 1px solid var(--line);
+            "
+          >
+            @if (_scannedData?.['age']?.['value']) {
+            <div style="flex: 1">
+              <div
+                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
+              >
+                Age
               </div>
-            }
-            @if (resultField('gender')) {
-              <div style="flex: 1;">
-                <div class="detail-label">Gender</div>
-                <div class="detail-value">{{ resultField('gender') }}</div>
+              <div
+                style="
+                  font-size: 19px;
+                  color: var(--ink);
+                  font-weight: 700;
+                  margin-top: 3px;
+                "
+              >
+                {{ _scannedData?.['age']?.['value'] }}
               </div>
+            </div>
+            } @if (_scannedData?.['gender']?.['value']) {
+            <div style="flex: 1">
+              <div
+                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
+              >
+                Gender
+              </div>
+              <div
+                style="
+                  font-size: 19px;
+                  color: var(--ink);
+                  font-weight: 700;
+                  margin-top: 3px;
+                "
+              >
+                {{ _scannedData?.['gender']?.['value'] }}
+              </div>
+            </div>
             }
           </div>
-        }
-
-        @if (resultField('birth_place') || resultField('birth_date')) {
-          <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line);">
-            @if (resultField('birth_place')) {
-              <div style="flex: 1;">
-                <div class="detail-label">Place of birth</div>
-                <div class="detail-value">{{ resultField('birth_place') }}</div>
+          } @if (_scannedData?.['birth_place']?.['value'] ||
+          _scannedData?.['birth_date']?.['value']) {
+          <div
+            style="
+              display: flex;
+              gap: 16px;
+              padding: 14px 0;
+              border-bottom: 1px solid var(--line);
+            "
+          >
+            @if (_scannedData?.['birth_place']?.['value']) {
+            <div style="flex: 1">
+              <div
+                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
+              >
+                Place of birth
               </div>
-            }
-            @if (resultField('birth_date')) {
-              <div style="flex: 1;">
-                <div class="detail-label">Date of birth</div>
-                <div class="detail-value">{{ resultField('birth_date') }}</div>
+              <div
+                style="
+                  font-size: 19px;
+                  color: var(--ink);
+                  font-weight: 700;
+                  margin-top: 3px;
+                "
+              >
+                {{ _scannedData?.['birth_place']?.['value'] ?? "" | dashIfEmpty
+                }}
               </div>
+            </div>
+            } @if (_scannedData?.['birth_date']?.['value']) {
+            <div style="flex: 1">
+              <div
+                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
+              >
+                Date of birth
+              </div>
+              <div
+                style="
+                  font-size: 19px;
+                  color: var(--ink);
+                  font-weight: 700;
+                  margin-top: 3px;
+                "
+              >
+                {{ _scannedData?.['birth_date']?.['value'] | dashIfEmpty }}
+              </div>
+            </div>
             }
           </div>
-        }
-
-        @if (resultField('citizenship')) {
-          <div style="padding: 14px 0; border-bottom: 1px solid var(--line);">
-            <div class="detail-label">Citizenship</div>
-            <div class="detail-value">{{ resultField('citizenship') }}</div>
+          } @if (_scannedData?.['citizenship']?.['value']) {
+          <div style="padding: 14px 0; border-bottom: 1px solid var(--line)">
+            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">
+              Citizenship
+            </div>
+            <div
+              style="
+                font-size: 19px;
+                color: var(--ink);
+                font-weight: 700;
+                margin-top: 3px;
+              "
+            >
+              {{ _scannedData?.['citizenship']?.['value'] ?? "" | defaultValue:
+              options : "country" : "NAME" | dashIfEmpty}}
+            </div>
           </div>
-        }
-
-        @if (resultField('mother_name')) {
-          <div style="padding: 14px 0;">
-            <div class="detail-label">Mother's name</div>
-            <div class="detail-value">{{ resultField('mother_name') }}</div>
+          } @if (_scannedData?.['mother_name']?.['value']) {
+          <div style="padding: 14px 0">
+            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">
+              Mother's name
+            </div>
+            <div
+              style="
+                font-size: 19px;
+                color: var(--ink);
+                font-weight: 700;
+                margin-top: 3px;
+              "
+            >
+              {{ _scannedData?.['mother_name']?.['value'] ?? "" | defaultValue:
+              options : "mother_name" : "" | dashIfEmpty }}
+            </div>
           </div>
-        }
+          }
+        </div>
 
+        <!-- Action buttons -->
+        <div
+          style="
+            display: flex;
+            gap: 12px;
+            padding: 12px var(--pad);
+            padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+            border-top: 1px solid var(--line);
+            flex-shrink: 0;
+          "
+        >
+          <!-- <button class="btn secondary" style="flex: 1; width: auto">Edit</button>
+      <button class="btn" style="flex: 1; width: auto">Save</button> -->
+          <ion-button class="blue" (click)="processDocument('edit')">
+            <span>{{ "global.btnEdit" | translateIT }}</span>
+          </ion-button>
+          <ion-button class="green" (click)="processDocument('save')">
+            <span>{{ "global.btnSave" | translateIT }}</span>
+          </ion-button>
+        </div>
       </div>
-
-      <!-- Action buttons -->
-      <div style="display: flex; gap: 12px; padding: 12px var(--pad); padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); flex-shrink: 0;">
-        <button class="btn secondary" style="flex: 1; width: auto;">Edit</button>
-        <button class="btn" style="flex: 1; width: auto;">Save</button>
-      </div>
-
+      }
     </div>
-  }
-
+  </div>
 </ion-content>
