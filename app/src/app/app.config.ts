@@ -1,7 +1,16 @@
-import { APP_INITIALIZER, ApplicationConfig, ErrorHandler, inject, provideAppInitializer } from '@angular/core';
+import {
+  APP_INITIALIZER,
+  ApplicationConfig,
+  ErrorHandler,
+  inject,
+  provideAppInitializer,
+} from '@angular/core';
 import { provideRouter, RouteReuseStrategy, Router } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { provideIonicAngular, IonicRouteStrategy } from '@ionic/angular/standalone';
+import {
+  provideIonicAngular,
+  IonicRouteStrategy,
+} from '@ionic/angular/standalone';
 import * as Sentry from '@sentry/angular';
 
 import { routes } from './app.routes';
