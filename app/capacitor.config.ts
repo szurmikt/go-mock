@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.sabeeapp.goapp',
+  appId: 'com.sabeeapp.go',
   appName: 'SabeeApp Go',
   webDir: 'www',
   ios: {

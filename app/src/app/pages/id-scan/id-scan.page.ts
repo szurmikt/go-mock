@@ -1,9 +1,29 @@
-import { Component, OnInit, OnDestroy, computed, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  computed,
+  signal,
+  inject,
+} from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
-import { IonContent } from '@ionic/angular/standalone';
-import { DocumentReaderService, ReaderStatus } from '../../services/document-reader';
-import { ScannedDataInterface } from '../../models/guest.interface';
+import { IonContent, IonButton, IonSpinner } from '@ionic/angular/standalone';
+import {
+  DocumentReaderService,
+  ReaderStatus,
+} from '../../services/document-reader.service';
+import {
+  GuestInterface,
+  ScannedDataInterface,
+  ScanResultInterface,
+} from '../../models/guest.interface';
+import { TranslatePipe } from '../../pipes/translate.pipe';
+import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
+import { DefaultValuePipe } from '../../pipes/default-value.pipe';
+import { DocuscanService } from 'src/app/services/docuscan';
+import { DocumentData } from 'src/app/models/statistics-interface';
+import { ReservationService } from 'src/app/services/reservation';
 
 type Phase = 'camera' | 'scanning' | 'result';
 
@@ -12,66 +32,140 @@ type Phase = 'camera' | 'scanning' | 'result';
   templateUrl: './id-scan.page.html',
   styleUrls: ['./id-scan.page.scss'],
   standalone: true,
-  imports: [IonContent],
+  imports: [
+    IonSpinner,
+    IonButton,
+    IonContent,
+    TranslatePipe,
+    DashIfEmptyPipe,
+    DefaultValuePipe,
+  ],
+  providers: [TranslatePipe, DashIfEmptyPipe, DefaultValuePipe],
 })
 export class IdScanPage implements OnInit, OnDestroy {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private documentReader = inject(DocumentReaderService);
+  private docuscanService = inject(DocuscanService);
+  private reservationService = inject(ReservationService);
+
   phase = signal<Phase>('camera');
   result = signal<ScannedDataInterface | null>(null);
+  guest = signal<GuestInterface | null>(null);
 
   readonly isNative = Capacitor.isNativePlatform();
-  readonly readerStatus = this.documentReader.status;
+  readonly readerStatus = computed(() => this.documentReader.readerStatus());
   readonly ReaderStatus = ReaderStatus;
 
-  readonly initializing = computed(() =>
-    this.documentReader.status() === ReaderStatus.INIT ||
-    this.documentReader.status() === ReaderStatus.PROCESSING,
+  readonly scanResult = computed(() => this.documentReader.scanResult());
+
+  readonly initializing = computed(
+    () =>
+      this.documentReader.readerStatus() === ReaderStatus.INIT ||
+      this.documentReader.readerStatus() === ReaderStatus.PROCESSING,
   );
 
-  readonly shutterDisabled = computed(() =>
-    !this.isNative || this.phase() === 'scanning' || this.initializing(),
+  readonly shutterDisabled = computed(
+    () => !this.isNative || this.phase() === 'scanning' || this.initializing(),
   );
+
+  private timeouts: ReturnType<typeof setTimeout>[] = [];
+  private t(fn: () => void, ms: number) {
+    this.timeouts.push(setTimeout(fn, ms));
+  }
 
   private reservationCode!: string;
   private guestId!: string;
 
-  constructor(
-    private route: ActivatedRoute,
-    private documentReader: DocumentReaderService,
-  ) {}
+  options: any;
+
+  constructor() {}
 
   async ngOnInit(): Promise<void> {
     this.reservationCode = this.route.snapshot.paramMap.get('code')!;
     this.guestId = this.route.snapshot.paramMap.get('guestId')!;
-    if (this.isNative) {
-      await this.documentReader.init().catch(() => {});
-    }
-  }
+    console.log(
+      'IdScanPage ngOnInit this.reservationCode',
+      this.reservationCode,
+    );
+    console.log('IdScanPage ngOnInit this.guestId', this.guestId);
 
-  private timeouts: ReturnType<typeof setTimeout>[] = [];
+    const guests = await this.reservationService.fetchGuests(
+      this.reservationCode,
+    );
+    const found = guests.find((g) => g.reservation_guest_id === this.guestId);
+    this.guest.set(found ?? null);
+
+    await this.documentReader.init().catch((e) => {
+      console.error('Error initializing document reader', e);
+      alert('Error initializing document reader: ' + String(e));
+    });
+    // this.scan();
+  }
 
   ngOnDestroy(): void {
     this.timeouts.forEach(clearTimeout);
   }
 
-  async scan(): Promise<void> {
-    this.phase.set('scanning');
-    let started = false;
-    try {
-      started = await this.documentReader.scan();
-    } catch {
-      this.phase.set('camera');
-      return;
-    }
-    if (started) {
-      this.result.set(this.documentReader.scanResult());
-      this.phase.set('result');
-    } else {
-      this.phase.set('camera');
-    }
+  async IonViewWillEnter(): Promise<void> {
+    console.log('IonViewWillEnter');
+  }
+
+  scan(): void {
+    this.documentReader.scan();
   }
 
   back(): void {
     window.history.back();
+  }
+
+  processDocument(action: string) {
+    const _scanResult: ScanResultInterface = this.scanResult();
+    this.docuscanService.lastScanResult = _scanResult;
+    console.log(
+      'this.docuscanService.lastScanResult',
+      this.docuscanService.lastScanResult,
+    );
+    if (action == 'save') {
+      const guest = this.guest();
+      console.log('processDocument guest', guest);
+      if (_scanResult.scannedData) {
+        guest!.scanned_data =
+          this.docuscanService.scannedDataToGuestScannedData(
+            _scanResult.scannedData,
+          );
+      }
+      console.log('processDocument guest scanned', guest);
+
+      this.docuscanService.fillGuestDataFromScannedData(guest!);
+      console.log('processDocument guest filled', guest);
+
+      this.guest.set(guest!);
+
+      // this.guest.scanned_data = this.scannedDataSignal();
+      // this.guest = this.docuscanService.fillGuestDataFromScannedData(
+      //   this.guest,
+      // );
+      // this.docuscanService.lastScannedData = null;
+      // this.docuscanService.lastDocumentData = null;
+
+      // this.reservationService
+      //   .updateGuest(this.reservationCode!, this.guest()!)
+      //   .then(() => {
+      //     console.log('GuestPage openScanModal guest updated successfully');
+      //     this.docuscanService.lastScanResult = null;
+      //     this.back();
+      //   });
+    } else {
+      this.t(
+        () =>
+          this.router.navigate(
+            ['/guest', this.reservationCode, this.guestId, 'edit'],
+            { replaceUrl: true },
+          ),
+        300,
+      );
+    }
   }
 
   resultField(key: keyof ScannedDataInterface): string {
@@ -100,7 +194,9 @@ export class IdScanPage implements OnInit, OnDestroy {
   fullName(): string {
     const r = this.result();
     if (!r) return '';
-    return `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim() || r.full_name || '';
+    return (
+      `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim() || r.full_name || ''
+    );
   }
 
   docType(): string {

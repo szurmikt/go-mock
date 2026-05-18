@@ -1,3 +1,5 @@
+import { DocumentData } from './statistics-interface';
+
 export interface GuestInterface {
   reservation_guest_id: string;
   guest_id: string;
@@ -54,4 +56,15 @@ export interface ScannedGuestDataInterface {
     modified: boolean;
     error?: boolean;
   };
+}
+
+export interface GuestPostInterface {
+  reservation_code: string;
+  guest: ScannedGuestDataInterface;
+  // address: ScannedGuestDataInterface;
+}
+
+export interface ScanResultInterface {
+  documentData: DocumentData | null;
+  scannedData: ScannedGuestDataInterface | null;
 }

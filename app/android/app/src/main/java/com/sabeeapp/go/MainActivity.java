@@ -1,4 +1,4 @@
-package com.sabeeapp.goapp;
+package com.sabeeapp.go;
 
 import com.getcapacitor.BridgeActivity;
 
