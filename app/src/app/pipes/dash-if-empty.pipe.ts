@@ -13,12 +13,6 @@ export class DashIfEmptyPipe implements PipeTransform {
     ) {
       return 'N/A';
     }
-    // if (typeof value === 'number' && isNaN(value)) {
-    //   return '-';
-    // }
-    // if (typeof value === 'object' && Object.keys(value).length === 0) {
-    //   return '-';
-    // }
     return value;
   }
 }

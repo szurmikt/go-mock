@@ -100,7 +100,7 @@ export class IdScanPage implements OnInit, OnDestroy {
       console.error('Error initializing document reader', e);
       alert('Error initializing document reader: ' + String(e));
     });
-    // this.scan();
+    this.scan();
   }
 
   ngOnDestroy(): void {

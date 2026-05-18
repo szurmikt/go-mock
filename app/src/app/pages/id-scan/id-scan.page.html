@@ -17,10 +17,7 @@
       </button>
       <span class="title">Id Scan</span>
     </div>
-    <div
-      class="app-scroll"
-      style="padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px))"
-    >
+    <div class="app-scroll">
       @if (readerStatus() != ReaderStatus.FINISHED ) {
       <div class="scan-screen">
         @if ( readerStatus() == ReaderStatus.INIT || readerStatus() ==
@@ -32,51 +29,51 @@
         </div>
         } @if (readerStatus() == ReaderStatus.TIMEOUT) {
         <div class="not-processed">Scan Timeout</div>
-        <div class="scan-info">
-          <div class="button-container row-view">
-            <ion-button class="blue" expand="block" (click)="scan()">
-              <span class="btn-text">
-                {{ "scanModalComponent.btnIdScan" | translateIT }}
-              </span>
-            </ion-button>
-            <ion-button class="grey" expand="block" (click)="back()">
-              <span class="btn-text"
-                >{{ "global.btnCancel" | translateIT }}</span
-              >
-            </ion-button>
-          </div>
+        <div class="button-container row-view">
+          <ion-button class="blue" expand="block" (click)="scan()">
+            <span class="btn-text">
+              <!-- {{ "scanModalComponent.btnIdScan" | translateIT }} -->
+              Scan Again
+            </span>
+          </ion-button>
+          <ion-button class="grey" expand="block" (click)="back()">
+            <span class="btn-text">
+              <!-- {{ "global.btnCancel" | translateIT }} -->
+              Cancel
+            </span>
+          </ion-button>
         </div>
         } @if (readerStatus() == ReaderStatus.CANCELLED) {
         <div class="not-processed">Scan Cancelled</div>
-        <div class="scan-info">
-          <div class="button-container">
-            <ion-button class="blue" expand="block" (click)="scan()">
-              <span class="btn-text">
-                {{ "scanModalComponent.btnIdScan" | translateIT }}
-              </span>
-            </ion-button>
-            <ion-button class="grey" expand="block" (click)="back()">
-              <span class="btn-text"
-                >{{ "global.btnCancel" | translateIT }}</span
-              >
-            </ion-button>
-          </div>
+        <div class="button-container row-view">
+          <ion-button class="blue" expand="block" (click)="scan()">
+            <span class="btn-text">
+              <!-- {{ "scanModalComponent.btnIdScan" | translateIT }} -->
+              Scan Again
+            </span>
+          </ion-button>
+          <ion-button class="grey" expand="block" (click)="back()">
+            <span class="btn-text">
+              <!-- {{ "global.btnCancel" | translateIT }} -->
+              Cancel
+            </span>
+          </ion-button>
         </div>
         } @if (readerStatus() == ReaderStatus.INTERRUPTED) {
         <div class="not-processed">Scan Interrupted</div>
-        <div class="scan-info">
-          <div class="button-container">
-            <ion-button class="blue" expand="block" (click)="scan()">
-              <span class="btn-text">
-                {{ "scanModalComponent.btnIdScan" | translateIT }}
-              </span>
-            </ion-button>
-            <ion-button class="grey" expand="block" (click)="back()">
-              <span class="btn-text"
-                >{{ "global.btnCancel" | translateIT }}</span
-              >
-            </ion-button>
-          </div>
+        <div class="button-container row-view">
+          <ion-button class="blue" expand="block" (click)="scan()">
+            <span class="btn-text">
+              <!-- {{ "scanModalComponent.btnIdScan" | translateIT }} -->
+              Scan Again
+            </span>
+          </ion-button>
+          <ion-button class="grey" expand="block" (click)="back()">
+            <span class="btn-text">
+              <!-- {{ "global.btnCancel" | translateIT }} -->
+              Cancel
+            </span>
+          </ion-button>
         </div>
         }
 
