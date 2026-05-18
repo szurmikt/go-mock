@@ -1,6 +1,7 @@
 import { Component, ErrorHandler, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
+import { App } from '@capacitor/app';
 import { AuthService } from '../../services/auth';
 import { BiometricService } from '../../services/biometric';
 import { LanguageService } from '../../services/language.service';
@@ -20,11 +21,19 @@ export class SettingsPage {
   readonly isDev = !environment.production;
   private errorHandler = inject(ErrorHandler);
 
+  appVersion = signal('');
+  appBuild = signal('');
+
   constructor(
     public auth: AuthService,
     private biometric: BiometricService,
     private router: Router,
-  ) {}
+  ) {
+    App.getInfo().then(info => {
+      this.appVersion.set(info.version);
+      this.appBuild.set(info.build);
+    }).catch(() => {});
+  }
 
   back() { window.history.back(); }
   lock() { this.biometric.lockSession(); }

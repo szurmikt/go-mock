@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth';
+import { LanguageService } from '../../services/language.service';
 
 @Component({
   selector: 'app-login',
@@ -15,24 +16,20 @@ export class LoginPage {
   email = '';
   password = '';
   loading = false;
-  lang = 'en';
   errorMessage = '';
   errorOpen = false;
 
-  readonly languages = [
-    { code: 'en', label: 'EN' },
-    { code: 'hu', label: 'HU' },
-    { code: 'de', label: 'DE' },
-    { code: 'tr', label: 'TR' },
-    { code: 'fr', label: 'FR' },
-    { code: 'lv', label: 'LV' },
-    { code: 'es', label: 'ES' },
-  ];
+  lang = inject(LanguageService);
 
   constructor(
     private auth: AuthService,
     private router: Router,
   ) {}
+
+  changeLang(event: Event) {
+    const code = (event.target as HTMLSelectElement).value;
+    this.lang.setLanguage(code);
+  }
 
   async submit(e: Event) {
     e.preventDefault();

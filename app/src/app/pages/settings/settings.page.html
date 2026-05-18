@@ -28,12 +28,12 @@
               <div class="page-loading">
                 <span class="spin-primary" style="width: 28px; height: 28px; border-width: 3px"></span>
               </div>
-            } @else if (lang.availableLanguages().length === 0) {
+            } @else if (lang.displayLanguages().length === 0) {
               <div style="text-align: center; color: var(--ink-4); font-size: var(--font-sm); padding: 24px 0">
                 No languages available
               </div>
             } @else {
-              @for (l of lang.availableLanguages(); track l.code) {
+              @for (l of lang.displayLanguages(); track l.code) {
                 <button class="action-item" (click)="selectLang(l.code)">
                   <span class="action-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -93,6 +93,13 @@
                   style="border-color: var(--ink-4); color: var(--ink-4); font-size: var(--font-sm)">
             Test Sentry
           </button>
+        }
+
+        <!-- Version info -->
+        @if (appVersion()) {
+          <div style="text-align: center; color: var(--ink-4); font-size: var(--font-xs); margin-top: 8px">
+            Version {{ appVersion() }} ({{ appBuild() }})
+          </div>
         }
 
       </div>

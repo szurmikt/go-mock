@@ -9,12 +9,12 @@ const prodLine = '                .product(name: "DocumentReaderPlugin", package
 
 if (!src.includes('DocumentReaderPlugin')) {
   src = src.replace(
-    /(\.package\(name: "CapacitorNativeBiometric"[^\n]+\n)/,
-    `$1${depLine}\n`
+    /(\.package\(name: "CapacitorNativeBiometric"[^\n]+?)(\n)/,
+    `$1,\n${depLine}\n`
   );
   src = src.replace(
-    /(\.product\(name: "CapacitorNativeBiometric"[^\n]+\n)/,
-    `$1${prodLine}\n`
+    /(\.product\(name: "CapacitorNativeBiometric"[^\n]+?)(\n)/,
+    `$1,\n${prodLine}\n`
   );
   fs.writeFileSync(pkgPath, src, 'utf8');
   console.log('✔ DocumentReaderPlugin re-added to Package.swift');

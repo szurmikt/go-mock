@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { Device } from '@capacitor/device';
 
@@ -29,6 +29,12 @@ export class LanguageService {
   readonly currentLanguage = signal<string>('En');
   readonly translations = signal<TranslationMap>(TRANSLATIONS);
   readonly availableLanguages = signal<Language[]>([]);
+
+  readonly displayLanguages = computed<Language[]>(() => {
+    const langs = this.availableLanguages();
+    if (langs.length > 0) return langs;
+    return [{ code: 'En', name: 'English' }];
+  });
 
   async init(): Promise<void> {
     const stored = await this.storage.get<string>(STORAGE_KEY_LANG);
