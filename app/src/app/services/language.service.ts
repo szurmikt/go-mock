@@ -41,10 +41,14 @@ export class LanguageService {
     const deviceLang = await this.getDeviceLang();
     this.currentLanguage.set(this.normalize(stored ?? deviceLang));
 
-    const cached = await this.storage.get<TranslationMap>(STORAGE_KEY_TRANSLATIONS);
+    const cached = await this.storage.get<TranslationMap>(
+      STORAGE_KEY_TRANSLATIONS,
+    );
     if (cached) this.translations.set(cached);
 
-    const cachedLangs = await this.storage.get<Language[]>(STORAGE_KEY_LANGUAGES);
+    const cachedLangs = await this.storage.get<Language[]>(
+      STORAGE_KEY_LANGUAGES,
+    );
     if (cachedLangs) this.availableLanguages.set(cachedLangs);
 
     // Fire-and-forget: update translations in the background without blocking app start
@@ -60,11 +64,14 @@ export class LanguageService {
   async fetchLanguages(): Promise<void> {
     try {
       const response = await firstValueFrom(
-        this.api.get<ApiResponse<LanguagesResponse>>('languages_get')
+        this.api.get<ApiResponse<LanguagesResponse>>('languages'),
       );
       if (!response.success) return;
 
-      const merged = this.mergeTranslations(TRANSLATIONS, response.data.translations);
+      const merged = this.mergeTranslations(
+        TRANSLATIONS,
+        response.data.translations,
+      );
       this.translations.set(merged);
       this.availableLanguages.set(response.data.languages);
 
@@ -75,7 +82,10 @@ export class LanguageService {
     }
   }
 
-  private mergeTranslations(fallback: TranslationMap, api: TranslationMap): TranslationMap {
+  private mergeTranslations(
+    fallback: TranslationMap,
+    api: TranslationMap,
+  ): TranslationMap {
     const merged: TranslationMap = { ...fallback };
     for (const group in api) {
       merged[group] = { ...(merged[group] ?? {}), ...api[group] };
