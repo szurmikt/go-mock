@@ -1,6 +1,5 @@
 import UIKit
 import Capacitor
-import DocumentReaderPlugin
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
