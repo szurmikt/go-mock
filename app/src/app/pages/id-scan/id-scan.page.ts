@@ -149,13 +149,13 @@ export class IdScanPage implements OnInit, OnDestroy {
       // this.docuscanService.lastScannedData = null;
       // this.docuscanService.lastDocumentData = null;
 
-      // this.reservationService
-      //   .updateGuest(this.reservationCode!, this.guest()!)
-      //   .then(() => {
-      //     console.log('GuestPage openScanModal guest updated successfully');
-      //     this.docuscanService.lastScanResult = null;
-      //     this.back();
-      //   });
+      this.reservationService
+        .updateGuest(this.reservationCode!, this.guest()!)
+        .then(() => {
+          console.log('GuestPage openScanModal guest updated successfully');
+          this.docuscanService.lastScanResult = null;
+          this.back();
+        });
     } else {
       this.t(
         () =>
