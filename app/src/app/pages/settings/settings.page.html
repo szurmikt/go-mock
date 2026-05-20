@@ -87,20 +87,10 @@
           }
         </button>
 
-        <!-- Dev only: Sentry test -->
-        @if (isDev) {
-          <button class="btn secondary" (click)="testSentry()"
-                  style="border-color: var(--ink-4); color: var(--ink-4); font-size: var(--font-sm)">
-            Test Sentry
-          </button>
-        }
-
-        <!-- Version info -->
-        @if (appVersion()) {
-          <div style="text-align: center; color: var(--ink-4); font-size: var(--font-xs); margin-top: 8px">
-            Version {{ appVersion() }} ({{ appBuild() }})
-          </div>
-        }
+        <!-- Copyright / version -->
+        <div style="text-align: center; color: var(--ink-4); font-size: var(--font-xs); margin-top: 8px">
+          &copy; SabeeApp &ndash; thePass Ltd 2026{{ appVersion() ? ' | v' + appVersion() + ' (' + appBuild() + ')' : '' }}
+        </div>
 
       </div>
     </div>

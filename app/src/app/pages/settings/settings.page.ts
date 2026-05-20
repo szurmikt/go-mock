@@ -1,12 +1,10 @@
-import { Component, ErrorHandler, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { App } from '@capacitor/app';
 import { AuthService } from '../../services/auth';
 import { BiometricService } from '../../services/biometric';
 import { LanguageService } from '../../services/language.service';
-import { environment } from '../../../environments/environment';
-
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.page.html',
@@ -18,8 +16,6 @@ export class SettingsPage {
   loadingLangs = signal(false);
   langOpen = signal(false);
   lang = inject(LanguageService);
-  readonly isDev = !environment.production;
-  private errorHandler = inject(ErrorHandler);
 
   appVersion = signal('');
   appBuild = signal('');
@@ -50,10 +46,6 @@ export class SettingsPage {
   async selectLang(code: string) {
     await this.lang.setLanguage(code);
     this.langOpen.set(false);
-  }
-
-  testSentry() {
-    this.errorHandler.handleError(new Error('Sentry test — triggered manually from Settings'));
   }
 
   async logout() {

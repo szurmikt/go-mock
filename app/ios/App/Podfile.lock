@@ -75,7 +75,7 @@ SPEC CHECKSUMS:
   CapacitorNativeBiometric: 78cf21304251a512e4597437325b5e9b0cd9f7b3
   CapacitorPreferences: cca2021f386efb75947c850334447d9ff22b14f1
   CapacitorStatusBar: 01d5763b4ed720de5ce2edbc938de6a98f4c8f32
-  CordovaPlugins: 64e50b86480a8b74c82626b3035bccb1ecf6e484
+  CordovaPlugins: 466b7f694343313e5cce30d4a8d9b460c2a9cef5
   DocumentReader: 7313b95446f45733c499668d60867e8097e51687
   DocumentReaderFullRFID: d3a8772fe99c5dbdf46c148378c5f07a863c15f0
   RegulaCommon: 7176eac86d34ef015aef3ac7f852366ad896089f

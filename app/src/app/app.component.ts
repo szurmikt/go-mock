@@ -58,6 +58,9 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    const initialUrl = window.location.pathname + window.location.search;
+    const authlessRoutes = ['/login', '/mfa', '/property-select', '/'];
+
     this.auth.loadStoredAuth().then(async () => {
       if (this.auth.isAuthenticated()) {
         await this.biometric.checkAndLock();
@@ -66,11 +69,17 @@ export class AppComponent implements OnInit, OnDestroy {
         }
       }
 
-      const url = !this.auth.isAuthenticated()
-        ? '/login'
-        : this.auth.selectedProperty()
-          ? '/home'
-          : '/property-select';
+      let url: string;
+      if (!this.auth.isAuthenticated()) {
+        url = '/login';
+      } else if (!this.auth.selectedProperty()) {
+        url = '/property-select';
+      } else if (initialUrl && !authlessRoutes.includes(initialUrl.split('?')[0])) {
+        url = initialUrl;
+      } else {
+        url = '/home';
+      }
+
       await this.router.navigateByUrl(url, { replaceUrl: true });
       this.loading.set(false);
 

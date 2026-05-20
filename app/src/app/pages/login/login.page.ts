@@ -13,8 +13,8 @@ import { LanguageService } from '../../services/language.service';
   imports: [FormsModule, IonContent],
 })
 export class LoginPage {
-  email = 'csaba@szurmik.com';
-  password = 'BaddPsv9rd63!';
+  email = '';
+  password = '';
   loading = false;
   errorMessage = '';
   errorOpen = false;

@@ -27,6 +27,26 @@ import { ReservationService } from 'src/app/services/reservation';
 
 type Phase = 'camera' | 'scanning' | 'result';
 
+const MOCK_SCAN_RESULT: ScanResultInterface = {
+  documentData: {
+    document_type: 'passport',
+    scan_type: 'ocr',
+    date_of_issue: '2018-03-15',
+    message: '',
+  },
+  scannedData: {
+    first_name:      { value: 'János',       formatted_value: 'János',       modified: false },
+    last_name:       { value: 'Kovács',      formatted_value: 'Kovács',      modified: false },
+    birth_date:      { value: '1985-06-22',  formatted_value: '1985-06-22',  modified: false },
+    birth_place:     { value: 'Budapest',    formatted_value: 'Budapest',    modified: false },
+    gender:          { value: 'Male',        formatted_value: 'Male',        modified: false },
+    citizenship:     { value: 'HUN',         formatted_value: 'HUN',         modified: false },
+    age:             { value: 39,            formatted_value: '39',          modified: false },
+    mother_name:     { value: 'Szabó Mária', formatted_value: 'Szabó Mária', modified: false },
+    document_number: { value: 'AB1234567',   formatted_value: 'AB1234567',   modified: false },
+  },
+};
+
 @Component({
   selector: 'app-id-scan',
   templateUrl: './id-scan.page.html',
@@ -53,16 +73,19 @@ export class IdScanPage implements OnInit, OnDestroy {
   result = signal<ScannedDataInterface | null>(null);
   guest = signal<GuestInterface | null>(null);
 
+  private readonly _previewStatus = signal<ReaderStatus | null>(null);
+  private readonly _previewResult = signal<ScanResultInterface | null>(null);
+
   readonly isNative = Capacitor.isNativePlatform();
-  readonly readerStatus = computed(() => this.documentReader.readerStatus());
+  readonly readerStatus = computed(() => this._previewStatus() ?? this.documentReader.readerStatus());
   readonly ReaderStatus = ReaderStatus;
 
-  readonly scanResult = computed(() => this.documentReader.scanResult());
+  readonly scanResult = computed(() => this._previewResult() ?? this.documentReader.scanResult());
 
   readonly initializing = computed(
     () =>
-      this.documentReader.readerStatus() === ReaderStatus.INIT ||
-      this.documentReader.readerStatus() === ReaderStatus.PROCESSING,
+      this.readerStatus() === ReaderStatus.INIT ||
+      this.readerStatus() === ReaderStatus.PROCESSING,
   );
 
   readonly shutterDisabled = computed(
@@ -82,6 +105,12 @@ export class IdScanPage implements OnInit, OnDestroy {
   constructor() {}
 
   async ngOnInit(): Promise<void> {
+    const preview = this.route.snapshot.queryParamMap.get('preview');
+    if (preview) {
+      this.activatePreview(preview);
+      return;
+    }
+
     this.reservationCode = this.route.snapshot.paramMap.get('code')!;
     this.guestId = this.route.snapshot.paramMap.get('guestId')!;
     console.log(
@@ -101,6 +130,17 @@ export class IdScanPage implements OnInit, OnDestroy {
       alert('Error initializing document reader: ' + String(e));
     });
     this.scan();
+  }
+
+  private activatePreview(mode: string): void {
+    if (mode === 'loading') {
+      this._previewStatus.set(ReaderStatus.INIT);
+    } else if (mode === 'timeout') {
+      this._previewStatus.set(ReaderStatus.TIMEOUT);
+    } else if (mode === 'result') {
+      this._previewStatus.set(ReaderStatus.FINISHED);
+      this._previewResult.set(MOCK_SCAN_RESULT);
+    }
   }
 
   ngOnDestroy(): void {

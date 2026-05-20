@@ -507,7 +507,50 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-05-03 — Session 3 (current)
+### 2026-05-18 — Session 4 (current) — Angular app
+
+> Note: This session's changes are in the real Angular/Ionic app (`app/`), not the design prototype (`Design/`).
+
+**Regula Document Reader integration** (`app/src/app/services/`, `app/src/app/pages/id-scan/`):
+- New `DocumentReaderService` — wraps `@regulaforensics/document-reader` Cordova plugin: initialization, scenario selection, RFID config, scan lifecycle, result extraction (name, DOB, document type, nationality, document number, etc.)
+- New `DocuscanService` — bridges scan results to the guest data model (`ScannedDataInterface` → `GuestInterface`)
+- `IdScanPage` fully rewritten — real camera scan via Regula, `Capacitor.isNativePlatform()` guard (shutter disabled on non-native), three phases (`camera` → `scanning` → `result`), result routes to guest edit screen
+- New pipes: `DashIfEmptyPipe`, `DefaultValuePipe`
+- New models: `ScannedDataInterface`, `GuestPostInterface`, `DocumentData`
+- Old `scan-modal` component removed
+
+**Translation / Language system** (`app/src/app/services/language.service.ts`):
+- New `LanguageService` — fetches translations from API (`languages` endpoint), caches in device storage, reads device locale on first launch, merges API translations over bundled English fallback; background refresh on every app start
+- `TranslatePipe` — `{{ 'key' | translate }}` syntax
+- Bundled fallback translations in `translations.ts` + `translations.en.json`
+- Language selection persists across sessions
+
+**Settings screen** (`app/src/app/pages/settings/`):
+- Language picker bottom sheet — lists API-fetched languages, active language shown with blue dot
+- Version / build number display via `App.getInfo()`
+- Lock screen button
+- "Test Sentry" button (dev-only — triggers a manual error to verify the Sentry pipeline)
+- Profile section: name + email at top
+
+**Sentry error monitoring** (`app/src/main.ts`, `app/src/environments/`):
+- `@sentry/angular` integrated; DSN from `environment.sentryDsn`
+- Captures unhandled Angular errors + console `warn`/`error` calls
+- Environment tag set automatically (`development` vs `production`)
+
+**Publishing infrastructure** (`app/scripts/`, `app/StorePublish.md`):
+- `publish-ios.sh` — automates `xcodebuild` archive + export + TestFlight upload via `xcrun altool`
+- `publish-android.sh` — automates AAB build + signing + upload
+- `StorePublish.md` — step-by-step store submission guide
+- `ExportOptions.plist` added for Xcode archive export config
+
+**Android fixes:**
+- `AndroidManifest.xml` cleaned up and corrected
+- `capacitor.build.gradle` patched
+
+**Known open issue (Sentry):**
+- [SABEEAPPGO-1](https://sabeeapp.sentry.io/issues/SABEEAPPGO-1) / [SABEEAPPGO-2](https://sabeeapp.sentry.io/issues/SABEEAPPGO-2) — `ReferenceError: cordova is not defined` on the scan route in browser/Electron. `DocumentReaderService` constructor calls into the Regula plugin during Angular DI even on non-native platforms. `isNative` guard exists on the page but not inside the service's `init()` path.
+
+### 2026-05-03 — Session 3
 
 **Home screen redesign (merged with Arrivals):**
 - Created `home-screen-old.js` as a backup of the original dashboard home screen
