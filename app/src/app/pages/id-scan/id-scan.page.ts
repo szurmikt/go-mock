@@ -125,6 +125,14 @@ export class IdScanPage implements OnInit, OnDestroy {
     const found = guests.find((g) => g.reservation_guest_id === this.guestId);
     this.guest.set(found ?? null);
 
+    // When navigated here from the guest-detail bottom sheet (init + scan
+    // already ran there), the reader status already reflects the post-scan
+    // result. Skip our own init/scan so the existing template just renders
+    // the result/timeout UI.
+    if (this.route.snapshot.queryParamMap.get('fromScan') === 'true') {
+      return;
+    }
+
     await this.documentReader.init().catch((e) => {
       console.error('Error initializing document reader', e);
       alert('Error initializing document reader: ' + String(e));

@@ -3,7 +3,7 @@ set -euo pipefail
 
 PROJ="ios/App/App.xcodeproj/project.pbxproj"
 WORKSPACE="ios/App/App.xcworkspace"
-SCHEME="SabeeAppGo"
+SCHEME="App"
 EXPORT_OPTS="ios/App/ExportOptions.plist"
 ARCHIVE="/tmp/SabeeAppGo.xcarchive"
 EXPORT_DIR="/tmp/SabeeAppGo-export"

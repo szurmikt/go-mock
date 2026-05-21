@@ -97,6 +97,8 @@ export class DocumentReaderService {
 
   @LogMethod
   async init() {
+    if (this._readerStatus() === ReaderStatus.READY) return;
+
     const ok = await this.initialize();
     if (!ok) return;
 

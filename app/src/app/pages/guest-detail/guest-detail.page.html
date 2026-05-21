@@ -157,3 +157,24 @@
     </div>
   }
 }
+
+<!-- Scan-start bottom sheet (init + native camera launch live here so the
+     guest-detail page stays visible behind the backdrop for context). -->
+@if (scanSheetOpen()) {
+  <div class="sheet-backdrop" (click)="cancelScanSheet()">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      <div class="head">
+        <h3>ID Scan</h3>
+        <button class="icon-btn" (click)="cancelScanSheet()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 32px 16px">
+        <ion-spinner></ion-spinner>
+        <div style="font-size: 16px; font-weight: 600; color: var(--ink-2)">{{ scanSheetMessage() }}</div>
+      </div>
+    </div>
+  </div>
+}

@@ -507,7 +507,29 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-05-18 — Session 4 (current) — Angular app
+### 2026-05-21 — Session 5 (current) — ID Scan preview + loading-phase bottom sheet
+
+> Note: All changes are in the real Angular/Ionic app (`app/`), not the design prototype (`Design/`).
+
+**Preview capabilities for ID scan support pages** (commit `969669b`, [app/src/app/pages/id-scan/id-scan.page.ts](app/src/app/pages/id-scan/id-scan.page.ts), [app/src/app/app.component.ts](app/src/app/app.component.ts)):
+- Three preview modes on `/id-scan` triggered by `?preview=<mode>` query param: `loading` (forces `ReaderStatus.INIT`), `timeout` (`ReaderStatus.TIMEOUT`), `result` (`ReaderStatus.FINISHED` + `MOCK_SCAN_RESULT` — Hungarian passport "János Kovács" b. 1985-06-22, doc AB1234567)
+- Two private signals `_previewStatus` / `_previewResult` are layered in front of `DocumentReaderService` via `computed()`. When set, they take priority over the real reader state; `ngOnInit` checks the query param first and short-circuits so the Regula plugin is never invoked in preview mode
+- `AppComponent.ngOnInit` now captures `window.location.pathname + window.location.search` *before* the auth flow runs. After login/property resolution, if the URL isn't an authless route (`/login`, `/mfa`, `/property-select`, `/`), it routes there instead of defaulting to `/home`. This means deep-link preview URLs survive the auth redirect
+
+**Bottom-sheet redesign for ID scan loading phase** ([app/src/app/pages/guest-detail/guest-detail.page.ts](app/src/app/pages/guest-detail/guest-detail.page.ts), [app/src/app/pages/guest-detail/guest-detail.page.html](app/src/app/pages/guest-detail/guest-detail.page.html), [app/src/app/pages/id-scan/id-scan.page.ts](app/src/app/pages/id-scan/id-scan.page.ts), [app/src/app/services/document-reader.service.ts](app/src/app/services/document-reader.service.ts)):
+- Replaced the full-screen white loader that `/id-scan` showed during `DocumentReaderService.init()` + native camera launch with a bottom sheet that opens on guest-detail. **Design principle:** guest-detail must stay partially visible behind the backdrop so the user retains context for which guest they're scanning. That rules out navigating to `/id-scan` before the camera takes over — init + scan now both run from guest-detail
+- Sheet pattern reused 1:1 from the property switcher / settings language picker / guest-detail FAB action sheet: same `.sheet-backdrop` + `.sheet` + `.head` HTML, same global SCSS at [theme/sabeeapp-design.scss:305-365](app/src/theme/sabeeapp-design.scss#L305-L365). No new shared component — pattern is copy-paste across pages
+- **Flow:** tap FAB → "ID Scan" action item now calls `goScan()` which closes the action sheet, opens the scan sheet (`scanSheetOpen.set(true)`), calls `documentReader.init()`, then `documentReader.scan()` (native camera takes over). An Angular `effect()` on guest-detail watches `documentReader.readerStatus()`; when it transitions to `FINISHED` / `TIMEOUT` / `CANCELLED` / `INTERRUPTED`, the sheet dismisses and the page navigates to `/guest/:code/:guestId/scan?fromScan=true`
+- `IdScanPage.ngOnInit` checks `?fromScan=true` and skips its own `init()` + `scan()` calls. The existing template renders whatever post-scan state the reader is already in (result, timeout, etc.). The full-screen result/timeout UI is unchanged — those screens are queued for a follow-up where they'll also become bottom sheets on guest-detail
+- `DocumentReaderService.init()` is now idempotent: returns early if `_readerStatus() === READY`. Required because guest-detail and id-scan can both call it now
+- Sheet messages: "Starting ID scan…" by default; "Loading scan database…" while `readerStatus() === INIT`. Hardcoded English to match existing patterns — `TranslatePipe` is effectively unused in templates today (every reference in id-scan.page.html is in a comment), so adding translation keys would create dead code
+- Backdrop tap dismisses the sheet during the pre-camera phase only. `cancelScanSheet()` early-returns if `awaitingScanResult()` is true (i.e. once `scan()` was called and the native camera has launched)
+- **Browser preview URLs on guest-detail:** `?previewScanSheet=starting` and `?previewScanSheet=loading` open the sheet with a stubbed message (no Regula call) for `ionic serve` testing
+
+**Known regression risk (cordova-on-web):**
+- `DocumentReaderService` is now injected into `GuestDetailPage` as well as `IdScanPage`. The service constructor (and its `reader = DocumentReader.instance` field initializer) accesses the Regula plugin at construction time, which is the source of [SABEEAPPGO-1](https://sabeeapp.sentry.io/issues/SABEEAPPGO-1) / [SABEEAPPGO-2](https://sabeeapp.sentry.io/issues/SABEEAPPGO-2) (`ReferenceError: cordova is not defined`) on web/Electron. Since Angular `providedIn: 'root'` services are singletons created on first injection, this may now fire on the first guest-detail visit in browser instead of (or in addition to) the first `/id-scan` visit. No production impact — native builds have cordova defined. Worth verifying that `?previewScanSheet=…` URLs actually render in `ionic serve`; if not, the fix is to guard the service constructor with `Capacitor.isNativePlatform()` or defer DI via `runInInjectionContext` inside `goScan()`
+
+### 2026-05-18 — Session 4 — Angular app
 
 > Note: This session's changes are in the real Angular/Ionic app (`app/`), not the design prototype (`Design/`).
 
@@ -604,6 +626,11 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 ## 9. Up Next
 
 Roughly prioritised — confirm with user before starting:
+
+### Angular app (`app/`) — follow-up from Session 5
+- [ ] **Move ID-scan timeout / cancelled / interrupted UI to a bottom sheet on guest-detail** — same `.sheet-backdrop` + `.sheet` pattern as the loading sheet. Eliminates the post-scan navigation to `/id-scan` for failure cases and keeps guest-detail visible end-to-end
+- [ ] **Move ID-scan result UI to a bottom sheet on guest-detail** — the larger one of the two follow-ups; the current result screen has the full field form + Edit/Save actions. Once both this and the timeout sheet land, the `?fromScan=true` short-circuit on `/id-scan` becomes dead and the route can be deleted from normal flow (keep it only for preview URLs if useful)
+- [ ] **Guard `DocumentReaderService` for web** — wrap the constructor + `reader = DocumentReader.instance` field initializer with `Capacitor.isNativePlatform()` so injecting on guest-detail doesn't trigger the SABEEAPPGO-1/2 Sentry error in browser. Alternative: defer DI via `runInInjectionContext(this.injector, () => inject(DocumentReaderService))` inside `goScan()` so the service is only instantiated when the user actually taps "ID Scan"
 
 ### Screens to build
 - [ ] **Departures screen** — dedicated view for today's departures (check-out times, balance due, room key return)
