@@ -20,7 +20,9 @@ export function pillStatus(apiStatus: string): string {
     case 'checkedout': return 'checked-out';
     case 'onboard':    return 'onboard';
     case 'confirmed':  return 'confirmed';
-    default:           return 'open';
+    case 'cancelled':  return 'cancelled';
+    case 'noshow':     return 'noshow';
+    default:           return 'option';
   }
 }
 
@@ -32,7 +34,9 @@ export function pillLabel(apiStatus: string): string {
     case 'checkedout': return 'Checked out';
     case 'onboard':    return 'Onboard';
     case 'confirmed':  return 'Confirmed';
-    default:           return 'Open';
+    case 'cancelled':  return 'Cancelled';
+    case 'noshow':     return 'No show';
+    default:           return 'Option';
   }
 }
 

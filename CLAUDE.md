@@ -507,7 +507,33 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-05-21 — Session 5 (current) — ID Scan preview + loading-phase bottom sheet
+### 2026-05-22 — Session 6 (current) — ID Scan result/failure bottom sheets + reservation status mapper
+
+> Note: All changes are in the Angular/Ionic app (`app/`).
+
+**ID Scan result UI moved to a bottom sheet on guest-detail** ([app/src/app/pages/guest-detail/guest-detail.page.ts](app/src/app/pages/guest-detail/guest-detail.page.ts), [app/src/app/pages/guest-detail/guest-detail.page.html](app/src/app/pages/guest-detail/guest-detail.page.html)):
+- Extended the existing scan sheet with a new `result` mode. A `scanSheetMode` signal (`'loading' | 'result' | 'failed'`) drives a branching `@if` in the template; `scanSheetTitle` computed signal swaps the header between "ID Scan" / "ID Scan result". The `effect()` watching `documentReader.readerStatus()` no longer navigates to `/id-scan` on `FINISHED` — it just swaps the sheet mode, keeping guest-detail visible behind the backdrop
+- Result content uses master-CSS classes throughout — `.detail-label` + `.detail-value` rows (same as the personal-info card on guest-detail) with two-column flex (`gap: 24px`) for Document type / Document number, Age / Gender, Place of birth / Date of birth; full-width rows for First & Last name, Citizenship, Mother's name. Replaces the wall of inline styles in the old `/id-scan` result overlay
+- Edit / Save actions ported from `IdScanPage.processDocument` as `processScanResult('edit' | 'save')`. Save calls `reservationService.updateGuest()` then dismisses the sheet and refreshes via `this.loadGuest()` — user stays on guest-detail with the updated data visible. Edit navigates to `/guest/:code/:guestId/edit`. In preview mode (`_previewScanResult` set), both actions just dismiss without API calls
+
+**ID Scan failure states (TIMEOUT / CANCELLED / INTERRUPTED) moved to the same sheet:**
+- The `effect()` failure branch now sets `scanSheetMode.set('failed')` + `failedStatus.set(status)` instead of navigating away. Title varies via `scanSheetTitle`: "ID Scan Timed out" / "ID Scan Cancelled" / "ID Scan Interrupted"
+- Failed mode renders just the action bar (head + actions, no body) — Cancel (secondary) dismisses, Scan Again calls `scanAgain()` which delegates to `goScan()` for a fresh `init()` + `scan()` cycle. In preview-failed mode, Scan Again just dismisses
+- Preview URLs added on guest-detail: `?previewScanSheet=result`, `=timeout`, `=cancelled`, `=interrupted`. `MOCK_SCAN_RESULT` duplicated from id-scan.page.ts per the "no premature abstraction" convention
+
+**`/id-scan` page status:** the result + failure overlays on `/id-scan` are now dead code from the normal flow (no path navigates to them on success/failure anymore). Left in place — they're still reachable via the original `?preview=result` / `?preview=timeout` deep-links and remain functional, but should be removed in a follow-up cleanup pass once we're confident the new sheets cover everything
+
+**Sheet action bar polish** ([theme/sabeeapp-design.scss:298-303](app/src/theme/sabeeapp-design.scss#L298-L303)):
+- Added `padding-bottom: 12px` to `.sheet .actions`. The sheet's own `padding-bottom: env(safe-area-inset-bottom, 8px)` stacks below this, giving ~46px total gap below the buttons on iPhone (matches the original `/id-scan` reference design which used `calc(12px + env(safe-area-inset-bottom))`) and a visible 12px gap in browser preview. **Why this is needed:** modern browsers support `env()` and return `0` for the inset on desktop — the 8px fallback only triggers on browsers that don't support `env()` at all. Without an explicit base on `.actions`, the buttons sit flush against the sheet's bottom edge in the browser preview
+
+**Reservation status mapper extended** ([services/reservation.ts:15-37](app/src/app/services/reservation.ts#L15-L37), [theme/sabeeapp-design.scss:252-254](app/src/theme/sabeeapp-design.scss#L252-L254), [home/home.page.ts:127-131](app/src/app/home/home.page.ts#L127-L131)):
+- A debug log on `convert(r)` revealed the API returns `status: null` for some reservations. Decision: keep null mapped to the existing grey pill, but rename the label from "Open" → **"Option"** and the internal key from `'open'` → `'option'` to better reflect "no lifecycle status assigned yet". CSS rule renamed in lockstep — `.pill[data-status="open"]` → `.pill[data-status="option"]`. Same grey colors
+- Added two new statuses with educated-guess API keys: `cancelled` → red "Cancelled" pill (`rgb(220,53,69)` / `rgb(252,232,235)`, in the `--warn` family) and `noshow` → dark-grey "No show" pill (`rgb(73,80,87)` / `rgb(225,228,232)`, deliberately darker than the `option` and `checked-out` greys so a no-show is visually distinguishable from "no info yet"). If real API strings differ (e.g. `no_show`, `CANCELLED`), only the two `case` keys need updating — the styling stands
+- Home-screen dimming logic extended: `cancelled` and `noshow` dim on all tabs (terminal states with no possible action); `option` still dims only on non-Today tabs (legacy behavior, just renamed)
+
+**Build/version:** Two TestFlight uploads via `npm run publish:ios` — build 27 (sheets) and build 28 (status mapper)
+
+### 2026-05-21 — Session 5 — ID Scan preview + loading-phase bottom sheet
 
 > Note: All changes are in the real Angular/Ionic app (`app/`), not the design prototype (`Design/`).
 
@@ -627,9 +653,9 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 Roughly prioritised — confirm with user before starting:
 
-### Angular app (`app/`) — follow-up from Session 5
-- [ ] **Move ID-scan timeout / cancelled / interrupted UI to a bottom sheet on guest-detail** — same `.sheet-backdrop` + `.sheet` pattern as the loading sheet. Eliminates the post-scan navigation to `/id-scan` for failure cases and keeps guest-detail visible end-to-end
-- [ ] **Move ID-scan result UI to a bottom sheet on guest-detail** — the larger one of the two follow-ups; the current result screen has the full field form + Edit/Save actions. Once both this and the timeout sheet land, the `?fromScan=true` short-circuit on `/id-scan` becomes dead and the route can be deleted from normal flow (keep it only for preview URLs if useful)
+### Angular app (`app/`) — follow-up from Session 6
+- [ ] **Delete the now-dead `/id-scan` result + failure overlays** — lines 182-460 of [id-scan.page.html](app/src/app/pages/id-scan/id-scan.page.html#L182-L460) plus the matching TIMEOUT / CANCELLED / INTERRUPTED branches above. The normal flow no longer navigates to any of them. Keep just the camera + scanning phases (or delete the route entirely and move the `?preview=…` previews onto guest-detail's `?previewScanSheet=…` URLs which already cover all the same modes)
+- [ ] **Verify cancelled / noshow API strings against real data** — Session 6 used educated-guess keys `cancelled` and `noshow`. Once a real reservation with one of these statuses comes through the API and renders as the grey "Option" pill, update the two `case` strings in `pillStatus` / `pillLabel` ([services/reservation.ts](app/src/app/services/reservation.ts#L15-L37))
 - [ ] **Guard `DocumentReaderService` for web** — wrap the constructor + `reader = DocumentReader.instance` field initializer with `Capacitor.isNativePlatform()` so injecting on guest-detail doesn't trigger the SABEEAPPGO-1/2 Sentry error in browser. Alternative: defer DI via `runInInjectionContext(this.injector, () => inject(DocumentReaderService))` inside `goScan()` so the service is only instantiated when the user actually taps "ID Scan"
 
 ### Screens to build

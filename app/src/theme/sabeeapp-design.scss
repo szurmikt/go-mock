@@ -249,7 +249,9 @@ ion-content {
 .pill[data-status="check-out"]  { --pill-color: rgb(255,140,40);  --pill-soft: rgb(255,238,220); }
 .pill[data-status="checked-out"]{ --pill-color: rgb(108,117,125); --pill-soft: rgb(238,240,242); }
 .pill[data-status="confirmed"]  { --pill-color: rgb(120,90,255);  --pill-soft: rgb(238,233,255); }
-.pill[data-status="open"]       { --pill-color: rgb(108,117,125); --pill-soft: rgb(238,240,242); }
+.pill[data-status="option"]     { --pill-color: rgb(108,117,125); --pill-soft: rgb(238,240,242); }
+.pill[data-status="cancelled"]  { --pill-color: rgb(220,53,69);   --pill-soft: rgb(252,232,235); }
+.pill[data-status="noshow"]     { --pill-color: rgb(73,80,87);    --pill-soft: rgb(225,228,232); }
 
 /* ─── Bottom nav ──────────────────────────────────────────── */
 
@@ -297,6 +299,7 @@ ion-content {
 
 .sheet .actions {
   display: flex; gap: 12px; margin-top: 28px;
+  padding-bottom: 12px;
 
   .btn { flex: 1; width: auto; }
 }

@@ -125,6 +125,8 @@ export class HomePage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   isDimmed(r: ReservationInterface): boolean {
-    return this.tab() !== 'Today' && pillStatus(r.status) === 'open';
+    const status = pillStatus(r.status);
+    if (status === 'cancelled' || status === 'noshow') return true;
+    return this.tab() !== 'Today' && status === 'option';
   }
 }

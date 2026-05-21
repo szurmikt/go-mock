@@ -164,23 +164,102 @@
   }
 }
 
-<!-- Scan-start bottom sheet (init + native camera launch live here so the
-     guest-detail page stays visible behind the backdrop for context). -->
+<!-- Scan bottom sheet — covers both pre-camera (loading) and post-scan (result)
+     phases so the guest-detail page stays visible behind the backdrop for context. -->
 @if (scanSheetOpen()) {
   <div class="sheet-backdrop" (click)="cancelScanSheet()">
     <div class="sheet" (click)="$event.stopPropagation()">
       <div class="head">
-        <h3>ID Scan</h3>
+        <h3>{{ scanSheetTitle() }}</h3>
         <button class="icon-btn" (click)="cancelScanSheet()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M18 6L6 18M6 6l12 12"/>
           </svg>
         </button>
       </div>
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 32px 16px">
-        <ion-spinner></ion-spinner>
-        <div style="font-size: 16px; font-weight: 600; color: var(--ink-2)">{{ scanSheetMessage() }}</div>
-      </div>
+
+      @if (scanSheetMode() === 'loading') {
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 32px 16px">
+          <ion-spinner></ion-spinner>
+          <div style="font-size: 16px; font-weight: 600; color: var(--ink-2)">{{ scanSheetMessage() }}</div>
+        </div>
+      } @else if (scanSheetMode() === 'result') {
+        @let _result = scanResult();
+        @let _scannedData = _result?.scannedData;
+        @let _documentData = _result?.documentData;
+
+        <div style="margin-top: 8px">
+          @if (_scannedData?.['first_name']?.['value'] || _scannedData?.['last_name']?.['value']) {
+            <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div class="detail-label">First &amp; Last name</div>
+              <div class="detail-value">{{ scanFullName() | dashIfEmpty }}</div>
+            </div>
+          }
+
+          @if (_documentData?.document_type || _scannedData?.['document_number']?.['value']) {
+            <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div style="flex: 1">
+                <div class="detail-label">Document type</div>
+                <div class="detail-value">{{ docTypeName(_documentData?.document_type || '') | dashIfEmpty }}</div>
+              </div>
+              <div style="flex: 1">
+                <div class="detail-label">Document number</div>
+                <div class="detail-value">{{ _scannedData?.['document_number']?.['value'] | dashIfEmpty }}</div>
+              </div>
+            </div>
+          }
+
+          @if (_scannedData?.['age']?.['value'] || _scannedData?.['gender']?.['value']) {
+            <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div style="flex: 1">
+                <div class="detail-label">Age</div>
+                <div class="detail-value">{{ _scannedData?.['age']?.['value'] | dashIfEmpty }}</div>
+              </div>
+              <div style="flex: 1">
+                <div class="detail-label">Gender</div>
+                <div class="detail-value">{{ (_scannedData?.['gender']?.['value'] | titlecase) | dashIfEmpty }}</div>
+              </div>
+            </div>
+          }
+
+          @if (_scannedData?.['birth_place']?.['value'] || _scannedData?.['birth_date']?.['value']) {
+            <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div style="flex: 1">
+                <div class="detail-label">Place of birth</div>
+                <div class="detail-value">{{ _scannedData?.['birth_place']?.['value'] | dashIfEmpty }}</div>
+              </div>
+              <div style="flex: 1">
+                <div class="detail-label">Date of birth</div>
+                <div class="detail-value">{{ (_scannedData?.['birth_date']?.['value'] | localizedDate) | dashIfEmpty }}</div>
+              </div>
+            </div>
+          }
+
+          @if (_scannedData?.['citizenship']?.['value']) {
+            <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div class="detail-label">Citizenship</div>
+              <div class="detail-value">{{ citizenshipName(_scannedData?.['citizenship']?.['value']) | dashIfEmpty }}</div>
+            </div>
+          }
+
+          @if (_scannedData?.['mother_name']?.['value']) {
+            <div style="padding: 12px 0">
+              <div class="detail-label">Mother's name</div>
+              <div class="detail-value">{{ _scannedData?.['mother_name']?.['value'] | dashIfEmpty }}</div>
+            </div>
+          }
+        </div>
+
+        <div class="actions">
+          <button class="btn secondary" (click)="processScanResult('edit')">Edit</button>
+          <button class="btn" (click)="processScanResult('save')">Save</button>
+        </div>
+      } @else if (scanSheetMode() === 'failed') {
+        <div class="actions">
+          <button class="btn secondary" (click)="cancelScanSheet()">Cancel</button>
+          <button class="btn" (click)="scanAgain()">Scan Again</button>
+        </div>
+      }
     </div>
   </div>
 }
