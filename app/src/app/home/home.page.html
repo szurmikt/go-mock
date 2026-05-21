@@ -156,7 +156,7 @@
               <div class="res-name">{{ bookerName(r) }}</div>
               <div class="res-email">{{ r.booker.email }}</div>
               <div class="res-meta">
-                <span><span class="v">{{ r.arrival_date }}</span> · {{ r.number_of_guests }} guests / {{ r.nights }} nights</span>
+                <span><span class="v">{{ r.arrival_date | localizedDate }}</span> · {{ r.number_of_guests }} guests / {{ r.nights }} nights</span>
                 <span class="v">{{ r.room_name }}</span>
               </div>
             </div>

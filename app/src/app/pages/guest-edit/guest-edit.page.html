@@ -28,45 +28,53 @@
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.first_name" name="first_name" autocomplete="given-name" />
           <label>First name</label>
-          <span class="form-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="5" width="20" height="14" rx="2"/>
-              <line x1="2" y1="10" x2="22" y2="10"/>
-            </svg>
-          </span>
+          @if (isScannedSource('first_name')) {
+            <span class="form-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <line x1="2" y1="10" x2="22" y2="10"/>
+              </svg>
+            </span>
+          }
         </div>
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.last_name" name="last_name" autocomplete="family-name" />
           <label>Last name</label>
-          <span class="form-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="5" width="20" height="14" rx="2"/>
-              <line x1="2" y1="10" x2="22" y2="10"/>
-            </svg>
-          </span>
+          @if (isScannedSource('last_name')) {
+            <span class="form-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <line x1="2" y1="10" x2="22" y2="10"/>
+              </svg>
+            </span>
+          }
         </div>
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.maiden_name" name="maiden_name" />
           <label>Maiden full name</label>
-          <span class="form-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="5" width="20" height="14" rx="2"/>
-              <line x1="2" y1="10" x2="22" y2="10"/>
-            </svg>
-          </span>
+          @if (isScannedSource('maiden_name')) {
+            <span class="form-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <line x1="2" y1="10" x2="22" y2="10"/>
+              </svg>
+            </span>
+          }
         </div>
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.mother_name" name="mother_name" />
           <label>Mother's full name</label>
-          <span class="form-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="5" width="20" height="14" rx="2"/>
-              <line x1="2" y1="10" x2="22" y2="10"/>
-            </svg>
-          </span>
+          @if (isScannedSource('mother_name')) {
+            <span class="form-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <line x1="2" y1="10" x2="22" y2="10"/>
+              </svg>
+            </span>
+          }
         </div>
 
         <div class="form-group">
@@ -88,8 +96,23 @@
         </div>
 
         <div class="form-group">
+          <select [(ngModel)]="form.gender" name="gender">
+            <option value=""></option>
+            @for (g of options.genders(); track g.value) {
+              <option [value]="g.value">{{ g.label }}</option>
+            }
+          </select>
+          <label>Gender</label>
+          <span class="form-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </span>
+        </div>
+
+        <div class="form-group">
           <select [(ngModel)]="form.citizenship" name="citizenship">
-            <option value="">— Select country —</option>
+            <option value=""></option>
             @for (c of options.countries(); track c.country_code) {
               <option [value]="c.country_code">{{ c.name }}</option>
             }
@@ -101,23 +124,6 @@
             </svg>
           </span>
         </div>
-
-        @if (options.genders().length) {
-          <div class="form-group">
-            <select [(ngModel)]="form.gender" name="gender">
-              <option value="">— Select gender —</option>
-              @for (g of options.genders(); track g.value) {
-                <option [value]="g.value">{{ g.label }}</option>
-              }
-            </select>
-            <label>Gender</label>
-            <span class="form-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M9 18l6-6-6-6"/>
-              </svg>
-            </span>
-          </div>
-        }
 
         <h3 class="group-title">Contact Details</h3>
 
@@ -135,7 +141,7 @@
 
         <div class="form-group">
           <select [(ngModel)]="form.document_type" name="document_type">
-            <option value="">— Select type —</option>
+            <option value=""></option>
             @for (dt of options.documentTypes(); track dt.value) {
               <option [value]="dt.value">{{ dt.label }}</option>
             }

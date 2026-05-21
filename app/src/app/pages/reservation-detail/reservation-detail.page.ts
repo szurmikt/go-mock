@@ -1,17 +1,20 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { TitleCasePipe } from '@angular/common';
 import { IonContent } from '@ionic/angular/standalone';
 import { ViewWillEnter } from '@ionic/angular';
 import { ReservationService, pillStatus, pillLabel } from '../../services/reservation';
+import { OptionsService } from '../../services/options.service';
 import { ReservationInterface } from '../../models/reservation.interface';
 import { GuestInterface } from '../../models/guest.interface';
+import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 
 @Component({
   selector: 'app-reservation-detail',
   templateUrl: './reservation-detail.page.html',
   styleUrls: ['./reservation-detail.page.scss'],
   standalone: true,
-  imports: [IonContent],
+  imports: [IonContent, TitleCasePipe, LocalizedDatePipe],
 })
 export class ReservationDetailPage implements OnInit, ViewWillEnter {
   reservation = signal<ReservationInterface | null>(null);
@@ -26,6 +29,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     private route: ActivatedRoute,
     private router: Router,
     private res: ReservationService,
+    private options: OptionsService,
   ) {}
 
   private reservationCode!: string;
@@ -79,15 +83,15 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     return `${total} (${adults}/${children}/${infants})`;
   }
 
-  formattedDate(dateStr: string): string {
-    if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  }
-
   isFirstGuest(g: GuestInterface): boolean {
     const guests = this.guests();
     return guests.length > 0 && guests[0].reservation_guest_id === g.reservation_guest_id;
+  }
+
+  citizenshipName(code: string | null | undefined): string {
+    if (!code) return '';
+    const match = this.options.countries().find(c => c.country_code === code);
+    return match?.name ?? code;
   }
 
   goGuest(g: GuestInterface) {

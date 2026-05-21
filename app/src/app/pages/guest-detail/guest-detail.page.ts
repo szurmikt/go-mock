@@ -1,10 +1,13 @@
 import { Component, OnInit, OnDestroy, computed, effect, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { TitleCasePipe } from '@angular/common';
 import { ViewWillEnter } from '@ionic/angular';
 import { IonContent, IonSpinner } from '@ionic/angular/standalone';
 import { ReservationService } from '../../services/reservation';
 import { DocumentReaderService, ReaderStatus } from '../../services/document-reader.service';
+import { OptionsService } from '../../services/options.service';
 import { GuestInterface } from '../../models/guest.interface';
+import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 
 type ScanPreviewMode = 'starting' | 'loading';
 
@@ -13,7 +16,7 @@ type ScanPreviewMode = 'starting' | 'loading';
   templateUrl: './guest-detail.page.html',
   styleUrls: ['./guest-detail.page.scss'],
   standalone: true,
-  imports: [IonContent, IonSpinner],
+  imports: [IonContent, IonSpinner, TitleCasePipe, LocalizedDatePipe],
 })
 export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
   guest = signal<GuestInterface | null>(null);
@@ -45,6 +48,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     private router: Router,
     private res: ReservationService,
     private documentReader: DocumentReaderService,
+    private options: OptionsService,
   ) {
     effect(() => {
       if (!this.awaitingScanResult()) return;
@@ -129,6 +133,12 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
 
   guestName(g: GuestInterface): string {
     return `${g.first_name} ${g.last_name}`.trim();
+  }
+
+  citizenshipName(code: string | null | undefined): string {
+    if (!code) return '';
+    const match = this.options.countries().find(c => c.country_code === code);
+    return match?.name ?? code;
   }
 
   docTypeName(type: string): string {

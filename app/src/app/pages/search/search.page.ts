@@ -8,13 +8,14 @@ import { ReservationService, pillStatus, pillLabel } from '../../services/reserv
 import { StorageService } from '../../services/storage';
 import { Config } from '../../config/config';
 import { ReservationInterface } from '../../models/reservation.interface';
+import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 
 @Component({
   selector: 'app-search',
   templateUrl: './search.page.html',
   styleUrls: ['./search.page.scss'],
   standalone: true,
-  imports: [IonContent, FormsModule],
+  imports: [IonContent, FormsModule, LocalizedDatePipe],
 })
 export class SearchPage implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;

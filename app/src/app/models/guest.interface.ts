@@ -11,7 +11,7 @@ export interface GuestInterface {
   birth_place: string;
   guest_age: string;
   gender: string;
-  city_tax_liable: string;
+  city_tax_liable: boolean;
   citizenship: string;
   email: string;
   phone_number: string;

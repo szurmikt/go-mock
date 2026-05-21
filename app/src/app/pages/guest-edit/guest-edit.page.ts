@@ -99,10 +99,11 @@ export class GuestEditPage implements OnInit {
             found.scanned_data.birth_place ?? this.form.birth_place;
           this.form.citizenship =
             found.scanned_data.citizenship ?? this.form.citizenship;
-          this.form.gender = found.scanned_data.gender ?? this.form.gender;
-          this.form.document_type =
+          this.form.gender = (found.scanned_data.gender ?? this.form.gender).toLowerCase();
+          this.form.document_type = (
             found.scanned_data.document?.document_type ??
-            this.form.document_type;
+            this.form.document_type
+          ).toLowerCase();
           this.form.document_number =
             found.scanned_data.document?.document_number ??
             this.form.document_number;
@@ -154,5 +155,11 @@ export class GuestEditPage implements OnInit {
 
   back() {
     window.history.back();
+  }
+
+  isScannedSource(field: 'first_name' | 'last_name' | 'maiden_name' | 'mother_name'): boolean {
+    const scanned = this.guest()?.scanned_data?.[field];
+    if (!scanned) return false;
+    return this.form[field] === scanned;
   }
 }

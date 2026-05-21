@@ -18,8 +18,8 @@ interface OptionsApiResponse {
   data: {
     options: {
       country: CountryOption[];
-      document_type?: Array<{ id: number | string; name: string }>;
-      gender?: Array<{ id: number | string; name: string }>;
+      document_type?: Record<string, string>;
+      gender?: Record<string, string>;
     };
   };
 }
@@ -36,16 +36,10 @@ export class OptionsService {
     const r = await firstValueFrom(this.api.get<OptionsApiResponse>('options'));
     this.countries.set(r.data.options.country);
     this.documentTypes.set(
-      (r.data.options.document_type ?? []).map(o => ({
-        value: String(o.id),
-        label: o.name,
-      })),
+      Object.entries(r.data.options.document_type ?? {}).map(([value, label]) => ({ value: value.toLowerCase(), label })),
     );
     this.genders.set(
-      (r.data.options.gender ?? []).map(o => ({
-        value: String(o.id),
-        label: o.name,
-      })),
+      Object.entries(r.data.options.gender ?? {}).map(([value, label]) => ({ value: value.toLowerCase(), label })),
     );
   }
 

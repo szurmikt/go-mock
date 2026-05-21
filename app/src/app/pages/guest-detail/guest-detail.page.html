@@ -42,16 +42,22 @@
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
               <div style="flex: 1">
                 <div class="detail-label">Birth date</div>
-                <div class="detail-value">{{ g.birth_date || '—' }}</div>
+                <div class="detail-value">{{ g.birth_date | localizedDate }}</div>
               </div>
               <div style="flex: 1">
                 <div class="detail-label">Birth place</div>
                 <div class="detail-value">{{ g.birth_place || '—' }}</div>
               </div>
             </div>
-            <div style="padding: 12px 0 0">
-              <div class="detail-label">Citizenship</div>
-              <div class="detail-value">{{ g.citizenship || '—' }}</div>
+            <div style="display: flex; gap: 24px; padding: 12px 0 0">
+              <div style="flex: 1">
+                <div class="detail-label">Gender</div>
+                <div class="detail-value">{{ (g.gender | titlecase) || '—' }}</div>
+              </div>
+              <div style="flex: 1">
+                <div class="detail-label">Citizenship</div>
+                <div class="detail-value">{{ citizenshipName(g.citizenship) || '—' }}</div>
+              </div>
             </div>
           </div>
 

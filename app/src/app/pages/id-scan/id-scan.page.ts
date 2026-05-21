@@ -21,6 +21,7 @@ import {
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
 import { DefaultValuePipe } from '../../pipes/default-value.pipe';
+import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { DocuscanService } from 'src/app/services/docuscan';
 import { DocumentData } from 'src/app/models/statistics-interface';
 import { ReservationService } from 'src/app/services/reservation';
@@ -59,6 +60,7 @@ const MOCK_SCAN_RESULT: ScanResultInterface = {
     TranslatePipe,
     DashIfEmptyPipe,
     DefaultValuePipe,
+    LocalizedDatePipe,
   ],
   providers: [TranslatePipe, DashIfEmptyPipe, DefaultValuePipe],
 })

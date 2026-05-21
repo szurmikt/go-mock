@@ -7,6 +7,7 @@ import { ReservationService, pillStatus, pillLabel } from '../services/reservati
 import { OptionsService } from '../services/options.service';
 import { PropertyInterface } from '../models/property.interface';
 import { ReservationInterface } from '../models/reservation.interface';
+import { LocalizedDatePipe } from '../pipes/localized-date.pipe';
 
 type Tab = 'Yesterday' | 'Today' | 'Tomorrow';
 
@@ -24,7 +25,7 @@ function localDateStr(offset: number): string {
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
   standalone: true,
-  imports: [IonContent, IonRefresher, IonRefresherContent, LowerCasePipe],
+  imports: [IonContent, IonRefresher, IonRefresherContent, LowerCasePipe, LocalizedDatePipe],
 })
 export class HomePage implements OnInit, AfterViewInit, OnDestroy {
   @ViewChildren('segBtn') segBtns!: QueryList<ElementRef<HTMLButtonElement>>;

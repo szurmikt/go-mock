@@ -45,7 +45,7 @@
                 </svg>
                 Check-in
               </div>
-              <div class="v">{{ formattedDate(r.arrival_date) }}{{ r.checked_in_time ? '  ' + r.checked_in_time : '' }}</div>
+              <div class="v">{{ r.arrival_date | localizedDate }}{{ r.checked_in_time ? '  ' + r.checked_in_time : '' }}</div>
             </div>
             <div class="fact">
               <div class="l">
@@ -57,7 +57,7 @@
                 </svg>
                 Check-out
               </div>
-              <div class="v">{{ formattedDate(r.departure_date) }}{{ r.checked_out_time ? '  ' + r.checked_out_time : '' }}</div>
+              <div class="v">{{ r.departure_date | localizedDate }}{{ r.checked_out_time ? '  ' + r.checked_out_time : '' }}</div>
             </div>
             <div class="fact">
               <div class="l">
@@ -107,14 +107,16 @@
           <div class="stagger">
             @for (g of guests(); track g.reservation_guest_id) {
               <div class="guest-card tap-anim tappable" (click)="goGuest(g)">
-                <!-- Scan button top-right -->
-                <button class="scan-btn" (click)="$event.stopPropagation()">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="2" y="5" width="20" height="14" rx="2"/>
-                    <line x1="2" y1="10" x2="22" y2="10"/>
-                    <circle cx="8" cy="15" r="1" fill="currentColor"/>
-                  </svg>
-                </button>
+                @if (g.scanned_data) {
+                  <!-- Scan indicator top-right (only when document scan happened) -->
+                  <button class="scan-btn" (click)="$event.stopPropagation()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="5" width="20" height="14" rx="2"/>
+                      <line x1="2" y1="10" x2="22" y2="10"/>
+                      <circle cx="8" cy="15" r="1" fill="currentColor"/>
+                    </svg>
+                  </button>
+                }
                 <div class="id">
                   ID: {{ g.reservation_guest_id }}
                   @if (isFirstGuest(g)) {
@@ -125,19 +127,19 @@
                 <div class="fact-grid" style="gap: 8px 16px">
                   <div>
                     <div class="detail-label">Age</div>
-                    <div class="fact-value">{{ g.guest_age || '—' }}</div>
+                    <div class="fact-value">{{ (g.guest_age | titlecase) || '—' }}</div>
                   </div>
                   <div>
                     <div class="detail-label">Gender</div>
-                    <div class="fact-value">{{ g.gender || '—' }}</div>
+                    <div class="fact-value">{{ (g.gender | titlecase) || '—' }}</div>
                   </div>
                   <div>
                     <div class="detail-label">Nationality</div>
-                    <div class="fact-value">{{ g.citizenship || '—' }}</div>
+                    <div class="fact-value">{{ citizenshipName(g.citizenship) || '—' }}</div>
                   </div>
                   <div>
-                    <div class="detail-label">Reporting</div>
-                    <div class="fact-value">{{ g.city_tax_liable || '—' }}</div>
+                    <div class="detail-label">City Tax Liable</div>
+                    <div class="fact-value">{{ g.city_tax_liable ? 'Yes' : 'No' }}</div>
                   </div>
                 </div>
               </div>
