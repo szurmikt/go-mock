@@ -507,7 +507,36 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-05-22 — Session 6 (current) — ID Scan result/failure bottom sheets + reservation status mapper
+### 2026-05-25 — Session 7 (current) — Bottom-sheet concentric-corners refactor
+
+> Note: All changes are in the Angular/Ionic app (`app/`).
+
+**The visible problem**: on a real iPhone, every bottom sheet (Switch Property, FAB action sheet, Settings Language picker, ID-scan result/failure) sat ~34px above the screen bottom with a noticeable empty band below it. Root cause was `.sheet { bottom: max(8px, env(safe-area-inset-bottom, 8px)); }` — in browser `env()` returns 0 so `max()` resolves to 8px (looked fine), but on iPhone `env()` is ~34px so the sheet floated 34px up. Browser-only testing had hidden it for weeks.
+
+**Iteration path** (4 TestFlight builds in one session):
+- **Build 40**: `bottom: 8px` — symmetric 8px floating card on all sides. Cleaner, but still looked off because the sheet's own 28px rounded corners didn't relate to the device's screen-corner radius.
+- **Build 41**: flush `bottom/left/right: 0`, only top corners rounded, relying on the iPhone screen mask to clip the bottom corners. Geometrically lossy — the sheet's straight side edges meet the device's curved bezel, so the visible gap varies around the curve.
+- **Build 42 (final)**: concentric-corners pattern from Claude Design. Sheet inset 8px on L/R/bottom; all four corners rounded at `device_radius − sheet_gap`. The 8px gap between sheet edge and device bezel stays visually uniform around the curve because the two arcs are concentric.
+
+**Final implementation** ([theme/sabeeapp-design.scss](app/src/theme/sabeeapp-design.scss), [app.component.ts](app/src/app/app.component.ts)):
+- New tokens in `:root` — `--device-radius: 24px` (default), `--sheet-gap: 8px`, `--sheet-radius: max(8px, calc(var(--device-radius) - var(--sheet-gap)))`. The `max(8px, …)` floor keeps the radius sane when `--device-radius` is small or 0.
+- `body.ios-native { --device-radius: 47px; }` override → 39px sheet radius on iPhone (representative of iPhone 13–16 ~47pt screen corner; an intentional hardcoded compromise, won't be perfect for iPhone X at 39pt or iPhone 16 Pro at 62pt, but on par with how we accept that compromise across iPhone models).
+- `body.ios-native` class set in `AppComponent.ngOnInit` via `Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios'`. One line, no runtime cost.
+- `.sheet-backdrop` rewritten as `display: flex; align-items: flex-end; padding: 0 var(--sheet-gap) var(--sheet-gap);` — backdrop now positions the sheet via flex/padding. `.sheet` itself is `position: relative; width: 100%;` (no inset offsets). Safe-area clearance moved INSIDE the sheet via `padding-bottom: calc(var(--pad) + env(safe-area-inset-bottom, 0px))` so tap targets stay above the home indicator without pushing the sheet up.
+- `.sheet .head { border-radius: var(--sheet-radius) var(--sheet-radius) 0 0; }` — top corners track the sheet's so the gray head band doesn't overshoot.
+- Android and desktop browser both fall through to the 24px default → 16px sheet radius. No Android plugin, no per-device detection (see rejected approaches).
+
+**Token cleanup**: deleted `--radius-lg: 28px`. It was an Angular-port-only token (the design prototype's scale is 6/10/14, never 28); only used by `.sheet`; now orphan after the switch to `--sheet-radius`. `grep -rn 'radius-lg' src/` returns zero post-delete.
+
+**Rejected approaches:**
+- *Custom Capacitor plugin reading Android's real screen-corner radius via `WindowInsets.getRoundedCorner()` (API 31+)*. Would have been 3 new files + Java native code + lifecycle quirks (`runOnUiThread`, null insets) for one CSS variable controlling a 2–5px visual difference most users won't perceive. We don't detect iPhone's radius dynamically either; symmetry was intentional.
+- *Larger Android default (~32px)*. Picking any value will be wrong on outliers (Galaxy S Ultra ~56px, Pixel A ~26px). 24px is conservative and looks clean as a small card on every Android.
+
+**Build-script gotcha learned the hard way**: [app/scripts/publish-ios.sh:14](app/scripts/publish-ios.sh#L14) `sed`-bumps `CURRENT_PROJECT_VERSION` as its FIRST step, before `ng build`, before `xcodebuild`. **Any** cancelled run still consumes a build number. Earlier in this session, 7 cancelled invocations from the wrong cwd burned numbers 33–39 before the successful upload at build 40. Safe invocation: `npm --prefix /Users/tamas/SabeeAppGO/app run publish:ios` from anywhere (npm honors `--prefix` and runs the script with that as cwd). Don't `cd`-then-restart, don't kill mid-flight.
+
+**Builds uploaded:** 40 (symmetric floating card), 41 (flush bottom + top corners only), 42 (concentric corners, the keeper).
+
+### 2026-05-22 — Session 6 — ID Scan result/failure bottom sheets + reservation status mapper
 
 > Note: All changes are in the Angular/Ionic app (`app/`).
 

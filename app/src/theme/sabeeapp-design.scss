@@ -36,6 +36,10 @@
   --radius-sm: 10px;
   --radius-xs:  6px;
 
+  --device-radius: 24px;
+  --sheet-gap:    8px;
+  --sheet-radius: max(8px, calc(var(--device-radius) - var(--sheet-gap)));
+
   --font-xs:   12px;
   --font-sm:   13px;
   --font-base: 15px;
@@ -65,6 +69,8 @@
 }
 
 [data-density="compact"] { --pad: 14px; --gap: 12px; --card-pad: 12px; }
+
+body.ios-native { --device-radius: 47px; }
 
 [data-card="outlined"] { --card-bg: #ffffff; --card-border: 1px solid var(--line-strong); --card-shadow: none; }
 [data-card="soft"]     { --card-bg: rgb(246,247,251); --card-border: 1px solid transparent; --card-shadow: none; }
@@ -135,8 +141,10 @@ ion-content {
   }
 
   .sheet {
-    max-width: min(440px, 100%);
-    margin: 0 auto;
+    left: 50%;
+    right: auto;
+    margin-left: -212px;
+    width: 424px;
   }
 }
 
@@ -310,15 +318,19 @@ ion-content {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.5);
   z-index: 30;
-  display: flex; align-items: flex-end;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 var(--sheet-gap) var(--sheet-gap);
   animation: backdrop-in 0.25s ease;
 }
 
 .sheet {
+  position: relative;
   width: 100%;
   background: var(--surface);
-  border-radius: var(--radius) var(--radius) 0 0;
-  padding: var(--pad) var(--pad) env(safe-area-inset-bottom, 8px);
+  border-radius: var(--sheet-radius);
+  padding: var(--pad);
+  padding-bottom: calc(var(--pad) + env(safe-area-inset-bottom, 0px));
   animation: sheet-up 0.32s cubic-bezier(0.32, 0.72, 0, 1);
   max-height: 88%;
   overflow-y: auto;
@@ -329,6 +341,7 @@ ion-content {
     padding: var(--pad);
     display: flex; align-items: center; justify-content: space-between;
     border-bottom: 1px solid var(--line);
+    border-radius: var(--sheet-radius) var(--sheet-radius) 0 0;
 
     h3 { margin: 0; font-size: var(--font-xl); font-weight: 800; color: var(--ink-2); letter-spacing: -0.01em; }
   }

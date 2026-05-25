@@ -1,6 +1,7 @@
 import { Component, HostListener, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { IonApp, IonRouterOutlet, createAnimation, Animation } from '@ionic/angular/standalone';
 import { LockOverlayComponent } from './components/lock-overlay/lock-overlay.component';
 import { AuthService } from './services/auth';
@@ -58,6 +59,10 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios') {
+      document.body.classList.add('ios-native');
+    }
+
     const initialUrl = window.location.pathname + window.location.search;
     const authlessRoutes = ['/login', '/mfa', '/property-select', '/'];
 
