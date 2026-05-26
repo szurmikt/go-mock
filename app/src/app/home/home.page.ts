@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, inject, signal, computed, ElementRef, Que
 import { Router } from '@angular/router';
 import { LowerCasePipe } from '@angular/common';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
+import { ApiEnvironmentService } from '../services/api-environment';
 import { AuthService } from '../services/auth';
 import { ReservationService, pillStatus, pillLabel } from '../services/reservation';
 import { OptionsService } from '../services/options.service';
@@ -55,6 +56,7 @@ export class HomePage implements OnInit, AfterViewInit, OnDestroy {
   );
 
   private options = inject(OptionsService);
+  apiEnv = inject(ApiEnvironmentService);
 
   constructor(
     public auth: AuthService,

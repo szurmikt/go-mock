@@ -12,10 +12,8 @@
     </div>
 
     <div class="login-body">
-      <div style="text-align:center; margin-bottom:40px">
-        <div style="font-size:13px; font-weight:800; letter-spacing:0.18em; text-transform:uppercase; color:var(--primary); margin-bottom:8px">SabeeApp Go</div>
-        <div style="font-size:28px; font-weight:800; color:var(--ink); letter-spacing:-0.02em; line-height:1.15">Welcome back</div>
-        <div style="font-size:15px; font-weight:600; color:var(--ink-4); margin-top:6px">Sign in to your account</div>
+      <div style="text-align:center; margin-bottom:80px">
+        <img src="assets/logo-sabeeapp-go.png" alt="SabeeApp Go" style="width:288px; height:auto; display:block; margin:0 auto">
       </div>
 
       <form (submit)="submit($event)">
@@ -57,9 +55,29 @@
       </form>
     </div>
 
+    @if (apiEnv.isTest()) {
+      <div class="test-mode-banner">
+        <span class="pill" data-status="test">TEST MODE</span>
+        <div style="font-size:13px; font-weight:600; color:var(--warn); margin-top:8px">
+          You are signing in against the test API
+        </div>
+      </div>
+    }
+
     <div class="login-footer">
       Account management is handled through your SabeeApp PMS
     </div>
+
+    <button
+      class="secret-tap-target"
+      type="button"
+      aria-hidden="true"
+      tabindex="-1"
+      (click)="onSecretTap()"></button>
+
+    @if (tapCounterMessage(); as msg) {
+      <div class="tap-counter-toast">{{ msg }}</div>
+    }
 
   </div>
 </ion-content>

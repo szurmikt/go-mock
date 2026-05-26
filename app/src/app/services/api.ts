@@ -1,13 +1,15 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { ApiEnvironmentService } from './api-environment';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private base = environment.apiUrl;
+  private get base(): string {
+    return this.env.apiUrl();
+  }
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private env: ApiEnvironmentService) {}
 
   get<T>(path: string, params?: Record<string, string>): Observable<T> {
     const httpParams = params ? new HttpParams({ fromObject: params }) : undefined;

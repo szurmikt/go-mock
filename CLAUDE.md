@@ -489,25 +489,55 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 3. **Departures screen not built** — No dedicated departures view. The `ArrivalsScreen` route exists in routing but isn't navigated to from the current home. A departures-specific view (different data, check-out flow) hasn't been designed.
 
-4. **Filter button in Arrivals list is cosmetic** — The filter icon in `.section-title` renders but has no action.
+4. **BlockDate calendar is single-month** — No month navigation (prev/next). Acceptable for prototype.
 
-5. **BlockDate calendar is single-month** — No month navigation (prev/next). Acceptable for prototype.
+5. **Search is client-side only** — No date search, fuzzy matching, or server-side filtering.
 
-6. **Search is client-side only** — No date search, fuzzy matching, or server-side filtering.
+6. **Bottom nav is built but hidden** — `showNav = false` in `app.js`. `BottomNav` component exists with 4 tabs (Home, Arrivals, Scan, Search).
 
-7. **Bottom nav is built but hidden** — `showNav = false` in `app.js`. `BottomNav` component exists with 4 tabs (Home, Arrivals, Scan, Search).
+7. **Bell icon on home is cosmetic** — No screen navigates from it. (Settings icon does navigate to `/settings` in the Angular app.)
 
-8. **Bell and Settings icons are cosmetic** — No screen navigates from these.
+8. **OTP on Android untested** — `type="tel"` inputs with manual focus management are validated on iOS only.
 
-9. **OTP on Android untested** — `type="tel"` inputs with manual focus management are validated on iOS only.
-
-10. **`home-screen-old.js` not in build** — This backup file exists in the directory but is intentionally excluded from `SCRIPT_ORDER` in `build.py`. Do not add it.
+9. **`home-screen-old.js` not in build** — This backup file exists in the directory but is intentionally excluded from `SCRIPT_ORDER` in `build.py`. Do not add it.
 
 ---
 
 ## 8. Changelog
 
-### 2026-05-25 — Session 7 (current) — Bottom-sheet concentric-corners refactor
+### 2026-05-26 — Session 8 (current) — Test/Live API switch with hidden gesture + login logo
+
+> Note: All changes are in the Angular/Ionic app (`app/`).
+
+**Test ↔ Live API switch.** For QA workflows we needed to point real TestFlight/Play builds at the test API (`https://smart.sabeeapp.com/api2/go`) without shipping a separate binary. The toggle is a hidden 7-tap gesture on the login screen with persistent mode + on-screen indicators.
+
+**API plumbing** ([services/api-environment.ts](app/src/app/services/api-environment.ts) new; [services/api.ts](app/src/app/services/api.ts), [services/auth.ts](app/src/app/services/auth.ts), [app.component.ts](app/src/app/app.component.ts)):
+- New `ApiEnvironmentService` (singleton) owns the active API base via a `mode: 'live' | 'test'` signal. Computed `apiUrl()` returns `environment.testApiUrl` or `environment.apiUrl`. Persists via `StorageService` (Capacitor Preferences) under `STORAGE_API_ENV_KEY: 'apiEnvironment'`
+- `ApiService` changed from `private base = environment.apiUrl` (cached-at-construction) to `private get base() { return this.env.apiUrl(); }` — runtime-resolved per request. This was the reason a service was needed instead of mutating the imported `environment` object: a mutation wouldn't update the already-captured `base` string field
+- `AuthService`: 5 inline `${environment.apiUrl}/...` template literals (login, MFA verify, fetchUser, refresh, loadProperties) replaced with `${this.env.apiUrl()}`. Constructor now also injects `ApiEnvironmentService`
+- `AppComponent.ngOnInit` — `await this.apiEnv.init()` runs as the first await, BEFORE `loadStoredAuth()`. Critical ordering: `loadStoredAuth` immediately fires `/users/me` if a stored token + property exist, so the env must be restored first or the stored token gets sent to the wrong host
+- Sentry DSN deliberately left static — same Sentry project regardless of API env, no value in swapping it at runtime
+
+**Hidden gesture + indicators** ([login.page.html](app/src/app/pages/login/login.page.html), [login.page.ts](app/src/app/pages/login/login.page.ts), [home.page.html](app/src/app/home/home.page.html), [theme/sabeeapp-design.scss](app/src/theme/sabeeapp-design.scss)):
+- 44×44 invisible button in the bottom-left of `.login-page` (`position: absolute; bottom: env(safe-area-inset-bottom); left: 0`). 44px = Apple HIG minimum so 7 taps in a row aren't flaky; bottom-left less prone to accidental triggering than top-right
+- Taps 1–3 silent; tap 4 onward shows a top-center toast "*N* more taps to switch to Test/Live Mode". 2 s inactivity resets the counter. Tap 7 calls `apiEnv.setMode()` — no logout/redirect, the TEST MODE banner appears on the same page via the signal
+- Gesture lives ONLY on login, never on home. Decision: if you're stranded in test mode without valid test credentials, you need a recovery path that doesn't require successful sign-in. Login is reachable from any state by logging out
+- Login banner (red `TEST MODE` pill + helper text) inserted between `.login-body` and `.login-footer` — NOT below the footer, since `.login-footer` already has `padding-bottom: calc(32px + env(safe-area-inset-bottom))` so anything below it lands in the home-indicator zone
+- Home header gets a small passive `TEST` pill inside `.actions` (left of the bell) — no gesture there, just an "in case you forgot" indicator while signed in
+- New `.pill[data-status="test"]` colour variant (reuses `--warn` / `--warn-soft`) and `.home-test-pill` size variant (`padding: 4px 8px; font-size: 11px`) sit next to the existing 10 status-pill variants
+
+**Login screen logo** ([assets/logo-sabeeapp-go.png](app/src/assets/logo-sabeeapp-go.png), [login.page.html](app/src/app/pages/login/login.page.html#L15)):
+- Replaced the original three-line text block ("SABEEAPP GO" / "Welcome back" / "Sign in to your account") with the SabeeApp Go wordmark PNG
+- Iteration: started with the brand-only SVG wordmark (no "GO"), then tried inline SVG with a `<text>` element for "GO" using Nunito 800 + `fill="var(--primary)"` — that worked because inline SVG inherits the page's already-loaded Google Font (an `<img>`-rendered SVG can't — it's sandboxed and only sees locally-installed fonts). Final form is `<img src="assets/logo-sabeeapp-go.png">` since the user provided an authoritative PNG. 288px wide, 80px bottom gap (originally 200/40 then bumped 20%/2× per visual feedback)
+- Old `sabeeapp-logo.svg` deleted along the way (only consumer was the inline-SVG variant that's gone)
+
+**UI polish:**
+- Removed the cosmetic filter icon from the home `{Today}'s Arrivals` section title — it never had a click handler. Was the last filter icon in the app
+- Guest cards on reservation-detail no longer show `ID: 12345`. Only the booker now renders an `.id` row containing `(Booker)`. Non-booker guests have no header row above their name. Dropped `margin-left: 4px` on `.id .booker` (was spacing it from the now-removed "ID: " text)
+
+**Builds uploaded:** iOS 45 (API switch + filter/ID removal), iOS 46 (login logo + sizing). Android versionCode 2 covers both — single AAB. The iOS pbxproj shows 42 → 46 because the publish-ios.sh script bumps `CURRENT_PROJECT_VERSION` before any build step, and a few invocations early in the session burned numbers 43–44 before the keepers landed. Per [Publish script bumps first](feedback_publish_script_bumps_first.md): `npm --prefix /Users/tamas/SabeeAppGO/app run publish:ios` from anywhere is the safe form.
+
+### 2026-05-25 — Session 7 — Bottom-sheet concentric-corners refactor
 
 > Note: All changes are in the Angular/Ionic app (`app/`).
 
@@ -690,12 +720,11 @@ Roughly prioritised — confirm with user before starting:
 ### Screens to build
 - [ ] **Departures screen** — dedicated view for today's departures (check-out times, balance due, room key return)
 - [ ] **Notifications screen** — target for the Bell icon on HomeScreen
-- [ ] **Settings / Profile screen** — target for the Settings icon on HomeScreen
 
 ### Features to add to existing screens
 - [ ] **Services panel** on ReservationDetail — list extras (Breakfast, Airport Transfer, etc.) with quantities and prices from `SERVICES` data
 - [ ] **Finances panel** on ReservationDetail — room cost, services total, amount paid, balance; from `FINANCES` data
-- [ ] **Filter sheet in Arrivals** — the Filter icon button on the section title header does nothing; design a filter sheet (by status, room type, source channel)
+- [ ] **Filter sheet in Arrivals** — once filtering is needed (by status, room type, source channel), reintroduce the filter icon button in `.section-title` and design the sheet. Icon was removed in Session 8 since it was cosmetic
 - [ ] **Check-in / Check-out action flow** — after tapping a status pill, show a confirmation flow rather than just cycling
 - [ ] **Multi-month calendar** — add prev/next month navigation to BlockDateScreen
 

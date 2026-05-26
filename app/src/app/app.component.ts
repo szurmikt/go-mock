@@ -4,6 +4,7 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { IonApp, IonRouterOutlet, createAnimation, Animation } from '@ionic/angular/standalone';
 import { LockOverlayComponent } from './components/lock-overlay/lock-overlay.component';
+import { ApiEnvironmentService } from './services/api-environment';
 import { AuthService } from './services/auth';
 import { BiometricService } from './services/biometric';
 import { OptionsService } from './services/options.service';
@@ -51,6 +52,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly LOCK_AFTER_MS = 10 * 60 * 1000; // 10 minutes
 
   private options = inject(OptionsService);
+  private apiEnv = inject(ApiEnvironmentService);
 
   constructor(
     readonly auth: AuthService,
@@ -58,13 +60,15 @@ export class AppComponent implements OnInit, OnDestroy {
     private router: Router,
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios') {
       document.body.classList.add('ios-native');
     }
 
     const initialUrl = window.location.pathname + window.location.search;
     const authlessRoutes = ['/login', '/mfa', '/property-select', '/'];
+
+    await this.apiEnv.init();
 
     this.auth.loadStoredAuth().then(async () => {
       if (this.auth.isAuthenticated()) {

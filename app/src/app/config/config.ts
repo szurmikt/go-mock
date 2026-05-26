@@ -8,6 +8,7 @@ export const Config = {
   STORAGE_PROPERTIES_KEY: 'properties',
   STORAGE_SEARCH_HISTORY_KEY: 'searchHistory',
   STORAGE_BACKGROUND_AT_KEY: 'backgroundAt',
+  STORAGE_API_ENV_KEY: 'apiEnvironment',
   ID_CARDS: [
     12, 16, 20, 28, 75, 76, 77, 83, 97, 98, 106, 121, 159, 160, 161, 162, 177,
     212, 213, 216, 224, 225,

@@ -1,7 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular/standalone';
+import { ApiEnvironmentService } from '../../services/api-environment';
 import { AuthService } from '../../services/auth';
 import { LanguageService } from '../../services/language.service';
 
@@ -12,7 +13,7 @@ import { LanguageService } from '../../services/language.service';
   standalone: true,
   imports: [FormsModule, IonContent],
 })
-export class LoginPage {
+export class LoginPage implements OnDestroy {
   email = '';
   password = '';
   loading = false;
@@ -20,6 +21,11 @@ export class LoginPage {
   errorOpen = false;
 
   lang = inject(LanguageService);
+  apiEnv = inject(ApiEnvironmentService);
+
+  tapCounterMessage = signal<string | null>(null);
+  private tapCount = 0;
+  private tapResetTimer?: ReturnType<typeof setTimeout>;
 
   constructor(
     private auth: AuthService,
@@ -55,6 +61,33 @@ export class LoginPage {
 
   dismissError() {
     this.errorOpen = false;
+  }
+
+  onSecretTap() {
+    clearTimeout(this.tapResetTimer);
+    this.tapCount++;
+    const targetMode = this.apiEnv.isTest() ? 'Live' : 'Test';
+    const remaining = 7 - this.tapCount;
+
+    if (this.tapCount >= 7) {
+      this.tapCount = 0;
+      this.tapCounterMessage.set(null);
+      void this.apiEnv.setMode(this.apiEnv.isTest() ? 'live' : 'test');
+      return;
+    }
+    if (this.tapCount >= 4) {
+      this.tapCounterMessage.set(
+        `${remaining} more tap${remaining === 1 ? '' : 's'} to switch to ${targetMode} Mode`,
+      );
+    }
+    this.tapResetTimer = setTimeout(() => {
+      this.tapCount = 0;
+      this.tapCounterMessage.set(null);
+    }, 2000);
+  }
+
+  ngOnDestroy() {
+    clearTimeout(this.tapResetTimer);
   }
 
   private extractMessage(err: unknown): string {

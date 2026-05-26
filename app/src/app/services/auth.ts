@@ -1,9 +1,9 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { environment } from '../../environments/environment';
 import { Config } from '../config/config';
 import { StorageService } from './storage';
+import { ApiEnvironmentService } from './api-environment';
 import {
   AuthState,
   ApiResponse,
@@ -32,6 +32,7 @@ export class AuthService {
   constructor(
     private http: HttpClient,
     private storage: StorageService,
+    private env: ApiEnvironmentService,
   ) {}
 
   async loadStoredAuth(): Promise<void> {
@@ -56,7 +57,7 @@ export class AuthService {
 
   async login(email: string, password: string): Promise<{ mfaToken: string }> {
     const res = await firstValueFrom(
-      this.http.post<ApiResponse<MfaTokenResponse>>(`${environment.apiUrl}/token`, {
+      this.http.post<ApiResponse<MfaTokenResponse>>(`${this.env.apiUrl()}/token`, {
         username: email,
         password,
         device_id: this._deviceId(),
@@ -69,7 +70,7 @@ export class AuthService {
 
   async verifyMfa(mfaToken: string, code: string, email: string): Promise<void> {
     const res = await firstValueFrom(
-      this.http.post<ApiResponse<TokenResponse>>(`${environment.apiUrl}/mfa/verify`, {
+      this.http.post<ApiResponse<TokenResponse>>(`${this.env.apiUrl()}/mfa/verify`, {
         mfa_token: mfaToken,
         method: 'totp',
         code,
@@ -90,7 +91,7 @@ export class AuthService {
     try {
       const res = await firstValueFrom(
         this.http.get<ApiResponse<{ user_id: string; name: string; email: string; role: string }[]>>(
-          `${environment.apiUrl}/users/me`,
+          `${this.env.apiUrl()}/users/me`,
         ),
       );
       const user = res.data?.[0];
@@ -106,7 +107,7 @@ export class AuthService {
     const rt = this._auth()?.refreshToken;
     if (!rt) throw new Error('No refresh token');
     const res = await firstValueFrom(
-      this.http.post<ApiResponse<TokenResponse>>(`${environment.apiUrl}/token`, {
+      this.http.post<ApiResponse<TokenResponse>>(`${this.env.apiUrl()}/token`, {
         grant_type: 'refresh_token',
         refresh_token: rt,
       }),
@@ -122,7 +123,7 @@ export class AuthService {
 
   async loadProperties(): Promise<PropertyInterface[]> {
     const res = await firstValueFrom(
-      this.http.get<ApiResponse<PropertyInterface[]>>(`${environment.apiUrl}/properties`),
+      this.http.get<ApiResponse<PropertyInterface[]>>(`${this.env.apiUrl()}/properties`),
     );
     this._properties.set(res.data);
     await this.storage.set(Config.STORAGE_PROPERTIES_KEY, res.data);
