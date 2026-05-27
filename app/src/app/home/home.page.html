@@ -11,7 +11,7 @@
         style="background: none; border: 0; padding: 0; cursor: pointer; display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; text-align: left"
         (click)="switchOpen.set(true)">
         <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); line-height: 1.2; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
-          {{ auth.selectedProperty()?.property_name || 'Select Property' }}
+          {{ auth.selectedProperty()?.property_company_name || 'Select Property' }}
         </h1>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
           style="color: var(--primary); flex-shrink: 0">
@@ -132,18 +132,44 @@
 
 <!-- Property switcher sheet — rendered outside ion-content so position:fixed reaches the viewport -->
 @if (switchOpen()) {
-  <div class="sheet-backdrop" (click)="switchOpen.set(false)">
-    <div class="sheet" (click)="$event.stopPropagation()">
+  <div class="sheet-backdrop" (click)="closeSwitch()">
+    <div class="sheet" [class.sheet--tall]="auth.properties().length > 10" (click)="$event.stopPropagation()">
       <div class="head">
         <h3>Switch Property</h3>
-        <button class="icon-btn" (click)="switchOpen.set(false)">
+        <button class="icon-btn" (click)="closeSwitch()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M18 6L6 18M6 6l12 12"/>
           </svg>
         </button>
       </div>
+      @if (auth.properties().length > 10) {
+        <div class="search-field" style="margin: 8px 0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            style="color: var(--ink-4); flex-shrink: 0">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input
+            type="text"
+            placeholder="Filter properties…"
+            [value]="propertyQuery()"
+            (input)="setPropertyQuery($any($event.target).value)"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            style="flex: 1; border: none; background: none; outline: none; font-size: 16px; font-weight: 600; color: var(--ink); font-family: inherit" />
+          @if (propertyQuery().length > 0) {
+            <button (click)="clearPropertyQuery()" style="background: none; border: none; padding: 0; cursor: pointer; color: var(--ink-4); display: flex; align-items: center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          }
+        </div>
+      }
       <div style="margin-top: 8px">
-        @for (p of auth.properties(); track p.property_id) {
+        @for (p of filteredProperties(); track p.property_id) {
           <button class="action-item" (click)="selectProperty(p)">
             <span class="action-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -152,13 +178,18 @@
               </svg>
             </span>
             <span style="flex: 1; text-align: left">
-              <div>{{ p.property_name }}</div>
-              <div style="font-size: 13px; font-weight: 600; color: var(--ink-4); margin-top: 2px">{{ p.property_company_name }}</div>
+              <div>{{ p.property_company_name }}</div>
+              <div style="font-size: 14px; font-weight: 600; color: var(--ink-3); margin-top: 3px">{{ p.property_name }}</div>
             </span>
             @if (auth.selectedProperty()?.property_id === p.property_id) {
               <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex-shrink: 0"></span>
             }
           </button>
+        }
+        @if (propertyQuery().trim().length > 0 && filteredProperties().length === 0) {
+          <div style="text-align: center; padding: 24px 0; color: var(--ink-4); font-size: 15px; font-weight: 600">
+            No properties match.
+          </div>
         }
       </div>
     </div>

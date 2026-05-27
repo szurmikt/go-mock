@@ -71,6 +71,7 @@
 [data-density="compact"] { --pad: 14px; --gap: 12px; --card-pad: 12px; }
 
 body.ios-native { --sheet-radius-bottom: 48px; }
+body.keyboard-open { --sheet-radius-bottom: var(--sheet-radius-top); }
 
 [data-card="outlined"] { --card-bg: #ffffff; --card-border: 1px solid var(--line-strong); --card-shadow: none; }
 [data-card="soft"]     { --card-bg: rgb(246,247,251); --card-border: 1px solid transparent; --card-shadow: none; }
@@ -280,15 +281,23 @@ ion-content {
   position: absolute;
   bottom: env(safe-area-inset-bottom, 0px);
   left: 0;
-  width: 44px;
-  height: 44px;
+  width: 55px;
+  height: 55px;
   background: transparent;
   border: 0;
   padding: 0;
   margin: 0;
   z-index: 10;
   cursor: default;
+  border-top-right-radius: 16px;
   -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.45s ease, box-shadow 0.45s ease;
+
+  &:active {
+    background: rgba(0, 142, 255, 0.10);
+    box-shadow: 0 0 18px 2px rgba(0, 142, 255, 0.35);
+    transition: background-color 0.08s ease, box-shadow 0.08s ease;
+  }
 }
 
 .tap-counter-toast {
@@ -379,8 +388,12 @@ ion-content {
   padding: var(--pad);
   padding-bottom: calc(max(env(safe-area-inset-bottom, 0px) - 8px, 8px) + 8px);
   animation: sheet-up 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: border-radius 0.2s ease;
   max-height: 88%;
   overflow-y: auto;
+
+  // Locks the sheet at full height so it doesn't shrink as a filter narrows its list.
+  &.sheet--tall { height: 88%; }
 
   .head {
     background: var(--bg);

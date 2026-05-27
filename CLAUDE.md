@@ -505,7 +505,33 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-05-26 — Session 8 (current) — Test/Live API switch with hidden gesture + login logo
+### 2026-05-27 — Session 9 (current) — Keyboard polish: sheet corners + iOS window bg
+
+> Note: All changes are in the Angular/Ionic app (`app/`).
+
+Two small visual fixes for what happens when the iOS keyboard opens.
+
+**Sheet bottom corners collapse 48 → 24 when keyboard rises** ([theme/sabeeapp-design.scss:74](app/src/theme/sabeeapp-design.scss#L74), [theme/sabeeapp-design.scss:393](app/src/theme/sabeeapp-design.scss#L393), [app.component.ts:5](app/src/app/app.component.ts#L5), [app.component.ts:66-67](app/src/app/app.component.ts#L66-L67)):
+
+- The Session-7 concentric-corners pattern sets `--sheet-radius-bottom: 48px` on `body.ios-native` so the sheet's bottom corners are concentric with the ~47pt iPhone bezel. That reasoning only holds while the sheet's bottom edge sits next to the bezel
+- The property switcher now contains a filter input. When focused, the keyboard pushes the sheet up — the bottom is suddenly floating mid-screen with no bezel near it, and the 48px radius reads oversized vs. the 24px top
+- Fix: wire `@capacitor/keyboard` (already a dependency, previously unused) `keyboardWillShow` / `keyboardWillHide` listeners in `AppComponent.ngOnInit` inside the existing `ios-native` block. They toggle `body.keyboard-open`. CSS adds `body.keyboard-open { --sheet-radius-bottom: var(--sheet-radius-top); }` after the `ios-native` rule (later, equal-specificity wins). `.sheet` gets `transition: border-radius 0.2s ease` so corners animate smoothly with the keyboard rather than snapping
+- iOS-only is sufficient: Android keeps 24/24 already, nothing to override. Browser preview is unaffected since the Keyboard plugin no-ops on web
+
+**Black gaps at the iOS keyboard's rounded top corners** ([ios/App/App/AppDelegate.swift:10-14](app/ios/App/App/AppDelegate.swift#L10-L14)):
+
+- Visible on the MFA screen (and any keyboard-opening screen): the two triangular gaps next to the keyboard panel's rounded top corners showed black against the otherwise light `#f9fafb` app body
+- Root cause traced through Capacitor sources: with `KeyboardResize.Native` (default), the iOS plugin shrinks `webView.frame` ([Keyboard.m:225](app/node_modules/@capacitor/keyboard/ios/Sources/KeyboardPlugin/Keyboard.m#L225)). `CAPBridgeViewController.loadView()` does `view = webView` ([CAPBridgeViewController.swift:46](app/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController.swift#L46)) — so the VC's view IS the WebView. When it shrinks, the keyboard's rounded-corner gap is outside the VC view entirely. What's left to paint is the `UIWindow`, whose `backgroundColor` defaults to `nil` → black. The existing `capacitor.config.ts ios.backgroundColor: '#f9fafb'` only sets `webView.backgroundColor` + `scrollView.backgroundColor` ([CAPBridgeViewController.swift:308-310](app/node_modules/@capacitor/ios/Capacitor/Capacitor/CAPBridgeViewController.swift#L308-L310)) — not the window. The web-side CSS `body { background: var(--bg) }` is inside the shrunk WebView and can't reach this area either
+- Fix: one line in `application(_:didFinishLaunchingWithOptions:)` setting `window?.backgroundColor` to `UIColor(red: 0xf9/255, green: 0xfa/255, blue: 0xfb/255, alpha: 1)`. No new files, no Xcode project edit, no storyboard change, no Capacitor config change
+- **Color duplication note:** `#f9fafb` is now hardcoded in three places — `capacitor.config.ts ios.backgroundColor`, the CSS `--bg` token, and `AppDelegate.swift`. Considered deduping via a `CAPBridgeViewController` subclass reading `bridge.config.backgroundColor`, but a subclass + storyboard `customClass` swap was overkill for a stable brand color. Three matching literals + a comment cross-referencing the others wins on simplicity. If the color ever changes, `grep -ri 'f9fafb\|249, 250, 251'` finds them in seconds
+
+**Rejected alternatives for the window-bg fix** (recorded so we don't relitigate):
+- Subclass `CAPBridgeViewController` and set `view.backgroundColor` — doesn't work; the VC's view IS the WebView, so setting its bg is identical to what `capacitor.config.ts` already does and the WebView gets clipped to its new smaller frame
+- Switch `KeyboardResize` to `body` or `ionic` — also fixes the gaps but is a much bigger change with regression risk on every screen that has an input
+
+**Build uploaded:** iOS 50 via `npm --prefix /Users/tamas/SabeeAppGO/app run publish:ios`. Jump from 46 (last keeper) to 50 reflects three earlier publish invocations that didn't ship — per [Publish script bumps first](feedback_publish_script_bumps_first.md), each consumes a build number even if cancelled.
+
+### 2026-05-26 — Session 8 — Test/Live API switch with hidden gesture + login logo
 
 > Note: All changes are in the Angular/Ionic app (`app/`).
 

@@ -12,6 +12,21 @@ import {
 } from '../models/auth.interfaces';
 import { PropertyInterface } from '../models/property.interface';
 
+function sortPropertiesByCompany(props: PropertyInterface[]): PropertyInterface[] {
+  const startsWithLetter = (s: string) => /^\p{L}/u.test(s);
+  return [...props].sort((a, b) => {
+    const ac = (a.property_company_name ?? '').trim();
+    const bc = (b.property_company_name ?? '').trim();
+    if (!ac && !bc) return 0;
+    if (!ac) return 1;
+    if (!bc) return -1;
+    const aAlpha = startsWithLetter(ac);
+    const bAlpha = startsWithLetter(bc);
+    if (aAlpha !== bAlpha) return aAlpha ? 1 : -1;
+    return ac.localeCompare(bc, undefined, { sensitivity: 'base', numeric: true });
+  });
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private _auth = signal<AuthState | null>(null);
@@ -47,7 +62,7 @@ export class AuthService {
     }
     const properties = await this.storage.get<PropertyInterface[]>(Config.STORAGE_PROPERTIES_KEY);
     if (properties?.length) {
-      this._properties.set(properties);
+      this._properties.set(sortPropertiesByCompany(properties));
     }
     // Property-Id header is required by /users/me — fetch only after property is restored
     if (auth?.accessToken && !auth.name && property) {
@@ -125,9 +140,10 @@ export class AuthService {
     const res = await firstValueFrom(
       this.http.get<ApiResponse<PropertyInterface[]>>(`${this.env.apiUrl()}/properties`),
     );
-    this._properties.set(res.data);
-    await this.storage.set(Config.STORAGE_PROPERTIES_KEY, res.data);
-    return res.data;
+    const sorted = sortPropertiesByCompany(res.data);
+    this._properties.set(sorted);
+    await this.storage.set(Config.STORAGE_PROPERTIES_KEY, sorted);
+    return sorted;
   }
 
   async selectProperty(property: PropertyInterface): Promise<void> {

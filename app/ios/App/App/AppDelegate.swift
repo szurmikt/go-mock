@@ -7,7 +7,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Paint UIWindow with the app bg so the rounded-corner gaps next to the iOS keyboard
+        // don't show black. The WebView (which is the VC's view) shrinks for KeyboardResize.Native,
+        // so the window is what's painted in those gaps. Color matches CSS --bg / capacitor.config.ts ios.backgroundColor.
+        window?.backgroundColor = UIColor(red: 0xf9 / 255.0, green: 0xfa / 255.0, blue: 0xfb / 255.0, alpha: 1)
         return true
     }
 

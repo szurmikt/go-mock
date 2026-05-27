@@ -37,6 +37,30 @@ export class HomePage implements OnInit, AfterViewInit, OnDestroy {
   readonly tabs: Tab[] = ['Yesterday', 'Today', 'Tomorrow'];
   tab = signal<Tab>('Today');
   switchOpen = signal(false);
+  propertyQuery = signal('');
+
+  readonly filteredProperties = computed(() => {
+    const q = this.propertyQuery().trim().toLowerCase();
+    const all = this.auth.properties();
+    if (!q) return all;
+    return all.filter(p =>
+      (p.property_name ?? '').toLowerCase().includes(q) ||
+      (p.property_company_name ?? '').toLowerCase().includes(q),
+    );
+  });
+
+  closeSwitch() {
+    this.switchOpen.set(false);
+    this.propertyQuery.set('');
+  }
+
+  setPropertyQuery(v: string) {
+    this.propertyQuery.set(v);
+  }
+
+  clearPropertyQuery() {
+    this.propertyQuery.set('');
+  }
 
   thumb = signal({ left: 3, width: 0 });
 
@@ -95,7 +119,7 @@ export class HomePage implements OnInit, AfterViewInit, OnDestroy {
       this.res.clear();
     }
     await this.auth.selectProperty(p);
-    this.switchOpen.set(false);
+    this.closeSwitch();
     await Promise.all([
       this.res.fetchReservations(),
       this.options.countries().length === 0 ? this.options.load().catch(() => {}) : Promise.resolve(),

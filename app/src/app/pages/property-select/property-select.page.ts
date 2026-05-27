@@ -15,6 +15,7 @@ import { PropertyInterface } from '../../models/property.interface';
 export class PropertySelectPage implements OnInit {
   properties: PropertyInterface[] = [];
   loading = true;
+  query = '';
 
   constructor(
     private auth: AuthService,
@@ -22,6 +23,19 @@ export class PropertySelectPage implements OnInit {
     private alertCtrl: AlertController,
     private options: OptionsService,
   ) {}
+
+  get filteredProperties(): PropertyInterface[] {
+    const q = this.query.trim().toLowerCase();
+    if (!q) return this.properties;
+    return this.properties.filter(p =>
+      (p.property_name ?? '').toLowerCase().includes(q) ||
+      (p.property_company_name ?? '').toLowerCase().includes(q),
+    );
+  }
+
+  clearQuery() {
+    this.query = '';
+  }
 
   async ngOnInit() {
     await this.loadProperties();
