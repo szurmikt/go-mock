@@ -8,13 +8,14 @@ import { OptionsService } from '../../services/options.service';
 import { ReservationInterface } from '../../models/reservation.interface';
 import { GuestInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
+import { LocalizedTimePipe } from '../../pipes/localized-time.pipe';
 
 @Component({
   selector: 'app-reservation-detail',
   templateUrl: './reservation-detail.page.html',
   styleUrls: ['./reservation-detail.page.scss'],
   standalone: true,
-  imports: [IonContent, TitleCasePipe, LocalizedDatePipe],
+  imports: [IonContent, TitleCasePipe, LocalizedDatePipe, LocalizedTimePipe],
 })
 export class ReservationDetailPage implements OnInit, ViewWillEnter {
   reservation = signal<ReservationInterface | null>(null);

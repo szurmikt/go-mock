@@ -181,7 +181,7 @@
       @if (scanSheetMode() === 'loading') {
         <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 32px 16px">
           <ion-spinner></ion-spinner>
-          <div style="font-size: 16px; font-weight: 600; color: var(--ink-2)">{{ scanSheetMessage() }}</div>
+          <div style="font-size: var(--font-md); font-weight: 600; color: var(--ink-2)">{{ scanSheetMessage() }}</div>
         </div>
       } @else if (scanSheetMode() === 'result') {
         @let _result = scanResult();

@@ -41,12 +41,11 @@
   --sheet-radius-bottom: 24px;
 
   --font-xs:   12px;
-  --font-sm:   13px;
-  --font-base: 15px;
+  --font-sm:   15px;
+  --font-base: 16px;
   --font-md:   17px;
   --font-lg:   18px;
   --font-xl:   22px;
-  --font-2xl:  26px;
 
   --shadow-sm:  0 1px 3px rgba(0,0,0,.08);
   --shadow-md:  0 2px 8px rgba(0,0,0,.10);
@@ -206,7 +205,7 @@ ion-content {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   display: flex; align-items: center;
-  gap: 10px; padding: 0 14px;
+  gap: 8px; padding: 0 12px;
   color: var(--ink-4);
   transition: border-color 0.18s, box-shadow 0.18s;
   cursor: pointer;
@@ -219,7 +218,8 @@ ion-content {
   input {
     flex: 1; border: 0; outline: 0;
     background: transparent; font: inherit;
-    font-size: 16px; color: var(--ink);
+    // Keep ≥16px to avoid iOS WKWebView auto-zoom on focus; 18px is the deliberate primary-input size.
+    font-size: 18px; color: var(--ink);
 
     &::placeholder { color: var(--ink-4); }
   }
@@ -309,7 +309,7 @@ ion-content {
   color: #fff;
   padding: 10px 16px;
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: var(--font-sm);
   font-weight: 700;
   z-index: 200;
   pointer-events: none;
@@ -451,7 +451,7 @@ ion-content {
 .toast {
   background: rgba(20,35,46,0.96); color: #fff;
   padding: 12px 18px; border-radius: var(--radius-sm);
-  font-size: 14px; font-weight: 700;
+  font-size: var(--font-sm); font-weight: 700;
   box-shadow: var(--shadow-md);
   animation: toast-in 0.3s ease, toast-out 0.3s ease 1.7s forwards;
   display: flex; align-items: center; gap: 8px;
@@ -502,7 +502,7 @@ ion-content {
   flex: 1; background: var(--surface);
   border-radius: var(--radius-xs); padding: 12px 14px;
 
-  .label { font-size: var(--font-sm); font-weight: 600; color: var(--ink-4); display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .label { font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); display: flex; align-items: center; justify-content: center; gap: 8px; }
   .value { font-size: var(--font-xl); font-weight: 800; color: var(--ink-2); letter-spacing: -0.01em; margin-top: 4px; text-align: center; }
 }
 
@@ -560,14 +560,16 @@ ion-content {
 
 .res-code  { font-size: var(--font-lg); font-weight: 800; color: var(--primary); letter-spacing: 0.02em; }
 .res-name  { font-size: var(--font-lg); font-weight: 800; color: var(--ink); letter-spacing: -0.01em; margin-bottom: 4px; line-height: 1.2; }
-.res-email { color: var(--ink-3); font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+.res-email { color: var(--ink-3); font-size: var(--font-base); font-weight: 600; margin-bottom: 12px; }
 .res-meta  {
   display: flex; justify-content: space-between;
   padding-top: 10px; border-top: 1px solid var(--line);
-  color: var(--ink-3); font-size: 14px; font-weight: 600;
+  color: var(--ink-3); font-size: var(--font-base); font-weight: 600;
 
   .v { color: var(--ink); font-weight: 700; }
 }
+
+.res-when { display: flex; flex-direction: column; gap: 2px; }
 
 .res-card .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 
@@ -611,7 +613,7 @@ ion-content {
 .fact {
   background: var(--surface); border-radius: var(--radius-xs); padding: 10px 12px;
 
-  .l { display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 600; color: var(--ink-4); }
+  .l { display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); }
   .v { font-size: var(--font-md); font-weight: 700; color: var(--ink); margin-top: 2px; }
 }
 
@@ -844,9 +846,9 @@ ion-content {
 
 /* ─── Detail row (label + value pairs in info cards) ─────── */
 
-.detail-label { font-size: var(--font-sm); color: var(--ink-4); font-weight: 600; }
+.detail-label { font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; }
 .detail-value { font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 2px; }
-.fact-value   { font-size: 17px; font-weight: 700; }
+.fact-value   { font-size: var(--font-md); font-weight: 700; }
 
 /* ─── Animations ──────────────────────────────────────────── */
 

@@ -125,7 +125,7 @@
         <p
           style="
             color: rgba(255, 255, 255, 0.6);
-            font-size: 15px;
+            font-size: var(--font-base);
             font-weight: 600;
             line-height: 1.6;
           "
@@ -156,7 +156,7 @@
         style="
           color: rgba(255, 255, 255, 0.55);
           text-align: center;
-          font-size: 13px;
+          font-size: var(--font-sm);
           font-weight: 600;
           margin-top: 24px;
           padding: 0 32px;
@@ -205,7 +205,7 @@
         >
           <span
             style="
-              font-size: 17px;
+              font-size: var(--font-md);
               font-weight: 700;
               color: var(--ink);
               flex: 1;
@@ -234,62 +234,22 @@
           `${_scannedData?.['first_name']?.['value'] || ''}
           ${_scannedData?.['last_name']?.['value'] || ''}`;
           <div style="padding: 14px 0; border-bottom: 1px solid var(--line)">
-            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">
-              First &amp; Last name
-            </div>
-            <div
-              style="
-                font-size: 19px;
-                color: var(--ink);
-                font-weight: 700;
-                margin-top: 3px;
-              "
-            >
-              {{ fullName | dashIfEmpty }}
-            </div>
+            <div class="detail-label">First &amp; Last name</div>
+            <div class="detail-value">{{ fullName | dashIfEmpty }}</div>
           </div>
           } @if (_documentData?.['document_type']) {
-          <div
-            style="
-              display: flex;
-              gap: 16px;
-              padding: 14px 0;
-              border-bottom: 1px solid var(--line);
-            "
-          >
+          <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line)">
             <div style="flex: 1">
-              <div
-                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
-              >
-                Document type
-              </div>
-              <div
-                style="
-                  font-size: 19px;
-                  color: var(--ink);
-                  font-weight: 700;
-                  margin-top: 3px;
-                "
-              >
+              <div class="detail-label">Document type</div>
+              <div class="detail-value">
                 {{ _documentData?.document_type ?? "" | defaultValue: options :
                 "document_type" : "" | dashIfEmpty }}
               </div>
             </div>
             @if (_scannedData?.['document_number']?.['value']) {
             <div style="flex: 1">
-              <div
-                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
-              >
-                Document number
-              </div>
-              <div
-                style="
-                  font-size: 19px;
-                  color: var(--ink);
-                  font-weight: 700;
-                  margin-top: 3px;
-                "
-              >
+              <div class="detail-label">Document number</div>
+              <div class="detail-value">
                 {{ _scannedData?.['document_number']?.['value'] ?? "" |
                 defaultValue: options : "document_number" : "" | dashIfEmpty }}
               </div>
@@ -298,96 +258,33 @@
           </div>
           } @if (_scannedData?.['age']?.['value'] ||
           _scannedData?.['gender']?.['value']) {
-          <div
-            style="
-              display: flex;
-              gap: 16px;
-              padding: 14px 0;
-              border-bottom: 1px solid var(--line);
-            "
-          >
+          <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line)">
             @if (_scannedData?.['age']?.['value']) {
             <div style="flex: 1">
-              <div
-                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
-              >
-                Age
-              </div>
-              <div
-                style="
-                  font-size: 19px;
-                  color: var(--ink);
-                  font-weight: 700;
-                  margin-top: 3px;
-                "
-              >
-                {{ _scannedData?.['age']?.['value'] }}
-              </div>
+              <div class="detail-label">Age</div>
+              <div class="detail-value">{{ _scannedData?.['age']?.['value'] }}</div>
             </div>
             } @if (_scannedData?.['gender']?.['value']) {
             <div style="flex: 1">
-              <div
-                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
-              >
-                Gender
-              </div>
-              <div
-                style="
-                  font-size: 19px;
-                  color: var(--ink);
-                  font-weight: 700;
-                  margin-top: 3px;
-                "
-              >
-                {{ _scannedData?.['gender']?.['value'] }}
-              </div>
+              <div class="detail-label">Gender</div>
+              <div class="detail-value">{{ _scannedData?.['gender']?.['value'] }}</div>
             </div>
             }
           </div>
           } @if (_scannedData?.['birth_place']?.['value'] ||
           _scannedData?.['birth_date']?.['value']) {
-          <div
-            style="
-              display: flex;
-              gap: 16px;
-              padding: 14px 0;
-              border-bottom: 1px solid var(--line);
-            "
-          >
+          <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line)">
             @if (_scannedData?.['birth_place']?.['value']) {
             <div style="flex: 1">
-              <div
-                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
-              >
-                Place of birth
-              </div>
-              <div
-                style="
-                  font-size: 19px;
-                  color: var(--ink);
-                  font-weight: 700;
-                  margin-top: 3px;
-                "
-              >
-                {{ _scannedData?.['birth_place']?.['value'] ?? "" | dashIfEmpty
-                }}
+              <div class="detail-label">Place of birth</div>
+              <div class="detail-value">
+                {{ _scannedData?.['birth_place']?.['value'] ?? "" | dashIfEmpty }}
               </div>
             </div>
             } @if (_scannedData?.['birth_date']?.['value']) {
             <div style="flex: 1">
-              <div
-                style="font-size: 13px; color: var(--ink-4); font-weight: 600"
-              >
-                Date of birth
-              </div>
-              <div
-                style="
-                  font-size: 19px;
-                  color: var(--ink);
-                  font-weight: 700;
-                  margin-top: 3px;
-                "
-              >
+              <div class="detail-label">Date of birth</div>
+              <div class="detail-value">
                 {{ _scannedData?.['birth_date']?.['value'] | localizedDate }}
               </div>
             </div>
@@ -395,34 +292,16 @@
           </div>
           } @if (_scannedData?.['citizenship']?.['value']) {
           <div style="padding: 14px 0; border-bottom: 1px solid var(--line)">
-            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">
-              Citizenship
-            </div>
-            <div
-              style="
-                font-size: 19px;
-                color: var(--ink);
-                font-weight: 700;
-                margin-top: 3px;
-              "
-            >
+            <div class="detail-label">Citizenship</div>
+            <div class="detail-value">
               {{ _scannedData?.['citizenship']?.['value'] ?? "" | defaultValue:
               options : "country" : "NAME" | dashIfEmpty}}
             </div>
           </div>
           } @if (_scannedData?.['mother_name']?.['value']) {
           <div style="padding: 14px 0">
-            <div style="font-size: 13px; color: var(--ink-4); font-weight: 600">
-              Mother's name
-            </div>
-            <div
-              style="
-                font-size: 19px;
-                color: var(--ink);
-                font-weight: 700;
-                margin-top: 3px;
-              "
-            >
+            <div class="detail-label">Mother's name</div>
+            <div class="detail-value">
               {{ _scannedData?.['mother_name']?.['value'] ?? "" | defaultValue:
               options : "mother_name" : "" | dashIfEmpty }}
             </div>

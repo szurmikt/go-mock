@@ -159,14 +159,19 @@ Design/
 Font: `Nunito` (weights 400, 600, 700, 800). Heavy use of `font-weight: 800` for headings and key values.
 
 ```css
---font-xs:   12px   /* captions, labels */
---font-sm:   13px   /* meta text */
---font-base: 15px   /* body */
---font-md:   17px   /* standard UI text */
---font-lg:   18px   /* card titles, sheet headers */
---font-xl:   22px   /* section titles, large values */
---font-2xl:  26px   /* hero numbers */
+--font-xs:   12px   /* badges, document IDs, micro captions */
+--font-sm:   15px   /* labels, meta text, captions, error messages */
+--font-base: 16px   /* body, .res-meta / .res-email, secondary text */
+--font-md:   17px   /* standard UI text, .fact-value, sheet field values */
+--font-lg:   18px   /* sheet .field .v / fact-grid value rows */
+--font-xl:   22px   /* card titles, section titles, sheet headers */
 ```
+
+Two deliberate off-scale literals survive (with a comment in the SCSS where they appear):
+- **16px** on form/search inputs ([sabeeapp-design.scss:222-223](app/src/theme/sabeeapp-design.scss#L222-L223)) — iOS WKWebView zooms in on focus if a field is below 16px
+- **19px** on `.detail-value` — the prominent value display in ID-scan results and guest detail rows; one class, one size
+
+Plus a handful of intentional one-offs not in the scale: 11px (`.pill.home-test-pill`, `.nav-item`), 20px (`.otp-sep`, tile `h3`), 24px (`.sub-header h1`, `.otp-digit`), 28px (property-select header), 32px (`.scan-screen .not-processed`).
 
 OS font scaling is disabled globally:
 ```css
@@ -505,7 +510,34 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-05-27 — Session 9 (current) — Keyboard polish: sheet corners + iOS window bg
+### 2026-05-28 — Session 10 (current) — Localization, font-scale cleanup, id-scan trim + search polish
+
+> Note: All changes are in the Angular/Ionic app (`app/`).
+
+A batch of accumulated work committed together. **Shipped builds: iOS 55 (TestFlight), Android versionCode 5 (AAB).** Both were built from this working tree, so the commit matches what shipped.
+
+**Date/time localization** ([pipes/localized-date.pipe.ts](app/src/app/pipes/localized-date.pipe.ts), [pipes/localized-time.pipe.ts](app/src/app/pipes/localized-time.pipe.ts) new, [pages/reservation-detail/reservation-detail.page.ts](app/src/app/pages/reservation-detail/reservation-detail.page.ts), [reservation-detail.page.html](app/src/app/pages/reservation-detail/reservation-detail.page.html)):
+- `LocalizedDatePipe` is now language-aware. A `LOCALE_MAP` translates the app's language code to a day-first BCP-47 locale so English resolves to `en-GB` ("27 May") rather than `en-US` ("May 27"); other languages keep their natural Intl ordering. New `format: 'full' | 'dayMonth'` param (`dayMonth` → `{ day: 'numeric', month: 'short' }`). Marked `pure: false` because the `dayMonth` branch reads the `LanguageService` signal and must re-run on language change (same pattern as `TranslatePipe`). Formatters are cached by `cacheKey`
+- New `LocalizedTimePipe` — 24h `HH:MM`, normalizes `"YYYY-MM-DD HH:MM:SS"` → ISO (`replace(' ', 'T')`) so WebKit parses it as local time; falls back to a regex `HH:MM` match
+- `ReservationDetailPage` imports `LocalizedTimePipe`; check-in/out rows now render `arrival_date | localizedDate:'dayMonth'` + `checked_in_time | localizedTime` (likewise check-out)
+
+**Font-scale token normalization** ([theme/sabeeapp-design.scss](app/src/theme/sabeeapp-design.scss) + login/mfa/property-select/reservation-detail/settings/guest-detail HTML):
+- `:root` tokens redefined: `--font-sm` 13→15, `--font-base` 15→16, `--font-2xl` (26px) removed (unused after the change). Scale is now 12/15/16/17/18/22
+- Replaced ad-hoc hardcoded `font-size` literals with `var(--font-*)` tokens across the listed pages and in SCSS (`.pill`, `.toast`, `.res-email`, `.res-meta`, `.fact-value`) — snapping one-off sizes (13/14/15/16/17/22px) onto the nearest scale token
+- A few secondary-text colors darkened `--ink-4` → `--ink-3` for legibility (`.stat .label`, `.fact .l`, `.detail-label`)
+- The **Typography** section (Section 4) was rewritten to document the new scale, the two surviving off-scale literals (16px inputs, 19px `.detail-value`), and the intentional one-offs
+
+**id-scan dead-overlay cleanup** ([pages/id-scan/id-scan.page.html](app/src/app/pages/id-scan/id-scan.page.html)):
+- Removed the now-dead result + failure (TIMEOUT/CANCELLED/INTERRUPTED) overlays (~120 net lines). These were superseded by the guest-detail bottom sheets in Session 6; the normal flow no longer navigated to them. Completes the long-standing "Up Next" cleanup item. Camera + scanning phases retained
+
+**Search field polish + two-line reservation card** ([theme/sabeeapp-design.scss](app/src/theme/sabeeapp-design.scss#L201), [home/home.page.html](app/src/app/home/home.page.html), [pages/search/search.page.html](app/src/app/pages/search/search.page.html)):
+- All three inline magnifier SVGs (home search button, home property-filter, search page) swapped to the design-prototype geometry — `circle r="7"`, `path d="m21 21-4.3-4.3"`, `stroke-width="2"`, rounded caps — fixing the "cut-off" look from the old `r="8"`/`stroke-width="2.5"`/square-cap version
+- `.search-field`: `gap` 10→8, `padding` `0 14px`→`0 12px` (text closer to icon); input `font-size` 16→18 (primary input; still ≥16px so no iOS auto-zoom). Inline 16px removed from the real inputs so the SCSS rule drives them; home placeholder `<span>` set to 18px directly
+- Reservation card date row now stacks date over "X guests / Y nights" via new `.res-when { display: flex; flex-direction: column; gap: 2px; }`; dropped the `·` separator. Applied on home + search cards
+
+**Build/version:** iOS `CURRENT_PROJECT_VERSION` → 55, Android `versionCode` → 5 (bumped by the publish scripts).
+
+### 2026-05-27 — Session 9 — Keyboard polish: sheet corners + iOS window bg
 
 > Note: All changes are in the Angular/Ionic app (`app/`).
 
@@ -739,7 +771,7 @@ Two small visual fixes for what happens when the iOS keyboard opens.
 Roughly prioritised — confirm with user before starting:
 
 ### Angular app (`app/`) — follow-up from Session 6
-- [ ] **Delete the now-dead `/id-scan` result + failure overlays** — lines 182-460 of [id-scan.page.html](app/src/app/pages/id-scan/id-scan.page.html#L182-L460) plus the matching TIMEOUT / CANCELLED / INTERRUPTED branches above. The normal flow no longer navigates to any of them. Keep just the camera + scanning phases (or delete the route entirely and move the `?preview=…` previews onto guest-detail's `?previewScanSheet=…` URLs which already cover all the same modes)
+- [x] **Delete the now-dead `/id-scan` result + failure overlays** — done in Session 10. Removed the result + TIMEOUT/CANCELLED/INTERRUPTED overlays from [id-scan.page.html](app/src/app/pages/id-scan/id-scan.page.html); camera + scanning phases retained. The route still exists; `?preview=…` deep-links into the removed overlays are gone (guest-detail's `?previewScanSheet=…` covers the same modes)
 - [ ] **Verify cancelled / noshow API strings against real data** — Session 6 used educated-guess keys `cancelled` and `noshow`. Once a real reservation with one of these statuses comes through the API and renders as the grey "Option" pill, update the two `case` strings in `pillStatus` / `pillLabel` ([services/reservation.ts](app/src/app/services/reservation.ts#L15-L37))
 - [ ] **Guard `DocumentReaderService` for web** — wrap the constructor + `reader = DocumentReader.instance` field initializer with `Capacitor.isNativePlatform()` so injecting on guest-detail doesn't trigger the SABEEAPPGO-1/2 Sentry error in browser. Alternative: defer DI via `runInInjectionContext(this.injector, () => inject(DocumentReaderService))` inside `goScan()` so the service is only instantiated when the user actually taps "ID Scan"
 

@@ -16,11 +16,11 @@
 
         <!-- Profile -->
         <div style="text-align: center">
-          <div style="font-size: 22px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em">
+          <div style="font-size: var(--font-xl); font-weight: 800; color: var(--ink); letter-spacing: -0.02em">
             {{ auth.name() || auth.email() }}
           </div>
           @if (auth.name()) {
-            <div style="font-size: 14px; font-weight: 600; color: var(--ink); margin-top: 4px">
+            <div style="font-size: var(--font-sm); font-weight: 600; color: var(--ink); margin-top: 4px">
               {{ auth.email() }}
             </div>
           }

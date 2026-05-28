@@ -58,7 +58,7 @@
     @if (apiEnv.isTest()) {
       <div class="test-mode-banner">
         <span class="pill" data-status="test">TEST MODE</span>
-        <div style="font-size:13px; font-weight:600; color:var(--warn); margin-top:8px">
+        <div style="font-size:var(--font-sm); font-weight:600; color:var(--warn); margin-top:8px">
           You are signing in against the test API
         </div>
       </div>
@@ -94,7 +94,7 @@
         </button>
       </div>
       <div style="margin-top: 16px; margin-bottom: 8px">
-        <div style="font-size: 15px; font-weight: 600; color: var(--ink-3); line-height: 1.5">
+        <div style="font-size: var(--font-base); font-weight: 600; color: var(--ink-3); line-height: 1.5">
           {{ errorMessage }}
         </div>
       </div>

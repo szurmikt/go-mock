@@ -26,7 +26,7 @@
         <!-- Detail block -->
         <div class="detail-block">
           <div class="header">
-            <span style="color: var(--primary); font-size: 22px; font-weight: 800; letter-spacing: 0.02em">
+            <span style="color: var(--primary); font-size: var(--font-xl); font-weight: 800; letter-spacing: 0.02em">
               {{ r.reservation_code }}
             </span>
             <span class="pill" [attr.data-status]="pillStatus(r.status)">
@@ -45,7 +45,7 @@
                 </svg>
                 Check-in
               </div>
-              <div class="v">{{ r.arrival_date | localizedDate }}{{ r.checked_in_time ? '  ' + r.checked_in_time : '' }}</div>
+              <div class="v">{{ r.arrival_date | localizedDate:'dayMonth' }}{{ r.checked_in_time ? '  ' + (r.checked_in_time | localizedTime) : '' }}</div>
             </div>
             <div class="fact">
               <div class="l">
@@ -57,7 +57,7 @@
                 </svg>
                 Check-out
               </div>
-              <div class="v">{{ r.departure_date | localizedDate }}{{ r.checked_out_time ? '  ' + r.checked_out_time : '' }}</div>
+              <div class="v">{{ r.departure_date | localizedDate:'dayMonth' }}{{ r.checked_out_time ? '  ' + (r.checked_out_time | localizedTime) : '' }}</div>
             </div>
             <div class="fact">
               <div class="l">
