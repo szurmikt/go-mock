@@ -1,5 +1,6 @@
 // document-reader.service.ts
 import { Injectable, inject, signal } from '@angular/core';
+import * as Sentry from '@sentry/angular';
 import {
   DocumentReader,
   DocReaderAction,
@@ -111,6 +112,17 @@ export class DocumentReaderService {
 
     this.clearResults();
 
+    Sentry.addBreadcrumb({
+      category: 'regula',
+      level: 'info',
+      message: 'scan started',
+      data: {
+        scenario: String(this.selectedScenario),
+        multipageProcessing: this.reader.processParams.multipageProcessing,
+        doRfid: this.doRfid,
+      },
+    });
+
     this.reader.startScanner(
       ScannerConfig.withScenario(this.selectedScenario),
       this.handleCompletion.bind(this),
@@ -142,14 +154,19 @@ export class DocumentReaderService {
     // console.log('handleCompletion shouldRfid', shoudlRfid);
 
     if (action === DocReaderAction.TIMEOUT) {
+      this.logScanOutcome(action, results, error);
       this._readerStatus.set(ReaderStatus.TIMEOUT);
     } else if (action === DocReaderAction.CANCEL) {
+      this.logScanOutcome(action, results, error);
       this._readerStatus.set(ReaderStatus.CANCELLED);
     } else if (DocReaderAction.interrupted(action)) {
+      this.logScanOutcome(action, results, error);
       this._readerStatus.set(ReaderStatus.INTERRUPTED);
     } else if (DocReaderAction.stopped(action) && !this.shouldRfid(results)) {
       console.log('handleCompletion processResults', results);
-      this.processResults(results);
+      this.processResults(results).then(() =>
+        this.logScanOutcome(action, results, error, this._scanResult()),
+      );
     } else if (DocReaderAction.finished(action) && this.shouldRfid(results)) {
       this.isReadingRfid = true;
       this.readRfid();
@@ -168,6 +185,139 @@ export class DocumentReaderService {
     // } else if (DocReaderAction.interrupted(action)) {
     //   this._readerStatus.set('Scan Interrupted');
     // }
+  }
+
+  private buildScanDiagnostics(
+    action: DocReaderAction,
+    results: Results | null,
+    error: DocReaderException | null,
+  ): Record<string, any> {
+    const safe = <T>(fn: () => T): T | null => {
+      try {
+        const v = fn();
+        return v === undefined ? null : v;
+      } catch {
+        return null;
+      }
+    };
+    const r = results as any;
+    return {
+      actionKey: this.getReaderActionKey(action),
+      readerStatus: this.getReaderStatusKey(this._readerStatus()),
+      scenario: String(this.selectedScenario),
+      multipageProcessing: safe(() => this.reader.processParams.multipageProcessing),
+      doRfid: this.doRfid,
+      isReadingRfid: this.isReadingRfid,
+      documentType: safe(() =>
+        results?.documentType?.map((d: any) => ({
+          name: d?.name ?? null,
+          type: d?.type ?? null,
+          documentName: d?.documentName ?? null,
+        })),
+      ),
+      processingFinishedStatus: safe(() => r?.processingFinishedStatus),
+      overallStatus: safe(() => r?.status),
+      morePagesAvailable: safe(() => r?.morePagesAvailable),
+      chipPage: safe(() => r?.chipPage),
+      elapsedTime: safe(() => r?.elapsedTime),
+      imageQuality: safe(() => r?.imageQuality),
+      errorMessage: safe(() => (error as any)?.message ?? (error as any)?.what ?? null),
+    };
+  }
+
+  private logScanOutcome(
+    action: DocReaderAction,
+    results: Results | null,
+    error: DocReaderException | null,
+    mapped: ScanResultInterface | null = null,
+  ): void {
+    let level: 'info' | 'warning' | 'error' = 'info';
+    let outcome = 'finished';
+    if (action === DocReaderAction.TIMEOUT) {
+      level = 'warning';
+      outcome = 'timed out';
+    } else if (action === DocReaderAction.CANCEL) {
+      outcome = 'cancelled';
+    } else if (DocReaderAction.interrupted(action)) {
+      level = 'warning';
+      outcome = 'interrupted';
+    } else if (error) {
+      level = 'error';
+      outcome = 'error';
+    }
+
+    const diagnostics = this.buildScanDiagnostics(action, results, error);
+    const rawResult = (() => {
+      try {
+        return results?.rawResult ?? null;
+      } catch {
+        return null;
+      }
+    })();
+    const title = `Regula scan ${outcome}`;
+
+    // Full payload to the device console (Xcode / Console.app) during testing.
+    const consolePayload = { diagnostics, mapped, rawResult };
+    if (level === 'error') {
+      console.error(`[regula] ${title}`, consolePayload);
+    } else if (level === 'warning') {
+      console.warn(`[regula] ${title}`, consolePayload);
+    } else {
+      console.log(`[regula] ${title}`, consolePayload);
+    }
+
+    if (Config.SCAN_DEBUG_LOGGING) {
+      const cappedRaw =
+        rawResult && rawResult.length > 16000
+          ? `${rawResult.slice(0, 16000)}…[truncated ${rawResult.length} chars]`
+          : (rawResult ?? '');
+      const docType = diagnostics['documentType']?.[0];
+      const attributes = {
+        outcome,
+        action: String(diagnostics['actionKey']),
+        reader_status: String(diagnostics['readerStatus']),
+        scenario: String(diagnostics['scenario']),
+        multipage: !!diagnostics['multipageProcessing'],
+        do_rfid: !!diagnostics['doRfid'],
+        more_pages: Number(diagnostics['morePagesAvailable'] ?? -1),
+        chip_page: Number(diagnostics['chipPage'] ?? -1),
+        elapsed_time: Number(diagnostics['elapsedTime'] ?? -1),
+        doc_type: String(docType?.name ?? 'unknown'),
+        doc_type_id: Number(docType?.type ?? -1),
+        diagnostics_json: JSON.stringify(diagnostics),
+        mapped_displayed: mapped ? JSON.stringify(mapped) : '',
+        raw_result: cappedRaw,
+      };
+      if (level === 'warning') {
+        Sentry.logger.warn(title, attributes);
+      } else if (level === 'error') {
+        Sentry.logger.error(title, attributes);
+      } else {
+        Sentry.logger.info(title, attributes);
+      }
+    }
+
+    // Failures also surface as Issues for visibility / alerting.
+    const isFailure =
+      action === DocReaderAction.TIMEOUT ||
+      DocReaderAction.interrupted(action) ||
+      !!error;
+    if (isFailure) {
+      const docType = diagnostics['documentType']?.[0];
+      Sentry.withScope((scope) => {
+        scope.setLevel(level);
+        scope.setTag('regula.action', String(diagnostics['actionKey']));
+        scope.setTag('regula.doc_type', String(docType?.name ?? 'unknown'));
+        scope.setTag('regula.more_pages', String(diagnostics['morePagesAvailable']));
+        scope.setTag('regula.multipage', String(diagnostics['multipageProcessing']));
+        scope.setContext('regula_scan', diagnostics);
+        if (error) {
+          Sentry.captureException(error);
+        } else {
+          Sentry.captureMessage(title, level);
+        }
+      });
+    }
   }
 
   private async processResults(results: Results | null) {
@@ -633,6 +783,7 @@ export class DocumentReaderService {
     if (error) {
       this._readerStatus.set(ReaderStatus.ERROR);
       console.error('handleException', error);
+      Sentry.captureException(error, { tags: { 'regula.phase': 'exception' } });
     }
   }
 

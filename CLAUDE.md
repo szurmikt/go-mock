@@ -510,7 +510,26 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-05-28 — Session 10 (current) — Localization, font-scale cleanup, id-scan trim + search polish
+### 2026-05-28 — Session 11 (current) — Maximum Regula scan logging to Sentry
+
+> Note: All changes are in the Angular/Ionic app (`app/`).
+
+**Shipped build: iOS 56 (TestFlight).** Logging-only change — no scan behaviour was altered.
+
+**Motivation:** a tester's UK passport scan repeatedly "timed out", but nothing reached Sentry. Root cause (from the screen recording + code): Regula *read the data page fine*, then got stuck in the multipage "Please provide the next page" loop and hit its **default** timeout. On timeout the app discarded everything Regula returned and showed our own generic "ID Scan Timed out" sheet. `handleCompletion(action, results, error)` was collapsing Regula's three-arg callback into a single `ReaderStatus` enum — `results` ignored, and a timeout carries `error: null`, so the prior `console.error`-only path never fired. We never saw Regula's actual response.
+
+**Maximum per-scan logging** ([services/document-reader.service.ts](app/src/app/services/document-reader.service.ts), [config/config.ts](app/src/app/config/config.ts)):
+- New private `buildScanDiagnostics()` + `logScanOutcome()`. Every terminal scan outcome (success, timeout, cancel, interrupted, error) is logged with the full Regula `results`: `documentType`, `processingFinishedStatus`, `morePagesAvailable`, `imageQuality`, `chipPage`, `elapsedTime`, `status`, the raw result JSON, and — on success — the app's mapped/displayed `_scanResult()`, so we can diff "what Regula returned" vs "what the app shows"
+- **Logs vs Issues split** (respects the Sentry free Developer plan: 5k errors/mo shared, **separate 5 GB/mo Logs**): all outcomes incl. successes → Sentry **Logs** via `Sentry.logger.{info,warn,error}` (`enableLogs: true` already set in [main.ts](app/src/main.ts#L11)); failures (timeout/interrupted/error) *additionally* raise an **Issue** via `captureMessage`/`captureException` with tags (`regula.action/doc_type/more_pages/multipage`) + a `regula_scan` context. Successes are deliberately not Issues. ~10 testers ≪ both quotas
+- Full payload also `console.*`'d for Xcode/Console.app. `rawResult` capped at 16 KB for the Sentry log attribute (full version stays in console)
+- Wired into `handleCompletion` (TIMEOUT/CANCEL/INTERRUPTED branches + the stopped → `processResults().then(...)` success path); `handleException` now also `Sentry.captureException`s so init-time prepareDatabase/initialize failures are captured; scan-start breadcrumb added in `scan()`
+- Master switch `Config.SCAN_DEBUG_LOGGING` (default `true`) gates the verbose Logs + console dumps; the failure→Issue capture stays on regardless. Flip to `false` to dial back after the testing period
+
+**Deliberately out of scope (follow-up once logs come back):** the actual timeout fix — disabling `multipageProcessing` for passports, raising Regula's `timeout*` params, or salvaging the intermediate `results` Regula returns on TIMEOUT (the SDK confirms intermediate results are available on timeout).
+
+**Build/version:** iOS `CURRENT_PROJECT_VERSION` → 56.
+
+### 2026-05-28 — Session 10 — Localization, font-scale cleanup, id-scan trim + search polish
 
 > Note: All changes are in the Angular/Ionic app (`app/`).
 
@@ -774,6 +793,7 @@ Roughly prioritised — confirm with user before starting:
 - [x] **Delete the now-dead `/id-scan` result + failure overlays** — done in Session 10. Removed the result + TIMEOUT/CANCELLED/INTERRUPTED overlays from [id-scan.page.html](app/src/app/pages/id-scan/id-scan.page.html); camera + scanning phases retained. The route still exists; `?preview=…` deep-links into the removed overlays are gone (guest-detail's `?previewScanSheet=…` covers the same modes)
 - [ ] **Verify cancelled / noshow API strings against real data** — Session 6 used educated-guess keys `cancelled` and `noshow`. Once a real reservation with one of these statuses comes through the API and renders as the grey "Option" pill, update the two `case` strings in `pillStatus` / `pillLabel` ([services/reservation.ts](app/src/app/services/reservation.ts#L15-L37))
 - [ ] **Guard `DocumentReaderService` for web** — wrap the constructor + `reader = DocumentReader.instance` field initializer with `Capacitor.isNativePlatform()` so injecting on guest-detail doesn't trigger the SABEEAPPGO-1/2 Sentry error in browser. Alternative: defer DI via `runInInjectionContext(this.injector, () => inject(DocumentReaderService))` inside `goScan()` so the service is only instantiated when the user actually taps "ID Scan"
+- [ ] **Fix the Regula scan timeout (UK passport)** — follow-up to the Session 11 logging. Once the Sentry Logs confirm the cause, pick: disable `multipageProcessing` for passports (one-shot on the data page; ID cards need front+back so may need a doc-type pre-selection), raise Regula's `timeout*` `ProcessParams`, and/or salvage the intermediate `results` Regula hands us on TIMEOUT (the data page is already read — route it through `processResults` instead of discarding). Behaviour was intentionally left unchanged in Session 11
 
 ### Screens to build
 - [ ] **Departures screen** — dedicated view for today's departures (check-out times, balance due, room key return)

@@ -3,6 +3,9 @@ export const Config = {
   APP_VERSION: '1.1.0',
   CI_VERSION: '4',
   CLIENT_ID: '366f7aff6d185668',
+  // Verbose Regula scan logging for the testing period. Set false to dial back the
+  // per-scan Sentry Logs + console dumps (failure->Issue capture stays on regardless).
+  SCAN_DEBUG_LOGGING: true as boolean,
   STORAGE_AUTH_KEY: 'authState',
   STORAGE_PROPERTY_KEY: 'selectedProperty',
   STORAGE_PROPERTIES_KEY: 'properties',
