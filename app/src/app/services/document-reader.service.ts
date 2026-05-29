@@ -96,7 +96,6 @@ export class DocumentReaderService {
     this.reader.functionality.showTorchButton = true;
   }
 
-  @LogMethod
   async init() {
     if (this._readerStatus() === ReaderStatus.READY) return;
 
@@ -231,19 +230,26 @@ export class DocumentReaderService {
     error: DocReaderException | null,
     mapped: ScanResultInterface | null = null,
   ): void {
+    // Classify the outcome. CANCEL is checked before interrupted() because the
+    // Regula SDK's interrupted() also returns true for CANCEL — a user backing
+    // out is not a failure and must not raise an Issue.
     let level: 'info' | 'warning' | 'error' = 'info';
     let outcome = 'finished';
+    let isFailure = false;
     if (action === DocReaderAction.TIMEOUT) {
       level = 'warning';
       outcome = 'timed out';
+      isFailure = true;
     } else if (action === DocReaderAction.CANCEL) {
       outcome = 'cancelled';
     } else if (DocReaderAction.interrupted(action)) {
       level = 'warning';
       outcome = 'interrupted';
+      isFailure = true;
     } else if (error) {
       level = 'error';
       outcome = 'error';
+      isFailure = true;
     }
 
     const diagnostics = this.buildScanDiagnostics(action, results, error);
@@ -298,10 +304,6 @@ export class DocumentReaderService {
     }
 
     // Failures also surface as Issues for visibility / alerting.
-    const isFailure =
-      action === DocReaderAction.TIMEOUT ||
-      DocReaderAction.interrupted(action) ||
-      !!error;
     if (isFailure) {
       const docType = diagnostics['documentType']?.[0];
       Sentry.withScope((scope) => {
@@ -853,36 +855,6 @@ export class DocumentReaderService {
     }
     return 'Unknown Action';
   }
-}
-
-function loggedMethod(originalMethod: any, _context: any) {
-  function replacementMethod(this: any, ...args: any[]) {
-    console.log('LOG: Entering method.');
-    const result = originalMethod.call(this, ...args);
-    console.log('LOG: Exiting method.');
-    return result;
-  }
-
-  return replacementMethod;
-}
-
-// Step 1: Create a function (method) decorator
-function LogMethod(
-  target: any,
-  methodName: string,
-  descriptor: PropertyDescriptor,
-) {
-  const originalMethod = descriptor.value; // Save the original method
-
-  descriptor.value = function (...args: any[]) {
-    console.log(`Method ${methodName} called with arguments:`, args);
-    console.error(new Error().stack?.split('\n')[2]?.trim().split(' ')[1]);
-    const result = originalMethod.apply(this, args); // Call the original method
-    console.log(`Method ${methodName} returned:`, result);
-    return result;
-  };
-
-  return descriptor;
 }
 
 export enum ReaderStatus {

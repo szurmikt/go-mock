@@ -510,7 +510,24 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-05-28 — Session 11 (current) — Maximum Regula scan logging to Sentry
+### 2026-05-29 — Session 12 (current) — Scan-logging fixes + NG0955 track-key flood
+
+> Note: All changes are in the Angular/Ionic app (`app/`).
+
+Follow-up to Session 11 — the new Sentry logging immediately surfaced three issues, all fixed here. **Shipped builds: iOS 57 (TestFlight), Android versionCode 6 (AAB).**
+
+**Cancel no longer raises a Sentry Issue** ([services/document-reader.service.ts](app/src/app/services/document-reader.service.ts)):
+- The first cancel logged as both a Log *and* an Issue (SABEEAPPGO-8). Cause: Regula's `DocReaderAction.interrupted()` returns `true` for `CANCEL` too, and the old `isFailure` re-evaluated `interrupted()` independently of the cancel branch. Now `isFailure` is set *inside* the classification chain (CANCEL is matched first and stays non-failure), so only TIMEOUT/INTERRUPTED/error reach Issues; cancels and successes stay Logs-only
+
+**Removed `undefined` ERROR-log noise** ([services/document-reader.service.ts](app/src/app/services/document-reader.service.ts)):
+- Each scan start emitted an ERROR-level Sentry Log with message `undefined`. Source: the leftover `@LogMethod` dev decorator on `init()` ran `console.error(new Error().stack…)`. Removed the decorator from `init()` and deleted the dead `LogMethod`/`loggedMethod` helpers
+
+**NG0955 duplicate-track-key flood** ([home/home.page.html](app/src/app/home/home.page.html#L107), [pages/search/search.page.html](app/src/app/pages/search/search.page.html#L64)):
+- Sentry Logs were flooded with Angular NG0955 "duplicated keys" (key `""` × ~82) on every reservation-list re-render. Reservation lists tracked by `r.id`, but the reservations *list* endpoint returns no usable `id` (`convert()` does `id: r.id` with no fallback). Switched both lists to `track r.reservation_code` (the real unique key, already used for routing). No TS change
+
+**Build/version:** iOS `CURRENT_PROJECT_VERSION` → 57, Android `versionCode` → 6 (manual Play Console upload via `sabeeapp-go-v6.aab`).
+
+### 2026-05-28 — Session 11 — Maximum Regula scan logging to Sentry
 
 > Note: All changes are in the Angular/Ionic app (`app/`).
 

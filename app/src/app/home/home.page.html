@@ -104,7 +104,7 @@
       } @else {
         <!-- Arrivals list -->
         <div class="stagger">
-          @for (r of arrivals(); track r.id) {
+          @for (r of arrivals(); track r.reservation_code) {
             <div class="card res-card tap-anim tappable"
               [style.opacity]="isDimmed(r) ? 0.5 : 1"
               (click)="goReservation(r)">

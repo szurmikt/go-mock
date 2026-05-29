@@ -61,7 +61,7 @@
         </div>
       } @else {
         <div style="padding-top: 8px">
-          @for (r of results(); track r.id) {
+          @for (r of results(); track r.reservation_code) {
             <div class="card res-card tap-anim tappable" (click)="goReservation(r)">
               <div class="top">
                 <span class="res-code">{{ r.reservation_code }}</span>
