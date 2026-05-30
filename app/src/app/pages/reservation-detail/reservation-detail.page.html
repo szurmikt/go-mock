@@ -117,9 +117,12 @@
                     </svg>
                   </button>
                 }
-                @if (isFirstGuest(g)) {
-                  <div class="id"><span class="booker">(Booker)</span></div>
-                }
+                <div class="id">
+                  {{ g.guest_id }}
+                  @if (isFirstGuest(g)) {
+                    <span class="booker">(Booker)</span>
+                  }
+                </div>
                 <div class="name">{{ guestName(g) }}</div>
                 <div class="fact-grid" style="gap: 8px 16px">
                   <div>

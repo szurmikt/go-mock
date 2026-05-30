@@ -510,7 +510,24 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-05-29 — Session 12 (current) — Scan-logging fixes + NG0955 track-key flood
+### 2026-05-31 — Session 13 (current) — Surface guest_id and property_id in lists
+
+> Note: All changes are in the Angular/Ionic app (`app/`). Template-only — no TS/SCSS changes, no build bump.
+
+Three small list-row tweaks on branch `Guest+PropertyID-fixes` to make internal IDs visible during QA without opening detail screens. Same `property_id` is shown on both surfaces that list properties, and every guest card now leads with its `guest_id` (previously only the booker had an `.id` row, and it contained only `"(Booker)"` text — non-booker guests had no header row at all).
+
+**Property switcher sheet (home)** ([home/home.page.html:184](app/src/app/home/home.page.html#L184)):
+- Property company name now renders as `{{ p.property_company_name }} ({{ p.property_id }})`. The secondary `property_name` row underneath is unchanged
+
+**Property select screen** ([pages/property-select/property-select.page.html:53](app/src/app/pages/property-select/property-select.page.html#L53)):
+- Same treatment on the post-login property chooser — `(property_id)` appended to the bold company-name line
+
+**Reservation detail guest cards** ([pages/reservation-detail/reservation-detail.page.html:120-125](app/src/app/pages/reservation-detail/reservation-detail.page.html#L120-L125)):
+- The `.id` row is now unconditional and renders `{{ g.guest_id }}` followed by an optional `(Booker)` span (still gated by `isFirstGuest(g)`). Reverses a small piece of Session 8's removal — Session 8 hid the placeholder `ID: 12345` because no real guest ID was wired through; now the real `g.guest_id` is rendered
+
+**Why no build:** templates only, no released-build behaviour change requested. Next iOS/Android publish picks these up automatically.
+
+### 2026-05-29 — Session 12 — Scan-logging fixes + NG0955 track-key flood
 
 > Note: All changes are in the Angular/Ionic app (`app/`).
 
