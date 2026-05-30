@@ -181,7 +181,7 @@
               </svg>
             </span>
             <span style="flex: 1; text-align: left">
-              <div>{{ p.property_company_name }}</div>
+              <div>{{ p.property_company_name }} ({{ p.property_id }})</div>
               <div style="font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); margin-top: 3px">{{ p.property_name }}</div>
             </span>
             @if (auth.selectedProperty()?.property_id === p.property_id) {
