@@ -40,6 +40,7 @@ export class AuthService {
   readonly roles = computed(() => this._auth()?.roles ?? []);
   readonly email = computed(() => this._auth()?.email ?? '');
   readonly name  = computed(() => this._auth()?.name  ?? '');
+  readonly userId = computed(() => this._auth()?.userId ?? '');
   readonly selectedProperty = computed(() => this._selectedProperty());
   readonly properties = computed(() => this._properties());
   readonly deviceId = computed(() => this._deviceId());
@@ -64,8 +65,9 @@ export class AuthService {
     if (properties?.length) {
       this._properties.set(sortPropertiesByCompany(properties));
     }
-    // Property-Id header is required by /users/me — fetch only after property is restored
-    if (auth?.accessToken && !auth.name && property) {
+    // Property-Id header is required by /users/me — fetch only after property is restored.
+    // Also re-fetch when userId is missing so sessions authenticated before userId existed get it backfilled.
+    if (auth?.accessToken && property && (!auth.name || !auth.userId)) {
       await this.fetchUser();
     }
   }
@@ -77,9 +79,19 @@ export class AuthService {
         password,
         device_id: this._deviceId(),
         grant_type: 'password',
-        client_id: Config.CLIENT_ID,
+        // Live wants the encrypted hex client_id; the test API wants a plain integer.
+        client_id: this.env.isTest() ? Config.TEST_CLIENT_ID : Config.CLIENT_ID,
       }),
     );
+    // The API signals failures as HTTP 200 with { success: false, errors: [...] }.
+    // Surface the real ret_msg so it reaches the login error handler / Sentry
+    // instead of an opaque "cannot read mfa_token" TypeError.
+    if (!res.success || !res.data?.mfa_token) {
+      const apiErrors = res.errors as { ret_code?: number; ret_msg?: string }[] | undefined;
+      const error = new Error(apiErrors?.[0]?.ret_msg ?? 'Login failed') as Error & { apiErrors?: unknown };
+      error.apiErrors = res.errors;
+      throw error;
+    }
     return { mfaToken: res.data.mfa_token };
   }
 
@@ -99,6 +111,7 @@ export class AuthService {
       roles,
       email,
       name: '',
+      userId: '',
     });
   }
 
@@ -111,7 +124,7 @@ export class AuthService {
       );
       const user = res.data?.[0];
       if (res.success && user?.name) {
-        await this.setAuth({ ...this._auth()!, name: user.name, email: user.email });
+        await this.setAuth({ ...this._auth()!, name: user.name, email: user.email, userId: user.user_id });
       }
     } catch {
       // Non-fatal — email is already stored, name stays empty
@@ -149,7 +162,7 @@ export class AuthService {
   async selectProperty(property: PropertyInterface): Promise<void> {
     this._selectedProperty.set(property);
     await this.storage.set(Config.STORAGE_PROPERTY_KEY, property);
-    if (!this._auth()?.name) await this.fetchUser();
+    if (!this._auth()?.name || !this._auth()?.userId) await this.fetchUser();
   }
 
   async logout(): Promise<void> {

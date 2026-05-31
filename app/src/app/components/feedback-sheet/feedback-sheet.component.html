@@ -1,0 +1,57 @@
+@if (visible()) {
+  <div class="sheet-backdrop" (click)="close()">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      <div class="head">
+        <h3>{{ title() }}</h3>
+        <button class="icon-btn" (click)="close()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      @if (mode() === 'form') {
+        <!-- Segmented control (animated thumb) -->
+        <div class="segment" style="margin: 12px 0 0">
+          <div class="seg-thumb" [style.left.px]="thumb().left" [style.width.px]="thumb().width"></div>
+          @for (s of segments; track s.key) {
+            <button #segBtn class="seg" [class.active]="segment() === s.key" (click)="setSegment(s.key)">{{ s.label }}</button>
+          }
+        </div>
+
+        <!-- Free-text input -->
+        <textarea
+          [ngModel]="text()"
+          (ngModelChange)="text.set($event)"
+          [placeholder]="placeholder()"
+          rows="5"
+          style="width: 100%; margin: 16px 0 0; padding: 12px 14px; background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: var(--radius); font-family: inherit; font-size: 16px; font-weight: 600; color: var(--ink); line-height: 1.4; resize: none; outline: none; min-height: 120px; box-sizing: border-box"></textarea>
+
+        @if (error()) {
+          <div style="margin: 10px 0 0; color: var(--warn); font-size: var(--font-sm); font-weight: 700">{{ error() }}</div>
+        }
+
+        <button class="btn" style="margin-top: 16px" [disabled]="!canSubmit()" (click)="submit()">
+          @if (submitting()) {
+            <span class="spin" style="width: 18px; height: 18px; border-width: 2.5px"></span>
+          } @else {
+            Submit
+          }
+        </button>
+      } @else {
+        <!-- Success confirmation -->
+        <div style="text-align: center; padding: 24px 8px 8px">
+          <span style="width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; background: var(--success-soft); border-radius: 50%; color: var(--success)">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+          </span>
+          <div style="margin-top: 16px; font-size: var(--font-md); font-weight: 700; color: var(--ink); line-height: 1.4">
+            Thanks! We'll be in touch if we have questions.
+          </div>
+        </div>
+        <button class="btn" style="margin-top: 16px" (click)="close()">Done</button>
+      }
+    </div>
+  </div>
+}

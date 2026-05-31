@@ -1,7 +1,9 @@
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { IonContent } from '@ionic/angular/standalone';
+import * as Sentry from '@sentry/angular';
 import { ApiEnvironmentService } from '../../services/api-environment';
 import { AuthService } from '../../services/auth';
 import { LanguageService } from '../../services/language.service';
@@ -56,11 +58,43 @@ export class LoginPage implements OnDestroy {
         replaceUrl: true,
       });
     } catch (err: unknown) {
+      this.logLoginError(err);
       this.errorMessage = this.extractMessage(err);
       this.errorOpen = true;
     } finally {
       this.loading = false;
     }
+  }
+
+  /** Detailed diagnostics for a failed /token call — console + Sentry. */
+  private logLoginError(err: unknown) {
+    const detail: Record<string, unknown> = {
+      apiMode: this.apiEnv.isTest() ? 'test' : 'live',
+      apiUrl: this.apiEnv.apiUrl(),
+    };
+    if (err instanceof HttpErrorResponse) {
+      detail['status'] = err.status;
+      detail['statusText'] = err.statusText;
+      detail['url'] = err.url;
+      detail['name'] = err.name;
+      detail['message'] = err.message;
+      detail['errorBody'] = err.error;
+      // status 0 ⇒ no HTTP response reached the app (CORS block / network / DNS / TLS)
+      detail['likelyCause'] =
+        err.status === 0
+          ? 'No response reached the browser — CORS block, network, DNS, or TLS failure (not a credential error).'
+          : 'Server responded with an HTTP error.';
+    } else {
+      detail['error'] = String(err);
+      if (err && typeof err === 'object' && 'apiErrors' in err) {
+        detail['apiErrors'] = (err as { apiErrors?: unknown }).apiErrors;
+      }
+    }
+    console.error('Login failed', detail);
+    Sentry.captureException(err, {
+      tags: { context: 'login', api_mode: detail['apiMode'] as string },
+      extra: detail,
+    });
   }
 
   dismissError() {

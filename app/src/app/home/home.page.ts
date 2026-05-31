@@ -9,6 +9,7 @@ import { OptionsService } from '../services/options.service';
 import { PropertyInterface } from '../models/property.interface';
 import { ReservationInterface } from '../models/reservation.interface';
 import { LocalizedDatePipe } from '../pipes/localized-date.pipe';
+import { FeedbackSheetComponent } from '../components/feedback-sheet/feedback-sheet.component';
 
 type Tab = 'Yesterday' | 'Today' | 'Tomorrow';
 
@@ -26,7 +27,7 @@ function localDateStr(offset: number): string {
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
   standalone: true,
-  imports: [IonContent, IonRefresher, IonRefresherContent, LowerCasePipe, LocalizedDatePipe],
+  imports: [IonContent, IonRefresher, IonRefresherContent, LowerCasePipe, LocalizedDatePipe, FeedbackSheetComponent],
 })
 export class HomePage implements OnInit, AfterViewInit, OnDestroy {
   @ViewChildren('segBtn') segBtns!: QueryList<ElementRef<HTMLButtonElement>>;
