@@ -6,6 +6,7 @@ import { Keyboard } from '@capacitor/keyboard';
 import { IonApp, IonRouterOutlet, createAnimation, Animation } from '@ionic/angular/standalone';
 import { LockOverlayComponent } from './components/lock-overlay/lock-overlay.component';
 import { ApiEnvironmentService } from './services/api-environment';
+import { AppConfigService } from './services/app-config';
 import { AuthService } from './services/auth';
 import { BiometricService } from './services/biometric';
 import { OptionsService } from './services/options.service';
@@ -54,6 +55,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private options = inject(OptionsService);
   private apiEnv = inject(ApiEnvironmentService);
+  private appConfig = inject(AppConfigService);
 
   constructor(
     readonly auth: AuthService,
@@ -72,6 +74,33 @@ export class AppComponent implements OnInit, OnDestroy {
     const authlessRoutes = ['/login', '/mfa', '/property-select', '/'];
 
     await this.apiEnv.init();
+
+    // Register the resume listener first so it runs even if the user is gated
+    // at boot. It re-checks the version gate on every foreground transition.
+    App.addListener('appStateChange', async ({ isActive }) => {
+      if (isActive) {
+        const gate = await this.appConfig.runVersionGate();
+        if (gate.blocked) {
+          await this.router.navigateByUrl('/update-required', { replaceUrl: true });
+          return;
+        }
+      }
+      if (!this.auth.isAuthenticated()) return;
+      if (!isActive) {
+        await this.biometric.recordBackground();
+        clearTimeout(this.inactivityTimer);
+      } else {
+        await this.biometric.checkAndLock();
+        if (!this.biometric.sessionLocked()) this.resetInactivityTimer();
+      }
+    });
+
+    const gate = await this.appConfig.runVersionGate();
+    if (gate.blocked) {
+      await this.router.navigateByUrl('/update-required', { replaceUrl: true });
+      this.loading.set(false);
+      return; // skip loadStoredAuth, biometric, options, inactivity timer
+    }
 
     this.auth.loadStoredAuth().then(async () => {
       if (this.auth.isAuthenticated()) {
@@ -96,17 +125,6 @@ export class AppComponent implements OnInit, OnDestroy {
       this.loading.set(false);
 
       if (this.auth.isAuthenticated()) this.resetInactivityTimer();
-    });
-
-    App.addListener('appStateChange', async ({ isActive }) => {
-      if (!this.auth.isAuthenticated()) return;
-      if (!isActive) {
-        await this.biometric.recordBackground();
-        clearTimeout(this.inactivityTimer);
-      } else {
-        await this.biometric.checkAndLock();
-        if (!this.biometric.sessionLocked()) this.resetInactivityTimer();
-      }
     });
   }
 

@@ -510,7 +510,32 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-05-31 — Session 13 (current) — Surface guest_id and property_id in lists
+### 2026-05-31 — Session 14 (current) — Minimum Version Check (Force Update) via Supabase
+
+> Note: All changes are in the Angular/Ionic app (`app/`). No build/version bump, no TestFlight upload (local verification only).
+
+A launch-time "Force Update" gate, independent of the SabeeApp PMS API. On every cold start *and* on resume from background, the app reads its platform's `minimum_version` from the Supabase `app_config` table and, if `Config.APP_VERSION` (`1.1.0`) is below it, routes to a non-dismissible `/update-required` screen. If Supabase is unreachable within 3s, it **fails open** (lets the user through) so a degraded backend can't lock everyone out.
+
+This is the version-only subset of a larger handoff spec. **Deliberately dropped** (user-confirmed): the kill-switch flag and per-row custom message. The live `app_config` table only has `id, platform, minimum_version, updated_at` — no `kill_switch`/`message` columns, and we did **not** add them. Schema confirmed via the Supabase MCP before coding (RLS `SELECT` policy `"Allow read from app"` grants PUBLIC read, so the publishable key can read).
+
+**New files:**
+- [services/supabase.ts](app/src/app/services/supabase.ts) — `SupabaseService`, lazy single `SupabaseClient` from `environment.supabaseUrl`/`supabaseAnonKey`
+- [utils/version.ts](app/src/app/utils/version.ts) + [version.spec.ts](app/src/app/utils/version.spec.ts) — `isVersionBelow(current, minimum)`, numeric part-by-part compare with zero-padding (`'1.0'` vs `'1.1.0'`); equal is not below. 6 unit tests, all pass (`ng test --include='**/version.spec.ts'`)
+- [services/app-config.ts](app/src/app/services/app-config.ts) — `AppConfigService.runVersionGate()`: resolves platform (`web`→`android`), `getConfig()` races the Supabase query against a 3000ms timeout (`Promise.race`), returns `{ blocked: boolean }`. Sentry `captureMessage('app gated', { level: 'info', tags: { platform } })` on block; `captureException(... 'version_gate config unavailable', { tags: { context: 'version_gate' } })` + fail-open on null. Exports `AppConfig`/`GateResult` types
+- [pages/update-required/](app/src/app/pages/update-required/update-required.page.ts) — minimal standalone page, design-system classes only (no `.scss`): logo + "Update required" + hardcoded message. No Update button (iOS App Store ID unknown), no back, no nav
+
+**Modified:**
+- [environment.ts](app/src/environments/environment.ts) / [environment.prod.ts](app/src/environments/environment.prod.ts) — added `supabaseUrl` (`https://qiwhynwwgicpyeszecuj.supabase.co`) + `supabaseAnonKey` (publishable `sb_publishable_…` key, safe client-side given RLS). Same in both, mirroring `sentryDsn`
+- [app.routes.ts](app/src/app/app.routes.ts) — `/update-required` lazy `loadComponent`, **no** `authGuard`, before the catch-all redirect
+- [app.component.ts](app/src/app/app.component.ts) — inject `AppConfigService`; the `appStateChange` resume listener is now registered **before** the boot-time gate's early-return (so resume re-check survives gating) and re-runs `runVersionGate()` on every foreground; the boot gate runs after `apiEnv.init()`, before `loadStoredAuth`, and `return`s early on block (skips auth/biometric/options/inactivity timer)
+- **Stale spec fix (incidental):** [api.spec.ts](app/src/app/services/api.spec.ts), [auth.spec.ts](app/src/app/services/auth.spec.ts), [storage.spec.ts](app/src/app/services/storage.spec.ts) imported the old `Api`/`Auth`/`Storage` class names (renamed to `…Service` long ago) — a compile error that blocked the *entire* Karma run. Fixed the import/type names so the suite compiles and `version.spec.ts` can run. **Note:** 7 of those component/service specs still fail with `NG0201: No provider found for HttpClient` (they never set up `provideHttpClient`) — pre-existing harness gap, left alone
+- **Dead-pipe cleanup (incidental):** removed the unused `TranslatePipe` from [id-scan.page.ts](app/src/app/pages/id-scan/id-scan.page.ts) (`imports` + `providers` + import line) — it was only referenced in HTML comments, producing an NG8113 build warning. The remaining Sass `@import` deprecation warning in `global.scss` was left as-is (needs a cascade-order-aware `@use` migration; harmless until Dart Sass 3.0)
+
+**New dependency:** `@supabase/supabase-js` (added to `app/package.json`).
+
+**Verification:** `npm run build` passes (the NG8113 warning is gone); `version.spec.ts` 6/6 pass; live `app_config` query + RLS policy confirmed via Supabase MCP. Manual device/serve flows (force-update, fail-open offline, resume re-check) from the plan are ready but not yet run on a real build. **To test the block in-browser** (`ionic serve` is platform `web` → reads the **android** row): set `android.minimum_version` above `1.1.0` in the Supabase Table Editor, reload, then reset to `'1.0'`.
+
+### 2026-05-31 — Session 13 — Surface guest_id and property_id in lists
 
 > Note: All changes are in the Angular/Ionic app (`app/`). Template-only — no TS/SCSS changes, no build bump.
 
