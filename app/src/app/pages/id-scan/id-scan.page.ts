@@ -18,7 +18,6 @@ import {
   ScannedDataInterface,
   ScanResultInterface,
 } from '../../models/guest.interface';
-import { TranslatePipe } from '../../pipes/translate.pipe';
 import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
 import { DefaultValuePipe } from '../../pipes/default-value.pipe';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
@@ -57,12 +56,11 @@ const MOCK_SCAN_RESULT: ScanResultInterface = {
     IonSpinner,
     IonButton,
     IonContent,
-    TranslatePipe,
     DashIfEmptyPipe,
     DefaultValuePipe,
     LocalizedDatePipe,
   ],
-  providers: [TranslatePipe, DashIfEmptyPipe, DefaultValuePipe],
+  providers: [DashIfEmptyPipe, DefaultValuePipe],
 })
 export class IdScanPage implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
