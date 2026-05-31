@@ -5,6 +5,7 @@ export interface AuthState {
   roles: string[];
   email: string;
   name: string;
+  userId: string;
 }
 
 export interface MfaTokenResponse {

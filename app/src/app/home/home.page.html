@@ -10,9 +10,16 @@
       <button class="title-row"
         style="background: none; border: 0; padding: 0; cursor: pointer; display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; text-align: left"
         (click)="switchOpen.set(true)">
-        <h1 style="margin: 0; font-size: var(--font-xl); font-weight: 800; letter-spacing: -0.02em; color: var(--ink); line-height: 1.2; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
-          {{ auth.selectedProperty()?.property_company_name || 'Select Property' }}
-        </h1>
+        <span style="flex: 1; min-width: 0">
+          <h1 style="margin: 0; font-size: var(--font-xl); font-weight: 800; letter-spacing: -0.02em; color: var(--ink); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
+            {{ auth.selectedProperty()?.property_name || 'Select Property' }}
+          </h1>
+          @if (auth.selectedProperty()?.property_company_name) {
+            <div style="font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); line-height: 1.2; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
+              {{ auth.selectedProperty()?.property_company_name }}
+            </div>
+          }
+        </span>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
           style="color: var(--primary); flex-shrink: 0">
           <path d="M6 9l6 6 6-6"/>
@@ -22,10 +29,11 @@
         @if (apiEnv.isTest()) {
           <span class="pill home-test-pill" data-status="test">TEST</span>
         }
-        <button class="icon-btn" aria-label="Notifications">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        <button class="icon-btn" aria-label="Send feedback" (click)="fb.open()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18h6"/>
+            <path d="M10 22h4"/>
+            <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.76.76 1.23 1.52 1.41 2.5"/>
           </svg>
         </button>
         <button class="icon-btn" aria-label="Settings" (click)="goSettings()">
@@ -181,8 +189,10 @@
               </svg>
             </span>
             <span style="flex: 1; text-align: left">
-              <div>{{ p.property_company_name }} ({{ p.property_id }})</div>
-              <div style="font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); margin-top: 3px">{{ p.property_name }}</div>
+              <div>{{ p.property_name }} ({{ p.property_id }})</div>
+              @if (p.property_company_name) {
+                <div style="font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); margin-top: 3px">{{ p.property_company_name }}</div>
+              }
             </span>
             @if (auth.selectedProperty()?.property_id === p.property_id) {
               <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex-shrink: 0"></span>
@@ -198,3 +208,5 @@
     </div>
   </div>
 }
+
+<app-feedback-sheet #fb />

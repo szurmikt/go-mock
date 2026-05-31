@@ -50,8 +50,10 @@
               </svg>
             </div>
             <div style="flex: 1; min-width: 0">
-              <div style="font-size: var(--font-md); font-weight: 800; color: var(--ink); letter-spacing: -0.01em; line-height: 1.2">{{ p.property_company_name }} ({{ p.property_id }})</div>
-              <div style="font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); margin-top: 3px">{{ p.property_name }}</div>
+              <div style="font-size: var(--font-md); font-weight: 800; color: var(--ink); letter-spacing: -0.01em; line-height: 1.2">{{ p.property_name }} ({{ p.property_id }})</div>
+              @if (p.property_company_name) {
+                <div style="font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); margin-top: 3px">{{ p.property_company_name }}</div>
+              }
             </div>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--ink-4); flex-shrink: 0">
               <path d="M9 18l6-6-6-6"/>
