@@ -3,7 +3,22 @@
 > Finding date: 2026-05-31. Affects the `POST /token` password-grant login.
 > Brief for the SabeeApp API team.
 
-## Summary
+## ✅ Update — 2026-06-01: RESOLVED (encryption removed)
+
+The API team **removed the `client_id` encryption**. Both **TEST** and **PROD** now accept the
+**same plain integer** `client_id`, so the environment-specific split below no longer applies.
+
+- App config collapsed to a single value: **`Config.CLIENT_ID = 1070`** (used for both modes).
+- `AuthService.login()` now always sends `Config.CLIENT_ID` — the `isTest()` branch and
+  `Config.TEST_CLIENT_ID` were removed.
+- Shipped in iOS build 62 / Android versionCode 9.
+
+Everything below is retained as **historical context** for *why* the split existed (it described the
+pre-2026-06-01 behaviour). It is no longer the current state.
+
+---
+
+## Summary (historical — pre-2026-06-01)
 
 The `POST /token` password-grant login validates the **`client_id`** field differently in TEST vs
 PROD. The same request with the same valid credentials succeeds in one environment and fails in the
@@ -67,19 +82,21 @@ TEST, `client_id: 1000` (success):
 { "success": true, "errors": [], "data": { "mfa_token": "…", "expires_in": 120, "required": true, "methods": ["totp"] } }
 ```
 
-## How the app handles it
+## How the app handled it (historical)
 
-`client_id` is selected by API mode (mirrors the existing `apiUrl` / `testApiUrl` split):
+Before the 2026-06-01 fix, `client_id` was selected by API mode (mirroring the `apiUrl` /
+`testApiUrl` split):
 
 - `Config.CLIENT_ID = '366f7aff6d185668'` (encrypted hex) → used in **live** mode.
 - `Config.TEST_CLIENT_ID = 1000` (plain integer) → used in **test** mode.
 - Selected in `AuthService.login()` via `this.env.isTest() ? Config.TEST_CLIENT_ID : Config.CLIENT_ID`.
 
-> Note: `1000` is simply the value the TEST server accepted; if there is an *official* TEST client id,
-> swap `Config.TEST_CLIENT_ID`.
+**Now** (post encryption removal): a single `Config.CLIENT_ID = 1070` for both modes;
+`AuthService.login()` always sends `Config.CLIENT_ID`. See the resolution note at the top.
 
-## Question for the API team
+## Question for the API team — ANSWERED
 
-Is the encrypted-vs-plain-integer difference intentional? Either TEST should accept the same
-**encrypted** `client_id` as PROD (or vice-versa), or please provide the correct **encrypted**
-`client_id` for the TEST environment so a single value/flow works against both.
+> *Original question:* Is the encrypted-vs-plain-integer difference intentional? …
+
+**Resolved 2026-06-01:** the API team removed the encryption; both environments now take the same
+plain integer (`1070`), so a single value/flow works against both. No further action needed.
