@@ -113,6 +113,11 @@ export class DocuscanService {
     this._lastScanResult = data;
   }
 
+  /** Clears in-memory scanned guest data. Called on logout / property switch. */
+  clear(): void {
+    this._lastScanResult = null;
+  }
+
   sendStatistics(
     _guestId: string,
     _documentId: string,

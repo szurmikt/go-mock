@@ -4,6 +4,8 @@ import { firstValueFrom } from 'rxjs';
 import { Config } from '../config/config';
 import { StorageService } from './storage';
 import { ApiEnvironmentService } from './api-environment';
+import { ReservationService } from './reservation';
+import { DocuscanService } from './docuscan';
 import {
   AuthState,
   ApiResponse,
@@ -49,7 +51,21 @@ export class AuthService {
     private http: HttpClient,
     private storage: StorageService,
     private env: ApiEnvironmentService,
+    private reservations: ReservationService,
+    private docuscan: DocuscanService,
   ) {}
+
+  /**
+   * Wipes all property-scoped reservation & guest data from memory.
+   * Called on logout and whenever the active property changes, so data from
+   * one property/session can never leak into another. Reservations and guests
+   * are memory-only (no persisted storage key), so clearing the services is
+   * sufficient — there is nothing to remove from device storage.
+   */
+  private clearSessionData(): void {
+    this.reservations.clear();
+    this.docuscan.clear();
+  }
 
   async loadStoredAuth(): Promise<void> {
     await this.loadDeviceId();
@@ -160,12 +176,19 @@ export class AuthService {
   }
 
   async selectProperty(property: PropertyInterface): Promise<void> {
+    // Switching to a different property must not carry over the previous
+    // property's reservations/guests (would otherwise survive the 60s fetch
+    // staleness window and render under the new property).
+    if (this._selectedProperty()?.property_id !== property.property_id) {
+      this.clearSessionData();
+    }
     this._selectedProperty.set(property);
     await this.storage.set(Config.STORAGE_PROPERTY_KEY, property);
     if (!this._auth()?.name || !this._auth()?.userId) await this.fetchUser();
   }
 
   async logout(): Promise<void> {
+    this.clearSessionData();
     this._auth.set(null);
     this._selectedProperty.set(null);
     this._properties.set([]);
