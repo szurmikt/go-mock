@@ -79,8 +79,8 @@ export class AuthService {
         password,
         device_id: this._deviceId(),
         grant_type: 'password',
-        // Live wants the encrypted hex client_id; the test API wants a plain integer.
-        client_id: this.env.isTest() ? Config.TEST_CLIENT_ID : Config.CLIENT_ID,
+        // Same plain-integer client_id for both TEST and PROD (encryption removed).
+        client_id: Config.CLIENT_ID,
       }),
     );
     // The API signals failures as HTTP 200 with { success: false, errors: [...] }.

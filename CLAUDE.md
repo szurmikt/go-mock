@@ -530,6 +530,11 @@ The backend team **removed the encryption** from `client_id` / `guest_id` / `pro
 
 **Build/version:** iOS `CURRENT_PROJECT_VERSION` → 61 (`publish:ios` → TestFlight). Android `versionCode` → 8; built a **signed release APK** via `gradlew assembleRelease` (the `publish:android` script only makes an AAB — APK was requested), tagged `sabeeapp-go-v8.apk`, signed with the `signingConfigs.release` keystore (`CN=SabeeApp`).
 
+**Follow-up (same session) — more plain-integer IDs after encryption removal; reshipped as iOS 62 / APK v9:**
+- **`client_id` unified to `1070` for both TEST and PROD** ([config/config.ts](app/src/app/config/config.ts), [services/auth.ts](app/src/app/services/auth.ts)). The encryption removal means PROD now also accepts a plain integer, so the Session-15 TEST/PROD split (`CLIENT_ID` encrypted hex `'366f7aff6d185668'` vs `TEST_CLIENT_ID: 1000`) collapsed to a single `CLIENT_ID: 1070`; `auth.login()` always sends `Config.CLIENT_ID` (dropped the `isTest()` branch). **Note:** [docs/token-client-id-test-vs-prod.md](app/docs/token-client-id-test-vs-prod.md) is now outdated (describes the old encrypted-vs-integer split) — left as-is, flagged for a later refresh.
+- **Morning Briefing property gate set to `6250`** ([pages/briefing/briefing.const.ts](app/src/app/pages/briefing/briefing.const.ts)). `BRIEFING_PROPERTY_ID` was the encrypted hex `'65d60b4abe1e6c90'`; now `'6250'` (string, to match the `String(property_id)` comparison at [home.page.ts:70](app/src/app/home/home.page.ts#L70)).
+- **Builds:** iOS `CURRENT_PROJECT_VERSION` → 62 (TestFlight), Android `versionCode` → 9 (signed APK `sabeeapp-go-v9.apk`). Builds 61/v8 carry the old `client_id`/briefing values and will fail PROD login against the updated backend — superseded by 62/v9.
+
 ### 2026-05-31 — Session 15 — Feature Request & Feedback collection + login client_id fix
 
 > Note: All changes are in the Angular/Ionic app (`app/`). No build/version bump, no TestFlight upload (local verification only). Branch `Feature-Request-Collection`.

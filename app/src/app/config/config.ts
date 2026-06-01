@@ -2,10 +2,10 @@ export const Config = {
   API_VERSION: '1.0',
   APP_VERSION: '1.1.0',
   CI_VERSION: '4',
-  // Production validates client_id as an encrypted token (this hex). The test API
-  // (smart.sabeeapp.com) instead requires a plain integer, so it gets its own value.
-  CLIENT_ID: '366f7aff6d185668',
-  TEST_CLIENT_ID: 1000,
+  // After the backend dropped client_id encryption, both TEST and PROD accept the
+  // same plain integer. (Previously PROD validated an encrypted hex token and TEST
+  // wanted an integer, so they had separate values — now unified.)
+  CLIENT_ID: 1070,
   // Verbose Regula scan logging for the testing period. Set false to dial back the
   // per-scan Sentry Logs + console dumps (failure->Issue capture stays on regardless).
   SCAN_DEBUG_LOGGING: true as boolean,
