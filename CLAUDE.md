@@ -510,7 +510,22 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-06-01 — Session 16 (current) — Guest Card crash fix + string/integer ID handling (encryption-removal fallout)
+### 2026-06-02 — Session 17 (current) — Guest Address details section + guest_id-only ID display
+
+> Note: All changes are in the Angular/Ionic app (`app/`). Template + small TS only. No build/version bump, no TestFlight upload (local `npm run build` verification only). Branch `Add-Address-Section`.
+
+**Address details surfaced on Guest Details + Guest Edit.** The guest API returns an `address` object (`{ country_code, zip, city, address_line }`) that was **already in the model** ([guest.interface.ts:18-23](app/src/app/models/guest.interface.ts#L18-L23)) and **already mapped** by `convertGuest()` ([reservation.ts:162](app/src/app/services/reservation.ts#L162), defaults to all-null) — but never displayed or editable. This was purely a UI gap.
+
+- **Field set is only those 4.** The SabeeApp PMS shows a much richer Hungarian-style breakdown (region, street number, building, staircase, floor, door), but the `go` API collapses all of it into the single `address_line`. Matching the full PMS breakdown needs backend changes, out of this app's scope.
+- **Order = PMS order (option B), per user**, so it feels familiar to PMS users: **Postal code + City → Country → Address (street)**. Considered envelope order (street→city→zip→country) but PMS-familiarity won. `zip` is labelled **"Postal code"** to match PMS wording.
+- **Guest Details (read)** ([guest-detail.page.html](app/src/app/pages/guest-detail/guest-detail.page.html)): new `.card` between Contact details and Travelling document — Postal code + City (two-column, mirrors the Birth date/place row), Country (resolved to name), Address. Always renders with `—` placeholders for blanks (matches Contact/Document sections). Added `countryName(code)` to [guest-detail.page.ts](app/src/app/pages/guest-detail/guest-detail.page.ts) for the country-code→name lookup against `options.countries()`; the existing `citizenshipName()` now delegates to it (same lookup, clearer name).
+- **Guest Edit** ([guest-edit.page.html](app/src/app/pages/guest-edit/guest-edit.page.html) + [guest-edit.page.ts](app/src/app/pages/guest-edit/guest-edit.page.ts)): new form group (Postal code, City, Country select reusing the same `options.countries()` dropdown as citizenship, Address). `form` extended with the 4 fields, pre-populated from `found.address?.*` in `ngOnInit`, written back via an `address` object in `save()`. Empty fields become `null` through the existing `nullifyEmpty()` ([reservation.ts:209](app/src/app/services/reservation.ts#L209)), matching the API's nullable address — no save-path or list-sync change needed.
+
+**Guest ID display unified to `guest_id` everywhere.** The Guest Details screen showed `reservation_guest_id` (the per-reservation join ID, e.g. 41539072) while the reservation guest card showed `guest_id` (the persistent person ID, e.g. 24195367) — same guest, two different "ID" labels. Per user, `reservation_guest_id` is a technical ID and should never be exposed. [guest-detail.page.html:31](app/src/app/pages/guest-detail/guest-detail.page.html#L31) now shows `g.guest_id` (guarded by `@if (g.guest_id)`), matching the card. All remaining `reservation_guest_id` references are technical-only (the `@for ... track` key, the `loadGuest()` lookup, the `updateGuest` payload) and untouched. This reverses the display half of Session 13's decision (which had switched the row to `reservation_guest_id`).
+
+**Verification:** `npm run build` passes (only the pre-existing `global.scss` Sass `@import` deprecation warning). Device/serve end-to-end (load address, edit + save + persist, empty-address `—` state) not yet run on a real build.
+
+### 2026-06-01 — Session 16 — Guest Card crash fix + string/integer ID handling (encryption-removal fallout)
 
 > Note: All changes are in the Angular/Ionic app (`app/`). **Shipped builds: iOS 61 (TestFlight), Android versionCode 8 (signed APK).** Branch `Fixing-GuestID-and-PropertyID`.
 

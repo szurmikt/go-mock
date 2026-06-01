@@ -35,6 +35,10 @@ export class GuestEditPage implements OnInit {
     gender: '',
     phone_number: '',
     email: '',
+    zip: '',
+    city: '',
+    country_code: '',
+    address_line: '',
     document_type: '',
     document_number: '',
   };
@@ -74,6 +78,10 @@ export class GuestEditPage implements OnInit {
         gender: found.gender ?? '',
         phone_number: found.phone_number ?? '',
         email: found.email ?? '',
+        zip: found.address?.zip ?? '',
+        city: found.address?.city ?? '',
+        country_code: found.address?.country_code ?? '',
+        address_line: found.address?.address_line ?? '',
         document_type: found.document?.document_type ?? '',
         document_number: found.document?.document_number ?? '',
       };
@@ -134,6 +142,12 @@ export class GuestEditPage implements OnInit {
         gender: this.form.gender,
         phone_number: this.form.phone_number,
         email: this.form.email,
+        address: {
+          country_code: this.form.country_code,
+          zip: this.form.zip,
+          city: this.form.city,
+          address_line: this.form.address_line,
+        },
         document: {
           document_type: this.form.document_type,
           document_number: this.form.document_number,
