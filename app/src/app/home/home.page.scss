@@ -1,1 +1,19 @@
 // Component styles — layout handled globally in sabeeapp-design.scss
+
+// THROWAWAY MOCK — morning-briefing widget entrance. Remove with pages/briefing.
+// The widget opens up space for itself after a short delay: it grows from collapsed (max-height 0,
+// hidden) to full height, pushing the search field + content below it down. `both` holds the collapsed
+// state during the delay, so the home screen renders without the widget first, then it slides in.
+.briefing-widget-in {
+  overflow: hidden;
+  animation: briefing-widget-in 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) 0.45s both;
+}
+
+@keyframes briefing-widget-in {
+  from { max-height: 0; opacity: 0; margin-top: 0; margin-bottom: 0; transform: translateY(-8px); }
+  to   { max-height: 150px; opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .briefing-widget-in { animation: none; }
+}

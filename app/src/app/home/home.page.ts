@@ -10,6 +10,8 @@ import { PropertyInterface } from '../models/property.interface';
 import { ReservationInterface } from '../models/reservation.interface';
 import { LocalizedDatePipe } from '../pipes/localized-date.pipe';
 import { FeedbackSheetComponent } from '../components/feedback-sheet/feedback-sheet.component';
+// THROWAWAY MOCK — single-property morning-briefing widget. Remove with pages/briefing.
+import { BRIEFING_PROPERTY_ID } from '../pages/briefing/briefing.const';
 
 type Tab = 'Yesterday' | 'Today' | 'Tomorrow';
 
@@ -62,6 +64,13 @@ export class HomePage implements OnInit, AfterViewInit, OnDestroy {
   clearPropertyQuery() {
     this.propertyQuery.set('');
   }
+
+  // THROWAWAY MOCK — single-property morning-briefing widget. Remove with pages/briefing.
+  readonly showBriefing = computed(() =>
+    String(this.auth.selectedProperty()?.property_id) === BRIEFING_PROPERTY_ID,
+  );
+  readonly firstName = computed(() => this.auth.name().trim().split(/\s+/)[0] || 'there');
+  goBriefing() { this.router.navigate(['/briefing']); }
 
   thumb = signal({ left: 3, width: 0 });
 
