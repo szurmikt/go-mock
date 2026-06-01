@@ -117,7 +117,7 @@ export class ReservationService {
     this._reservations.update(list =>
       list.map(r => {
         if (r.reservation_code !== reservationCode) return r;
-        if (r.booker.booker_id !== guest.guest_id) return r;
+        if (String(r.booker.booker_id) !== String(guest.guest_id)) return r;
         return {
           ...r,
           booker: { ...r.booker, first_name: guest.first_name, last_name: guest.last_name, email: guest.email },
@@ -141,8 +141,12 @@ export class ReservationService {
 
   private convertGuest(g: any): GuestInterface {
     return {
-      reservation_guest_id: g.reservation_guest_id ?? '',
-      guest_id: g.guest_id ?? '',
+      // Coerce IDs to string: the API used to return encrypted string tokens, but
+      // after the encryption removal it returns plain numbers. Route params are
+      // always strings, so without this the strict `===` lookup in GuestDetailPage
+      // fails ("Guest not found"). String() normalizes both sides.
+      reservation_guest_id: g.reservation_guest_id != null ? String(g.reservation_guest_id) : '',
+      guest_id: g.guest_id != null ? String(g.guest_id) : '',
       first_name: g.first_name ?? '',
       last_name: g.last_name ?? '',
       mother_name: g.mother_name ?? '',
@@ -175,7 +179,7 @@ export class ReservationService {
       reservation_code: r.reservation_code,
       partner: r.partner ? { partner_id: r.partner.partner_id, partner_name: r.partner.partner_name } : undefined,
       booker: {
-        booker_id: r.booker.booker_id,
+        booker_id: r.booker?.booker_id != null ? String(r.booker.booker_id) : '',
         first_name: r.booker.first_name,
         last_name: r.booker.last_name,
         email: r.booker.email,

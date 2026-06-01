@@ -1,5 +1,6 @@
 // document-reader.service.ts
 import { Injectable, inject, signal } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import * as Sentry from '@sentry/angular';
 import {
   DocumentReader,
@@ -91,12 +92,21 @@ export class DocumentReaderService {
   scannedGuestData: ScannedGuestDataInterface = {};
 
   constructor() {
-    this.reader.processParams.multipageProcessing = true;
-    this.reader.processParams.dateFormat = 'yyyy-mm-dd';
-    this.reader.functionality.showTorchButton = true;
+    // The Regula plugin reaches through to the native (cordova) bridge as soon as
+    // these params are set. On web/Electron `cordova` is undefined, so touching them
+    // here throws `ReferenceError: cordova is not defined` during Angular DI — which
+    // aborts construction of any page that injects this service (e.g. GuestDetailPage,
+    // so the Guest Card never opens). Scanning is native-only anyway, so guard it.
+    if (Capacitor.isNativePlatform()) {
+      this.reader.processParams.multipageProcessing = true;
+      this.reader.processParams.dateFormat = 'yyyy-mm-dd';
+      this.reader.functionality.showTorchButton = true;
+    }
   }
 
   async init() {
+    // Document scanning requires the native Regula plugin; no-op on web/Electron.
+    if (!Capacitor.isNativePlatform()) return;
     if (this._readerStatus() === ReaderStatus.READY) return;
 
     const ok = await this.initialize();

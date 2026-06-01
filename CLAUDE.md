@@ -510,7 +510,27 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-05-31 — Session 15 (current) — Feature Request & Feedback collection + login client_id fix
+### 2026-06-01 — Session 16 (current) — Guest Card crash fix + string/integer ID handling (encryption-removal fallout)
+
+> Note: All changes are in the Angular/Ionic app (`app/`). **Shipped builds: iOS 61 (TestFlight), Android versionCode 8 (signed APK).** Branch `Fixing-GuestID-and-PropertyID`.
+
+The backend team **removed the encryption** from `client_id` / `guest_id` / `property_id` on the **TEST** API, so those IDs now come back as **plain integers** instead of encrypted **string** tokens (PROD still returns strings). This surfaced two bugs, both reported via Sentry, both fixed here.
+
+**Bug 1 — Guest Card wouldn't open on web/Electron (`ReferenceError: cordova is not defined`)** ([services/document-reader.service.ts](app/src/app/services/document-reader.service.ts)):
+- Sentry **SABEEAPPGO-2** (7 users / 189 events) and **SABEEAPPGO-4** (5 users / 36 events), both on `/guest/:code/:guestId/`, both still firing minutes before the session. Root cause was the long-documented "Known regression risk" (§9): `DocumentReaderService` is `providedIn: 'root'` and its **constructor eagerly touches the Regula native plugin** (`this.reader.processParams.dateFormat = …`), which reaches through to the cordova bridge. On web/Electron (`ionic serve`, `localhost:4200`, `environment=development` — confirmed from the event tags) `cordova` is undefined, so constructing the service threw during Angular DI, which **aborted construction of `GuestDetailPage`** (it injects the service) → the card never rendered. Native iOS/Android builds were never affected (cordova exists there).
+- **Why now:** before the encryption removal the guest route param was an encrypted token; now it's a plain integer, so QA actually navigates to the guest card in the browser, exposing this pre-existing latent web-only crash.
+- **Fix:** guard the native access with `Capacitor.isNativePlatform()` — wrap the three `processParams`/`functionality` assignments in the constructor, and early-return at the top of `init()`. Scanning is native-only anyway, so this is behaviourally inert on device. The `reader = DocumentReader.instance` field initializer was left as-is (the stacktrace showed the throw at `set dateFormat`, after `.instance` returned, so it's safe).
+
+**Bug 2 — "Guest not found" on the guest card (string vs integer ID mismatch)** ([services/reservation.ts](app/src/app/services/reservation.ts)):
+- Once the page constructed, it showed "Guest not found" with **no** Sentry error (silent logic miss). Cause: `loadGuest()` does a **strict** `guests.find(g => g.reservation_guest_id === this.guestId)`. The route param is always a string (`"21405092"`); after encryption removal the API returns `reservation_guest_id` as a **number** (`21405092`), so `"21405092" === 21405092` is `false`. The old code only worked on PROD by accident (both sides were strings).
+- **Fix — normalize at the boundary, not at every comparison.** `convertGuest()` now coerces `reservation_guest_id` and `guest_id` to `String(...)`; `convert()` coerces `booker_id`; `updateGuest()`'s booker-match comparison is hardened to `String(...) !== String(...)`. `String()` is identity on a string and a converter on a number, so **PROD (string) passes through unchanged and TEST (integer) normalizes to the same string** — no env-specific branch, safe on both. Normalizing once at the API boundary (rather than per-comparison) fixed three read sites at once: guest-detail, id-scan, and guest-edit all read the same normalized guests, and the TS `reservation_guest_id: string` contract is honest again.
+- **Verified on TEST end-to-end:** guest card opens; editing a guest saves (`updateGuest` POSTs `guest_id` as a string and the TEST write endpoint accepts it — `success: true`); pull-to-refresh refetches from the API and shows the persisted change. PROD's save path is unchanged (it already used strings).
+
+**Resolves Sentry SABEEAPPGO-2 and SABEEAPPGO-4.**
+
+**Build/version:** iOS `CURRENT_PROJECT_VERSION` → 61 (`publish:ios` → TestFlight). Android `versionCode` → 8; built a **signed release APK** via `gradlew assembleRelease` (the `publish:android` script only makes an AAB — APK was requested), tagged `sabeeapp-go-v8.apk`, signed with the `signingConfigs.release` keystore (`CN=SabeeApp`).
+
+### 2026-05-31 — Session 15 — Feature Request & Feedback collection + login client_id fix
 
 > Note: All changes are in the Angular/Ionic app (`app/`). No build/version bump, no TestFlight upload (local verification only). Branch `Feature-Request-Collection`.
 
@@ -871,7 +891,7 @@ Roughly prioritised — confirm with user before starting:
 ### Angular app (`app/`) — follow-up from Session 6
 - [x] **Delete the now-dead `/id-scan` result + failure overlays** — done in Session 10. Removed the result + TIMEOUT/CANCELLED/INTERRUPTED overlays from [id-scan.page.html](app/src/app/pages/id-scan/id-scan.page.html); camera + scanning phases retained. The route still exists; `?preview=…` deep-links into the removed overlays are gone (guest-detail's `?previewScanSheet=…` covers the same modes)
 - [ ] **Verify cancelled / noshow API strings against real data** — Session 6 used educated-guess keys `cancelled` and `noshow`. Once a real reservation with one of these statuses comes through the API and renders as the grey "Option" pill, update the two `case` strings in `pillStatus` / `pillLabel` ([services/reservation.ts](app/src/app/services/reservation.ts#L15-L37))
-- [ ] **Guard `DocumentReaderService` for web** — wrap the constructor + `reader = DocumentReader.instance` field initializer with `Capacitor.isNativePlatform()` so injecting on guest-detail doesn't trigger the SABEEAPPGO-1/2 Sentry error in browser. Alternative: defer DI via `runInInjectionContext(this.injector, () => inject(DocumentReaderService))` inside `goScan()` so the service is only instantiated when the user actually taps "ID Scan"
+- [x] **Guard `DocumentReaderService` for web** — done in Session 16. Wrapped the constructor's Regula `processParams`/`functionality` writes (and an `init()` early-return) with `Capacitor.isNativePlatform()`, so injecting on guest-detail no longer throws `cordova is not defined` in browser/Electron. Resolved Sentry SABEEAPPGO-2/4. The `reader = DocumentReader.instance` field initializer was left as-is (it doesn't throw on its own — the crash was at `set dateFormat`)
 - [ ] **Fix the Regula scan timeout (UK passport)** — follow-up to the Session 11 logging. Once the Sentry Logs confirm the cause, pick: disable `multipageProcessing` for passports (one-shot on the data page; ID cards need front+back so may need a doc-type pre-selection), raise Regula's `timeout*` `ProcessParams`, and/or salvage the intermediate `results` Regula hands us on TIMEOUT (the data page is already read — route it through `processResults` instead of discarding). Behaviour was intentionally left unchanged in Session 11
 
 ### Screens to build
