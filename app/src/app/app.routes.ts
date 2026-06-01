@@ -55,6 +55,12 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/id-scan/id-scan.page').then(m => m.IdScanPage),
   },
   {
+    // THROWAWAY MOCK — single-property morning-briefing prototype. Remove with pages/briefing.
+    path: 'briefing',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/briefing/briefing.page').then(m => m.BriefingPage),
+  },
+  {
     path: 'update-required',
     loadComponent: () =>
       import('./pages/update-required/update-required.page').then(m => m.UpdateRequiredPage),

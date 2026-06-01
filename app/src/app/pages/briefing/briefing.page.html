@@ -1,0 +1,164 @@
+<!-- THROWAWAY MOCK — single-property morning-briefing prototype. Do NOT reuse anywhere; slated for removal. -->
+<!-- Cosmetic styling is inline (matching this app's convention); briefing.page.scss holds only the
+     animation/state rules, to stay within the per-component style budget. -->
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="page">
+
+    <!-- Sub-header -->
+    <div class="sub-header">
+      <button class="back" (click)="back()" aria-label="Back">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+      <div class="title">Daily briefing</div>
+    </div>
+
+    <div class="app-scroll" style="padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px))">
+
+      <!-- revealNonce remounts this block so the staggered CSS entry animations replay on refresh -->
+      @for (n of [revealNonce()]; track n) {
+
+        <!-- 1. Header / greeting -->
+        <section class="sec">
+          <h1 class="rev" style="font-size: var(--font-xl); font-weight: 800; letter-spacing: -0.02em; color: var(--ink); margin: 0; line-height: 1.2; animation-delay: .3s">Good morning, {{ firstName() }}</h1>
+          <p class="rev" style="font-size: var(--font-base); line-height: 1.55; color: var(--ink-2); font-weight: 600; margin: 8px 0 0; animation-delay: .8s">
+            Busy day — <b style="font-weight: 800; color: var(--ink)">22 in, 18 out</b>, 91% full tonight.
+            <span style="color: var(--warn); font-weight: 800">4 things need you</span>, month-end reports due.
+          </p>
+        </section>
+
+        <!-- 2. KPI grid -->
+        <section class="sec">
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px">
+            @for (k of kpis; track k.label; let i = $index) {
+              <div class="rev" style="background: rgb(246,247,251); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px" [style.animation-delay]="(2.0 + i * 0.4) + 's'">
+                <p style="font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; margin: 0">{{ k.label }}</p>
+                <p style="font-size: 28px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; margin: 3px 0 0">{{ k.prefix }}{{ k.display() }}{{ k.suffix }}</p>
+                <p style="font-size: var(--font-xs); font-weight: 700; margin: 3px 0 0; display: flex; align-items: center; gap: 3px"
+                  [style.color]="k.trend === 'up' ? 'var(--success)' : 'var(--ink-3)'">
+                  @if (k.trend === 'up') {
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M7 17L17 7"/><path d="M7 7h10v10"/>
+                    </svg>
+                  }
+                  {{ k.sub }}
+                </p>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- 3. 7-day occupancy -->
+        <section class="rev sec" style="animation-delay: 3.8s">
+          <p style="font-size: var(--font-sm); font-weight: 700; color: var(--ink-3); margin: 0 0 8px">7-day occupancy</p>
+          <div style="display: flex; align-items: flex-end; gap: 6px; height: 84px">
+            @for (b of bars; track $index) {
+              <div class="bar" [style.--bar-h]="b.pct + '%'"
+                style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 4px"
+                [style.background]="b.today ? 'var(--primary)' : '#b8bfc7'"
+                [style.color]="b.today ? '#fff' : 'var(--ink)'"
+                [style.animation-delay]="(4.0 + $index * 0.05) + 's'">
+                <span style="font-size: 13px; font-weight: 800; line-height: 1">{{ b.pct }}</span>
+              </div>
+            }
+          </div>
+          <div style="display: flex; gap: 6px; margin-top: 6px">
+            @for (b of bars; track $index) {
+              <span style="flex: 1; text-align: center; font-size: 12px; color: var(--ink-4); font-weight: 700">{{ b.day }}</span>
+            }
+          </div>
+        </section>
+
+        <!-- 4. Needs your attention -->
+        <section class="rev sec divider" style="animation-delay: 4.3s">
+          <p class="sec-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--warn)">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            Needs your attention
+          </p>
+          @for (a of attention; track a.id; let i = $index) {
+            <div class="rev" [class.pulse]="a.severity === 'danger'"
+              style="padding: 10px 12px; margin-bottom: 8px; border-radius: var(--radius-xs); border-left: 3px solid"
+              [style.background]="flagStyle[a.severity].bg"
+              [style.border-left-color]="flagStyle[a.severity].line"
+              [style.animation-delay]="(4.6 + i * 0.4) + 's'">
+              <p style="font-size: var(--font-base); font-weight: 800; margin: 0" [style.color]="flagStyle[a.severity].text">{{ a.title }}</p>
+              <p style="font-size: var(--font-sm); color: var(--ink-2); margin: 3px 0 0; line-height: 1.45">{{ a.detail }}</p>
+            </div>
+          }
+        </section>
+
+        <!-- 5. VIP today -->
+        <section class="rev sec divider" style="animation-delay: 5.6s">
+          <p class="sec-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary)">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            VIP today
+          </p>
+          @for (v of vips; track v.name) {
+            <div style="display: flex; gap: 10px; align-items: flex-start">
+              <div class="avatar" style="width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; background: var(--primary-soft-bg); color: var(--primary-strong); display: flex; align-items: center; justify-content: center; font-size: var(--font-sm); font-weight: 800; animation-delay: 5.8s">{{ v.initials }}</div>
+              <div>
+                <p style="font-size: var(--font-base); font-weight: 800; color: var(--ink); margin: 0">{{ v.name }}</p>
+                <p style="font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; margin: 2px 0 0; line-height: 1.45">{{ v.note }}</p>
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- 6. Month-end -->
+        @if (isMonthEnd) {
+          <section class="rev sec divider" style="animation-delay: 6.1s">
+            <div style="background: #fff4e0; border-radius: var(--radius); padding: 12px 14px">
+              <p style="font-size: var(--font-base); font-weight: 800; color: #b26a00; margin: 0; display: flex; align-items: center; gap: 8px">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Month-end — today is the 31st
+              </p>
+              <p style="font-size: var(--font-sm); color: var(--ink-2); margin: 6px 0 0; line-height: 1.5">{{ monthEnd.summary }}</p>
+            </div>
+          </section>
+        }
+
+        <!-- 7. Confirm before you start -->
+        <section class="rev sec divider" style="animation-delay: 6.6s">
+          <p class="sec-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-2)">
+              <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            Confirm before you start
+          </p>
+          @for (t of tasks(); track t.id; let i = $index) {
+            <button class="task rev" [class.done]="t.done" (click)="toggleTask(t.id)"
+              style="width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 11px 12px; margin-bottom: 8px; cursor: pointer; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: inherit"
+              [style.animation-delay]="(6.9 + i * 0.2) + 's'">
+              <span class="chk" style="width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; border: 1.5px solid var(--line-strong); color: var(--success); display: flex; align-items: center; justify-content: center">
+                @if (t.done) {
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                }
+              </span>
+              <span style="flex: 1; display: flex; flex-direction: column">
+                <span class="ttl" style="font-size: var(--font-base); font-weight: 600; color: var(--ink)">{{ t.title }}</span>
+                <span style="font-size: var(--font-xs); color: var(--ink-3); font-weight: 600; margin-top: 1px">{{ t.subtitle }}</span>
+              </span>
+            </button>
+          }
+        </section>
+
+      }
+    </div>
+  </div>
+</ion-content>

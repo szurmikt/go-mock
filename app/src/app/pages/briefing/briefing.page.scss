@@ -1,0 +1,37 @@
+// THROWAWAY MOCK — single-property morning-briefing prototype. Do NOT reuse anywhere; slated for removal.
+// Only animation/state/structure rules live here; all cosmetic styling is inline in briefing.page.html
+// (this app's convention) to keep the component under the per-component style budget.
+
+// Briefing reads 2px larger than the rest of the app — override the font tokens for this page only.
+// App scale is 12/15/16/17/18/22; each is bumped +2 here. Scoped to :host so nothing else is affected.
+:host {
+  --font-xs: 14px; --font-sm: 17px; --font-base: 18px; --font-md: 19px; --font-lg: 20px; --font-xl: 24px;
+}
+
+.sec { padding: 14px var(--pad); }
+.sec.divider { border-top: 8px solid var(--line); }
+
+.sec-title {
+  font-size: var(--font-lg); font-weight: 800; letter-spacing: -0.01em; color: var(--ink-2);
+  margin: 0 0 12px; display: flex; align-items: center; gap: 8px;
+}
+
+.bar { flex: 1; border-radius: 4px 4px 0 0; height: 0; animation: grow-bar 0.7s ease forwards; }
+.avatar { animation: pop 0.5s ease both; }
+
+.task:active { transform: scale(0.99); }
+.task.done .chk { background: var(--success-soft); border-color: var(--success); }
+.task.done .ttl { color: var(--ink-4); text-decoration: line-through; }
+
+.rev { opacity: 0; animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+.rev.pulse { animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) forwards, brief-pulse 2s ease 1.6s 2; }
+
+@keyframes rise     { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes grow-bar { from { height: 0; } to { height: var(--bar-h, 0%); } }
+@keyframes pop      { 0% { transform: scale(0.6); opacity: 0; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes brief-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(251, 110, 139, 0.35); } 50% { box-shadow: 0 0 0 6px rgba(251, 110, 139, 0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rev, .rev.pulse, .avatar { animation: none !important; opacity: 1; }
+  .bar { animation: none !important; height: var(--bar-h, 0%); }
+}

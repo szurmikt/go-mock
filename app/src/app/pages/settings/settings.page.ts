@@ -3,7 +3,6 @@ import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { App } from '@capacitor/app';
 import { AuthService } from '../../services/auth';
-import { BiometricService } from '../../services/biometric';
 import { LanguageService } from '../../services/language.service';
 import { FeedbackSheetComponent } from '../../components/feedback-sheet/feedback-sheet.component';
 @Component({
@@ -23,7 +22,6 @@ export class SettingsPage {
 
   constructor(
     public auth: AuthService,
-    private biometric: BiometricService,
     private router: Router,
   ) {
     App.getInfo().then(info => {
@@ -33,7 +31,6 @@ export class SettingsPage {
   }
 
   back() { window.history.back(); }
-  lock() { this.biometric.lockSession(); }
 
   async openLangPicker() {
     this.langOpen.set(true);
