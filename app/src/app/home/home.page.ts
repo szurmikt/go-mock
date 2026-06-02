@@ -7,6 +7,7 @@ import { ApiEnvironmentService } from '../services/api-environment';
 import { AuthService } from '../services/auth';
 import { ReservationService, pillStatus, pillLabel } from '../services/reservation';
 import { OptionsService } from '../services/options.service';
+import { MixpanelService } from '../services/mixpanel';
 import { PropertyInterface } from '../models/property.interface';
 import { ReservationInterface } from '../models/reservation.interface';
 import { LocalizedDatePipe } from '../pipes/localized-date.pipe';
@@ -92,6 +93,7 @@ export class HomePage implements ViewWillEnter, AfterViewInit, OnDestroy {
 
   private options = inject(OptionsService);
   apiEnv = inject(ApiEnvironmentService);
+  private mixpanel = inject(MixpanelService);
 
   constructor(
     public auth: AuthService,
@@ -116,6 +118,7 @@ export class HomePage implements ViewWillEnter, AfterViewInit, OnDestroy {
 
   setTab(t: Tab) {
     this.tab.set(t);
+    this.mixpanel.trackHomeSegmentChanged(t.toLowerCase());
     this.t(() => this.updateThumb(), 0);
   }
 
@@ -128,9 +131,15 @@ export class HomePage implements ViewWillEnter, AfterViewInit, OnDestroy {
   }
 
   async selectProperty(p: PropertyInterface) {
-    if (this.auth.selectedProperty()?.property_id !== p.property_id) {
+    const fromId = this.auth.selectedProperty()?.property_id;
+    if (fromId !== p.property_id) {
       this.options.clear();
       this.res.clear();
+      this.mixpanel.trackPropertySwitched({
+        property_id: p.property_id,
+        property_name: p.property_name ?? undefined,
+        from_property_id: fromId,
+      });
     }
     await this.auth.selectProperty(p);
     this.closeSwitch();

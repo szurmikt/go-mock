@@ -9,6 +9,7 @@ import { ApiEnvironmentService } from './services/api-environment';
 import { AppConfigService } from './services/app-config';
 import { AuthService } from './services/auth';
 import { BiometricService } from './services/biometric';
+import { MixpanelService } from './services/mixpanel';
 import { OptionsService } from './services/options.service';
 
 const SLIDE_DURATION = 280;
@@ -56,6 +57,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private options = inject(OptionsService);
   private apiEnv = inject(ApiEnvironmentService);
   private appConfig = inject(AppConfigService);
+  private mixpanel = inject(MixpanelService);
 
   constructor(
     readonly auth: AuthService,
@@ -75,9 +77,17 @@ export class AppComponent implements OnInit, OnDestroy {
 
     await this.apiEnv.init();
 
+    // Analytics: register super properties (incl. api_mode) and open the boot session.
+    this.mixpanel.registerSuperProps(this.apiEnv.mode());
+    this.mixpanel.handleAppActive();
+
     // Register the resume listener first so it runs even if the user is gated
     // at boot. It re-checks the version gate on every foreground transition.
     App.addListener('appStateChange', async ({ isActive }) => {
+      // Session analytics — runs regardless of auth/gate state.
+      if (isActive) this.mixpanel.handleAppActive();
+      else this.mixpanel.handleAppBackground();
+
       if (isActive) {
         const gate = await this.appConfig.runVersionGate();
         if (gate.blocked) {

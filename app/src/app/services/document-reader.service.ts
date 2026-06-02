@@ -26,6 +26,7 @@ import {
 import { DocumentData } from '../models/statistics-interface';
 
 import { DocuscanService } from './docuscan.service';
+import { MixpanelService } from './mixpanel';
 
 import { DefaultValuePipe } from '../pipes/default-value.pipe';
 import { parseHungarianAddress } from '../utils/hungarian-address';
@@ -34,6 +35,11 @@ import { parseHungarianAddress } from '../utils/hungarian-address';
 export class DocumentReaderService {
   reader = DocumentReader.instance;
   docuscanService = inject(DocuscanService);
+  private mixpanel = inject(MixpanelService);
+
+  /** Counts user-initiated scan launches since the last successful scan, so
+   *  scan_succeeded can report how many attempts a scan took. */
+  private _scanAttempts = 0;
 
   private _readerStatus = signal<ReaderStatus>(ReaderStatus.INIT);
   readonly readerStatus = this._readerStatus.asReadonly();
@@ -209,6 +215,7 @@ export class DocumentReaderService {
   async scan() {
     if (!(await this.reader.isReady())) return;
 
+    this._scanAttempts++;
     this.clearResults();
     this.resetScanSession();
     // Regula: resets the accumulated multipage package so this scan starts as an
@@ -540,6 +547,40 @@ export class DocumentReaderService {
           Sentry.captureMessage(title, level);
         }
       });
+    }
+
+    // Product analytics (Mixpanel): one event per terminal scan outcome.
+    // scan_type is derived from doRfid (the chip-read path was attempted) — an
+    // approximation, since isReadingRfid is already reset by processResults on
+    // the success call. Categorical document type only — never guest PII.
+    const mpDocType = diagnostics['documentType']?.[0];
+    const scanType: 'optical' | 'rfid' = diagnostics['doRfid'] ? 'rfid' : 'optical';
+    if (outcome === 'finished') {
+      this.mixpanel.trackScanSucceeded({
+        attempts: this._scanAttempts,
+        document_type: String(mpDocType?.name ?? 'unknown'),
+        document_type_id: Number(mpDocType?.type ?? -1),
+        scan_type: scanType,
+      });
+      this._scanAttempts = 0;
+    } else if (mapped == null) {
+      // timed out / cancelled / interrupted / error (no result extracted).
+      // The RFID-fallback path that yields optical results carries mapped != null
+      // and is intentionally not counted as a failure here.
+      const reasonMap: Record<string, 'timed_out' | 'cancelled' | 'interrupted' | 'error'> = {
+        'timed out': 'timed_out',
+        cancelled: 'cancelled',
+        interrupted: 'interrupted',
+        error: 'error',
+      };
+      const reason = reasonMap[outcome];
+      if (reason) {
+        this.mixpanel.trackScanFailed({
+          reason,
+          attempt_number: this._scanAttempts,
+          scan_type: scanType,
+        });
+      }
     }
   }
 

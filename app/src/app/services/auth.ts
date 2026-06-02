@@ -6,6 +6,7 @@ import { StorageService } from './storage';
 import { ApiEnvironmentService } from './api-environment';
 import { ReservationService } from './reservation';
 import { DocuscanService } from './docuscan';
+import { MixpanelService } from './mixpanel';
 import {
   AuthState,
   ApiResponse,
@@ -53,7 +54,26 @@ export class AuthService {
     private env: ApiEnvironmentService,
     private reservations: ReservationService,
     private docuscan: DocuscanService,
+    private mixpanel: MixpanelService,
   ) {}
+
+  /**
+   * Push the current staff user + active property to Mixpanel. No-ops until the
+   * userId is known (it is backfilled by fetchUser after property selection).
+   * Only the logged-in staff member's own identity is sent — never guest PII.
+   */
+  private identifyToMixpanel(): void {
+    const auth = this._auth();
+    if (!auth?.userId) return;
+    const prop = this._selectedProperty();
+    this.mixpanel.identify(auth.userId, {
+      name: auth.name,
+      email: auth.email,
+      propertyId: prop?.property_id ?? undefined,
+      propertyName: prop?.property_name ?? undefined,
+      company: prop?.property_company_name ?? undefined,
+    });
+  }
 
   /**
    * Wipes all property-scoped reservation & guest data from memory.
@@ -129,6 +149,7 @@ export class AuthService {
       name: '',
       userId: '',
     });
+    this.mixpanel.trackLogin();
   }
 
   async fetchUser(): Promise<void> {
@@ -141,6 +162,7 @@ export class AuthService {
       const user = res.data?.[0];
       if (res.success && user?.name) {
         await this.setAuth({ ...this._auth()!, name: user.name, email: user.email, userId: user.user_id });
+        this.identifyToMixpanel();
       }
     } catch {
       // Non-fatal — email is already stored, name stays empty
@@ -185,9 +207,11 @@ export class AuthService {
     this._selectedProperty.set(property);
     await this.storage.set(Config.STORAGE_PROPERTY_KEY, property);
     if (!this._auth()?.name || !this._auth()?.userId) await this.fetchUser();
+    this.identifyToMixpanel();
   }
 
   async logout(): Promise<void> {
+    this.mixpanel.reset();
     this.clearSessionData();
     this._auth.set(null);
     this._selectedProperty.set(null);

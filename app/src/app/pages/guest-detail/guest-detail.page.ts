@@ -7,6 +7,7 @@ import { ReservationService } from '../../services/reservation';
 import { DocumentReaderService, ReaderStatus } from '../../services/document-reader.service';
 import { OptionsService } from '../../services/options.service';
 import { DocuscanService } from '../../services/docuscan';
+import { MixpanelService } from '../../services/mixpanel';
 import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
@@ -101,6 +102,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     private documentReader: DocumentReaderService,
     private options: OptionsService,
     private docuscan: DocuscanService,
+    private mixpanel: MixpanelService,
   ) {
     effect(() => {
       if (!this.awaitingScanResult()) return;
@@ -255,6 +257,9 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     this.docuscan.lastScanResult = result;
 
     if (action === 'edit') {
+      this.mixpanel.trackScanResultEdited({
+        document_type: result?.documentData?.document_type ?? undefined,
+      });
       this.scanSheetOpen.set(false);
       this.scanSheetMode.set('loading');
       this.t(
@@ -274,6 +279,9 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     this.guest.set(guest);
 
     this.res.updateGuest(this.reservationCode, guest).then(() => {
+      this.mixpanel.trackScanResultSaved({
+        document_type: result?.documentData?.document_type ?? undefined,
+      });
       this.docuscan.lastScanResult = null;
       this.scanSheetOpen.set(false);
       this.scanSheetMode.set('loading');

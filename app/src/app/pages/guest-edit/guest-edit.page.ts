@@ -6,6 +6,8 @@ import { ReservationService } from '../../services/reservation';
 import { GuestInterface } from '../../models/guest.interface';
 import { OptionsService } from '../../services/options.service';
 import { DocuscanService } from 'src/app/services/docuscan';
+import { MixpanelService } from '../../services/mixpanel';
+import { AuthService } from '../../services/auth';
 
 @Component({
   selector: 'app-guest-edit',
@@ -46,11 +48,18 @@ export class GuestEditPage implements OnInit {
   private reservationCode!: string;
   private guestId!: string;
 
+  // Analytics: whether this edit was prefilled from a scan, and a snapshot of the
+  // (possibly scan-prefilled) form so save() can count how many fields changed.
+  private fromScan = false;
+  private formSnapshot: Record<string, string> = {};
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private res: ReservationService,
     public options: OptionsService,
+    private mixpanel: MixpanelService,
+    private auth: AuthService,
   ) {}
 
   async ngOnInit() {
@@ -89,6 +98,7 @@ export class GuestEditPage implements OnInit {
         this.docuscanService.lastScanResult != null &&
         this.docuscanService.lastScanResult.scannedData != null
       ) {
+        this.fromScan = true;
         found.scanned_data = this.docuscanService.scannedDataToGuestScannedData(
           this.docuscanService.lastScanResult.scannedData!,
         );
@@ -127,6 +137,8 @@ export class GuestEditPage implements OnInit {
           }
         }
       }
+      // Snapshot the (possibly scan-prefilled) form so save() can count changes.
+      this.formSnapshot = { ...this.form };
     } catch (e: any) {
       this.error.set(e.message ?? 'Failed to load guest');
     } finally {
@@ -166,6 +178,15 @@ export class GuestEditPage implements OnInit {
         },
       };
       await this.res.updateGuest(this.reservationCode, updated);
+      const fieldsChanged = Object.keys(this.form).filter(
+        k => (this.form as Record<string, string>)[k] !== (this.formSnapshot[k] ?? ''),
+      ).length;
+      this.mixpanel.trackGuestUpdated({
+        reservation_code: this.reservationCode,
+        property_id: this.auth.selectedProperty()?.property_id,
+        from_scan: this.fromScan,
+        fields_changed: fieldsChanged,
+      });
       this.router.navigate(['..'], {
         relativeTo: this.route,
         replaceUrl: true,
