@@ -1,6 +1,7 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, ElementRef, QueryList, ViewChildren, AfterViewInit } from '@angular/core';
+import { Component, OnDestroy, inject, signal, computed, ElementRef, QueryList, ViewChildren, AfterViewInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { LowerCasePipe } from '@angular/common';
+import { ViewWillEnter } from '@ionic/angular';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
 import { ApiEnvironmentService } from '../services/api-environment';
 import { AuthService } from '../services/auth';
@@ -31,7 +32,7 @@ function localDateStr(offset: number): string {
   standalone: true,
   imports: [IonContent, IonRefresher, IonRefresherContent, LowerCasePipe, LocalizedDatePipe, FeedbackSheetComponent],
 })
-export class HomePage implements OnInit, AfterViewInit, OnDestroy {
+export class HomePage implements ViewWillEnter, AfterViewInit, OnDestroy {
   @ViewChildren('segBtn') segBtns!: QueryList<ElementRef<HTMLButtonElement>>;
 
   private timeouts: ReturnType<typeof setTimeout>[] = [];
@@ -98,7 +99,10 @@ export class HomePage implements OnInit, AfterViewInit, OnDestroy {
     private router: Router,
   ) {}
 
-  ngOnInit() {
+  // Load on every view entry (not ngOnInit) so re-entering a cached home view —
+  // e.g. after logout → login → Select Property — always refreshes. The 60s
+  // staleness gate in fetchReservations dedupes redundant calls.
+  ionViewWillEnter() {
     this.res.fetchReservations();
   }
 

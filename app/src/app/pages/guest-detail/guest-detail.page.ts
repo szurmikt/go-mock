@@ -269,10 +269,14 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     return `${g.first_name} ${g.last_name}`.trim();
   }
 
-  citizenshipName(code: string | null | undefined): string {
+  countryName(code: string | null | undefined): string {
     if (!code) return '';
     const match = this.options.countries().find(c => c.country_code === code);
     return match?.name ?? code;
+  }
+
+  citizenshipName(code: string | null | undefined): string {
+    return this.countryName(code);
   }
 
   docTypeName(type: string): string {

@@ -28,7 +28,9 @@
           <!-- Personal info card -->
           <div class="card" style="margin-bottom: 16px">
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div class="detail-label">ID: {{ g.reservation_guest_id }}</div>
+              @if (g.guest_id) {
+                <div class="detail-label">ID: {{ g.guest_id }}</div>
+              }
               <div class="detail-value">{{ guestName(g) }}</div>
             </div>
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
@@ -86,6 +88,29 @@
                   <polyline points="22,6 12,13 2,6"/>
                 </svg>
               </a>
+            </div>
+          </div>
+
+          <!-- Address details -->
+          <h3 class="group-title">Address details</h3>
+          <div class="card" style="margin-bottom: 16px">
+            <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div style="flex: 1">
+                <div class="detail-label">Postal code</div>
+                <div class="detail-value">{{ g.address?.zip || '—' }}</div>
+              </div>
+              <div style="flex: 1">
+                <div class="detail-label">City</div>
+                <div class="detail-value">{{ g.address?.city || '—' }}</div>
+              </div>
+            </div>
+            <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div class="detail-label">Country</div>
+              <div class="detail-value">{{ countryName(g.address?.country_code) || '—' }}</div>
+            </div>
+            <div style="padding: 12px 0 0">
+              <div class="detail-label">Address</div>
+              <div class="detail-value">{{ g.address?.address_line || '—' }}</div>
             </div>
           </div>
 
