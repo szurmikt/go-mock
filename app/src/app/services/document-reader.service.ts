@@ -131,7 +131,41 @@ export class DocumentReaderService {
     // (optical front → chip), so 2-sided ID cards don't need an optical back-flip. On
     // devices without NFC this stays false and we fall back to the optical multipage path.
     this.doRfid = this._canRfid();
+    this.logRfidAvailability();
     this._readerStatus.set(ReaderStatus.READY);
+  }
+
+  /**
+   * Diagnostic: why is RFID (NFC chip read) available or not? `isRFIDAvailableForUse()`
+   * depends on the LICENSE (`license.isRfidAvailable`) AND the Core framework/device
+   * capabilities — NOT the iOS NFC entitlement. Logging the bundled license's RFID flag
+   * tells us whether the deployed regula.license actually carries the RFID feature, vs a
+   * framework/device gap. Surfaced to Sentry (Logs + a findable Issue) + console.
+   */
+  private logRfidAvailability(): void {
+    const license = this.reader.license;
+    const payload = {
+      rfid_available_for_use: this.doRfid,
+      license_is_rfid_available: license?.isRfidAvailable ?? null,
+      license_expiry: license?.expiryDate ?? null,
+      available_scenarios: (this.scenarios() ?? []).map((s: any) => String(s?.name ?? s)).join(','),
+      platform: Capacitor.getPlatform(),
+    };
+    console.log('[regula] RFID availability', payload, 'license', license);
+    if (Config.SCAN_DEBUG_LOGGING) {
+      Sentry.logger.info('Regula RFID availability', payload);
+      Sentry.captureMessage(
+        `Regula RFID availability: forUse=${payload.rfid_available_for_use} licenseRfid=${payload.license_is_rfid_available}`,
+        {
+          level: 'info',
+          tags: {
+            context: 'rfid_availability',
+            regula_rfid_for_use: String(payload.rfid_available_for_use),
+            regula_license_rfid: String(payload.license_is_rfid_available),
+          },
+        },
+      );
+    }
   }
 
   async scan() {
