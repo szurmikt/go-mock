@@ -126,6 +126,8 @@ export class DocumentReaderService {
     const ok = await this.initialize();
     if (!ok) return;
 
+    this.configureRfidDataGroups();
+
     this._canRfid.set(await this.reader.isRFIDAvailableForUse());
     // Read the document chip (NFC) when the device supports it — matches Regula's flow
     // (optical front → chip), so 2-sided ID cards don't need an optical back-flip. On
@@ -142,6 +144,42 @@ export class DocumentReaderService {
    * tells us whether the deployed regula.license actually carries the RFID feature, vs a
    * framework/device gap. Surfaced to Sentry (Logs + a findable Issue) + console.
    */
+  /**
+   * Limit RFID chip reading to the data groups we actually use, and skip the heavy
+   * biometric/image groups. DG2 (facial image) is large and slow over NFC and we never
+   * display it; DG3/DG4 (fingerprints/iris) are EAC-protected anyway; DG5/DG7 are the
+   * portrait/signature images. We keep DG1 (MRZ), DG11 (additional personal details —
+   * place of birth, etc.) and DG12 (doc details — date of issue), and leave DG14/DG15
+   * (chip/active authentication) at their native defaults so authentication is unaffected.
+   *
+   * Only the ePassport (eMRTD) application is configured — HU passports and ID cards read
+   * via it (that's where the slow DG2 photo lives). Each setter pushes a merged partial
+   * update to native, so untouched groups (DG1, DG8–DG16) keep their defaults.
+   * Must run after initialize() — that's when reader.rfidScenario is populated from native.
+   */
+  private configureRfidDataGroups(): void {
+    const ep = this.reader.rfidScenario?.ePassportDataGroups;
+    if (!ep) {
+      console.warn('[regula] ePassportDataGroups not available; cannot limit RFID groups');
+      return;
+    }
+    ep.dg2 = false; // facial image — the large/slow one
+    ep.dg3 = false; // fingerprints (EAC-protected)
+    ep.dg4 = false; // iris (EAC-protected)
+    ep.dg5 = false; // displayed portrait image
+    ep.dg6 = false; // reserved
+    ep.dg7 = false; // displayed signature image
+
+    if (Config.SCAN_DEBUG_LOGGING) {
+      const flags = {
+        dg1: ep.dg1, dg2: ep.dg2, dg5: ep.dg5, dg7: ep.dg7,
+        dg11: ep.dg11, dg12: ep.dg12, dg14: ep.dg14, dg15: ep.dg15,
+      };
+      console.log('[regula] RFID data groups limited', flags);
+      Sentry.logger.info('Regula RFID data groups limited', flags);
+    }
+  }
+
   private logRfidAvailability(): void {
     const license = this.reader.license;
     const payload = {
