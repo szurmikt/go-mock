@@ -30,6 +30,7 @@ xcodebuild archive \
   -configuration Release \
   -destination "generic/platform=iOS" \
   -archivePath "$ARCHIVE" \
+  -allowProvisioningUpdates \
   CODE_SIGN_STYLE=Automatic \
   DEVELOPMENT_TEAM=N67VJ6XQV4 \
   -quiet
@@ -39,6 +40,7 @@ xcodebuild -exportArchive \
   -archivePath "$ARCHIVE" \
   -exportPath "$EXPORT_DIR" \
   -exportOptionsPlist "$EXPORT_OPTS" \
+  -allowProvisioningUpdates \
   2>&1 | grep -E "Progress|Upload succeeded|error:|EXPORT"
 
 echo "✓ Done — build $NEXT is processing in TestFlight."
