@@ -31,6 +31,12 @@ const MOCK_SCAN_RESULT: ScanResultInterface = {
     age:             { value: 39,            formatted_value: '39',          modified: false },
     mother_name:     { value: 'Szabó Mária', formatted_value: 'Szabó Mária', modified: false },
     document_number: { value: 'AB1234567',   formatted_value: 'AB1234567',   modified: false },
+    // Address-card (lakcímkártya) fields — present here so the result sheet's
+    // address section is previewable in-browser (?previewScanSheet=result).
+    address_country_code: { value: 'HUN',              formatted_value: 'HUN',              modified: false },
+    address_zip:          { value: '6100',             formatted_value: '6100',             modified: false },
+    address_city:         { value: 'Kiskunfélegyháza', formatted_value: 'Kiskunfélegyháza', modified: false },
+    address_line:         { value: 'Kiskun utca 13',   formatted_value: 'Kiskun utca 13',   modified: false },
   },
 };
 
@@ -66,16 +72,16 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
 
   readonly scanSheetTitle = computed(() => {
     const mode = this.scanSheetMode();
-    if (mode === 'result') return 'ID Scan result';
+    if (mode === 'result') return 'Scan result';
     if (mode === 'failed') {
       switch (this.failedStatus()) {
-        case ReaderStatus.TIMEOUT:     return 'ID Scan Timed out';
-        case ReaderStatus.CANCELLED:   return 'ID Scan Cancelled';
-        case ReaderStatus.INTERRUPTED: return 'ID Scan Interrupted';
-        default:                       return 'ID Scan Failed';
+        case ReaderStatus.TIMEOUT:     return 'Scan Timed out';
+        case ReaderStatus.CANCELLED:   return 'Scan Cancelled';
+        case ReaderStatus.INTERRUPTED: return 'Scan Interrupted';
+        default:                       return 'Scan Failed';
       }
     }
-    return 'ID Scan';
+    return 'Scan Document';
   });
 
   readonly scanResult = computed(
@@ -100,7 +106,12 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
       if (!this.awaitingScanResult()) return;
       const status = this.documentReader.readerStatus();
 
-      if (status === ReaderStatus.FINISHED) {
+      // Only show the result sheet when this scan actually produced data. Guards against
+      // an empty/stale FINISHED surfacing a previous document's preview.
+      if (
+        status === ReaderStatus.FINISHED &&
+        this.documentReader.scanResult()?.scannedData != null
+      ) {
         this.awaitingScanResult.set(false);
         this.scanSheetMode.set('result');
         return;
@@ -178,6 +189,11 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
 
   async goScan() {
     this.menuOpen.set(false);
+    // Guarantee a 100% clean start: wipe any prior scan's pages/result data and the
+    // leftover edit-prefill payload BEFORE arming the result watcher, so a stale
+    // session can't surface the previous document's data on this new scan.
+    this.documentReader.resetScanSession();
+    this.docuscan.lastScanResult = null;
     this.scanSheetMode.set('loading');
     this._previewScanResult.set(null);
     this._previewFailed.set(false);

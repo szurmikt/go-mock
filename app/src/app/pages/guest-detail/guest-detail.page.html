@@ -181,7 +181,7 @@
                 <circle cx="8" cy="15" r="1" fill="currentColor"/>
               </svg>
             </span>
-            ID Scan
+            Scan Document
           </button>
         </div>
       </div>
@@ -268,9 +268,32 @@
           }
 
           @if (_scannedData?.['mother_name']?.['value']) {
-            <div style="padding: 12px 0">
+            <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
               <div class="detail-label">Mother's name</div>
               <div class="detail-value">{{ _scannedData?.['mother_name']?.['value'] | dashIfEmpty }}</div>
+            </div>
+          }
+
+          <!-- Address (from an address card / lakcímkártya). Shown only when the
+               scan returned address data; identity docs skip this entirely. -->
+          @if (_scannedData?.['address_zip']?.['value'] || _scannedData?.['address_city']?.['value'] || _scannedData?.['address_line']?.['value'] || _scannedData?.['address_country_code']?.['value']) {
+            <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div style="flex: 1">
+                <div class="detail-label">Postal code</div>
+                <div class="detail-value">{{ _scannedData?.['address_zip']?.['value'] | dashIfEmpty }}</div>
+              </div>
+              <div style="flex: 1">
+                <div class="detail-label">City</div>
+                <div class="detail-value">{{ _scannedData?.['address_city']?.['value'] | dashIfEmpty }}</div>
+              </div>
+            </div>
+            <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div class="detail-label">Country</div>
+              <div class="detail-value">{{ countryName(_scannedData?.['address_country_code']?.['value']) | dashIfEmpty }}</div>
+            </div>
+            <div style="padding: 12px 0">
+              <div class="detail-label">Address</div>
+              <div class="detail-value">{{ _scannedData?.['address_line']?.['value'] | dashIfEmpty }}</div>
             </div>
           }
         </div>

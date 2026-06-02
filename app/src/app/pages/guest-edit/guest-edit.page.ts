@@ -115,6 +115,16 @@ export class GuestEditPage implements OnInit {
           this.form.document_number =
             found.scanned_data.document?.document_number ??
             this.form.document_number;
+          // Address card (lakcímkártya): prefill the address fields too. Nested
+          // under scanned_data.address by scannedDataToGuestScannedData; absent
+          // for identity docs, so this keeps the existing values then.
+          const addr = found.scanned_data.address;
+          if (addr) {
+            this.form.zip = addr.zip ?? this.form.zip;
+            this.form.city = addr.city ?? this.form.city;
+            this.form.country_code = addr.country_code ?? this.form.country_code;
+            this.form.address_line = addr.address_line ?? this.form.address_line;
+          }
         }
       }
     } catch (e: any) {

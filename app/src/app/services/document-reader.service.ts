@@ -28,6 +28,7 @@ import { DocumentData } from '../models/statistics-interface';
 import { DocuscanService } from './docuscan.service';
 
 import { DefaultValuePipe } from '../pipes/default-value.pipe';
+import { parseHungarianAddress } from '../utils/hungarian-address';
 
 @Injectable({ providedIn: 'root' })
 export class DocumentReaderService {
@@ -91,6 +92,11 @@ export class DocumentReaderService {
 
   scannedGuestData: ScannedGuestDataInterface = {};
 
+  /** Pages captured in the current scan session; reset by resetScanSession(). */
+  private pagesScanned = 0;
+  /** Safety cap on multipage advance, so a misreported morePagesAvailable can't loop. */
+  private static readonly MAX_PAGES = 3;
+
   constructor() {
     // The Regula plugin reaches through to the native (cordova) bridge as soon as
     // these params are set. On web/Electron `cordova` is undefined, so touching them
@@ -98,7 +104,15 @@ export class DocumentReaderService {
     // aborts construction of any page that injects this service (e.g. GuestDetailPage,
     // so the Guest Card never opens). Scanning is native-only anyway, so guard it.
     if (Capacitor.isNativePlatform()) {
-      this.reader.processParams.multipageProcessing = true;
+      // Manual multipage per Regula's documented flow: multipageProcessing = false +
+      // manualMultipageMode = true, then drive paging via results.morePagesAvailable in
+      // handleCompletion(). This is what Regula's own DocReader app does — single-page
+      // docs (passport, address card) close after one page with NO "provide next page"
+      // Skip prompt, while a 2-sided ID card reports morePagesAvailable > 0 and we advance
+      // to the back. The cross-scan stale-data leak is fixed by reader.startNewSession()
+      // in scan() (resets the accumulated package).
+      this.reader.processParams.multipageProcessing = false;
+      this.reader.functionality.manualMultipageMode = true;
       this.reader.processParams.dateFormat = 'yyyy-mm-dd';
       this.reader.functionality.showTorchButton = true;
     }
@@ -113,6 +127,10 @@ export class DocumentReaderService {
     if (!ok) return;
 
     this._canRfid.set(await this.reader.isRFIDAvailableForUse());
+    // Read the document chip (NFC) when the device supports it — matches Regula's flow
+    // (optical front → chip), so 2-sided ID cards don't need an optical back-flip. On
+    // devices without NFC this stays false and we fall back to the optical multipage path.
+    this.doRfid = this._canRfid();
     this._readerStatus.set(ReaderStatus.READY);
   }
 
@@ -120,6 +138,11 @@ export class DocumentReaderService {
     if (!(await this.reader.isReady())) return;
 
     this.clearResults();
+    this.resetScanSession();
+    // Regula: resets the accumulated multipage package so this scan starts as an
+    // entirely new document. Without it, manual multipage re-delivers the previous
+    // scan's results on the next startScanner.
+    this.reader.startNewSession();
 
     Sentry.addBreadcrumb({
       category: 'regula',
@@ -132,6 +155,12 @@ export class DocumentReaderService {
       },
     });
 
+    this.launchScanner();
+  }
+
+  /** Opens the Regula scanner UI. Reused to re-open it for the next page in manual
+   *  multipage mode (after startNewPage()). */
+  private launchScanner() {
     this.reader.startScanner(
       ScannerConfig.withScenario(this.selectedScenario),
       this.handleCompletion.bind(this),
@@ -162,7 +191,22 @@ export class DocumentReaderService {
     let shoudlRfid = this.shouldRfid(results);
     // console.log('handleCompletion shouldRfid', shoudlRfid);
 
-    if (action === DocReaderAction.TIMEOUT) {
+    const isFailureAction =
+      action === DocReaderAction.TIMEOUT ||
+      action === DocReaderAction.CANCEL ||
+      DocReaderAction.interrupted(action);
+
+    if (this.isReadingRfid && isFailureAction) {
+      // The optical scan already succeeded; only the chip (NFC) read failed or was
+      // cancelled. Don't throw away the optical data — finalize with what we have so the
+      // result sheet still shows the document. (NFC fallback to optical.)
+      this.isReadingRfid = false;
+      this.logScanOutcome(action, results, error);
+      console.log('handleCompletion RFID failed → finalize optical', results);
+      this.processResults(results).then(() =>
+        this.logScanOutcome(action, results, error, this._scanResult()),
+      );
+    } else if (action === DocReaderAction.TIMEOUT) {
       this.logScanOutcome(action, results, error);
       this._readerStatus.set(ReaderStatus.TIMEOUT);
     } else if (action === DocReaderAction.CANCEL) {
@@ -172,10 +216,43 @@ export class DocumentReaderService {
       this.logScanOutcome(action, results, error);
       this._readerStatus.set(ReaderStatus.INTERRUPTED);
     } else if (DocReaderAction.stopped(action) && !this.shouldRfid(results)) {
-      console.log('handleCompletion processResults', results);
-      this.processResults(results).then(() =>
-        this.logScanOutcome(action, results, error, this._scanResult()),
-      );
+      // Manual multipage: advance to a second page ONLY for a 2-sided ID card (its back
+      // carries MRZ / mother's name / place of birth). We CANNOT use morePagesAvailable
+      // as the gate — Regula reports the document's physical page count, which is also
+      // non-zero for a passport booklet and the address card's back, so single-page docs
+      // would wrongly prompt for a 2nd page. Gate on document type instead; morePages is
+      // still required so we stop once the ID card's back is in (front: !=0 → advance;
+      // back: ==0 → finalize). MAX_PAGES is a final runaway guard.
+      const morePages = results?.morePagesAvailable ?? 0;
+      const docType = results?.documentType?.[0]?.type;
+      const isIdCard = docType != null && Config.ID_CARDS.includes(docType);
+      // Only advance on the pure-optical path. When we're reading the chip (NFC device +
+      // doc with a chip), the back side isn't needed and the post-RFID completion must
+      // finalize, not advance — so require no-NFC OR no chip on this document.
+      const opticalOnly = !this.doRfid || (results?.chipPage ?? 0) === 0;
+      const shouldAdvance =
+        isIdCard &&
+        opticalOnly &&
+        morePages !== 0 &&
+        this.pagesScanned < DocumentReaderService.MAX_PAGES;
+
+      this.logPageDecision(results, {
+        isIdCard,
+        morePages,
+        pagesScanned: this.pagesScanned,
+        decision: shouldAdvance ? 'advance' : 'finalize',
+      });
+
+      if (shouldAdvance) {
+        this.pagesScanned++;
+        this.reader.startNewPage();
+        this.launchScanner();
+      } else {
+        console.log('handleCompletion processResults', results);
+        this.processResults(results).then(() =>
+          this.logScanOutcome(action, results, error, this._scanResult()),
+        );
+      }
     } else if (DocReaderAction.finished(action) && this.shouldRfid(results)) {
       this.isReadingRfid = true;
       this.readRfid();
@@ -194,6 +271,66 @@ export class DocumentReaderService {
     // } else if (DocReaderAction.interrupted(action)) {
     //   this._readerStatus.set('Scan Interrupted');
     // }
+  }
+
+  /**
+   * Detailed per-page multipage decision log → Sentry (Logs + a visible Issue) + console.
+   * Captures what Regula detected (document type/id/format, pages remaining, chip page)
+   * and how our code treated it (classified as ID card? advance or finalize? which page).
+   * This is the data we use to verify/triage the single-page-vs-2-sided behavior on device.
+   */
+  private logPageDecision(
+    results: Results | null,
+    info: {
+      isIdCard: boolean;
+      morePages: number;
+      pagesScanned: number;
+      decision: 'advance' | 'finalize';
+    },
+  ): void {
+    const diagnostics = this.buildScanDiagnostics(DocReaderAction.COMPLETE, results, null);
+    const docType = diagnostics['documentType']?.[0];
+    const payload = {
+      decision: info.decision,
+      is_id_card: info.isIdCard,
+      more_pages: Number(diagnostics['morePagesAvailable'] ?? -1),
+      page_just_completed: info.pagesScanned + 1,
+      pages_scanned_before: info.pagesScanned,
+      doc_type: String(docType?.name ?? 'unknown'),
+      doc_type_id: Number(docType?.type ?? -1),
+      doc_format: docType?.format ?? null,
+      country: docType?.countryName ?? null,
+      chip_page: Number(diagnostics['chipPage'] ?? -1),
+      processing_status: diagnostics['processingFinishedStatus'] ?? null,
+      diagnostics_json: JSON.stringify(diagnostics),
+    };
+
+    console.log('[regula] page decision', payload);
+
+    if (Config.SCAN_DEBUG_LOGGING) {
+      Sentry.addBreadcrumb({
+        category: 'regula',
+        level: 'info',
+        message: `page decision: ${info.decision}`,
+        data: payload,
+      });
+      Sentry.logger.info('Regula page decision', payload);
+      // Also raise a (low-noise, info-level) Issue so it's easy to find while testing.
+      Sentry.captureMessage(
+        `Regula page decision: ${info.decision} — ${payload.doc_type} (id ${payload.doc_type_id}, morePages ${payload.more_pages})`,
+        {
+          level: 'info',
+          tags: {
+            context: 'scan_page_decision',
+            regula_decision: info.decision,
+            regula_doc_type: payload.doc_type,
+            regula_doc_type_id: String(payload.doc_type_id),
+            regula_is_id_card: String(info.isIdCard),
+            regula_more_pages: String(payload.more_pages),
+          },
+        },
+      );
+    }
   }
 
   private buildScanDiagnostics(
@@ -221,7 +358,9 @@ export class DocumentReaderService {
         results?.documentType?.map((d: any) => ({
           name: d?.name ?? null,
           type: d?.type ?? null,
+          format: d?.format ?? null,
           documentName: d?.documentName ?? null,
+          countryName: d?.countryName ?? null,
         })),
       ),
       processingFinishedStatus: safe(() => r?.processingFinishedStatus),
@@ -499,6 +638,8 @@ export class DocumentReaderService {
 
     this.fixCountryAndCitizenshipFields();
 
+    await this.captureAddressFields(results, issuingAuthority);
+
     // this.docuscanService.lastGuestPostData = this.guestPostData;
     // console.log(
     //   'this.docuscanService.lastGuestPostData',
@@ -570,6 +711,40 @@ export class DocumentReaderService {
     } else {
       console.log('NOT has citizenship && country_code');
     }
+  }
+
+  /**
+   * Captures the guest residence address from an address card (lakcímkártya).
+   * Regula returns the whole address as a single PLACE_OF_REGISTRATION (69)
+   * string (fallback ADDRESS (17)); we parse it into ZIP / city / street and
+   * derive the country from the issuing-state code. These are emitted under
+   * dedicated `address_*` keys (not `country_code`, which the citizenship logic
+   * owns) so docuscan can nest them into the guest `address` object. Identity
+   * documents (passport/ID) return neither field, so this is inert for them.
+   */
+  private async captureAddressFields(
+    results: Results,
+    issuingStateCode: string | null,
+  ) {
+    const raw =
+      (await results.textFieldValueByType(69)) ||
+      (await results.textFieldValueByType(17));
+    if (!raw) return;
+
+    const parsed = parseHungarianAddress(raw);
+    const set = (key: string, value: string | null) => {
+      this.scannedGuestData[key] = {
+        value,
+        formatted_value: value,
+        modified: false,
+        error: false,
+      };
+    };
+
+    set('address_country_code', issuingStateCode || null);
+    set('address_zip', parsed.zip);
+    set('address_city', parsed.city);
+    set('address_line', parsed.address_line);
   }
 
   private fixNameFields() {
@@ -838,6 +1013,23 @@ export class DocumentReaderService {
 
   clearResults() {
     this._readerStatus.set(ReaderStatus.READY);
+  }
+
+  /**
+   * Wipes ALL state from a previous scan so the next one is a 100% clean start:
+   * page counter, accumulated field data, and the emitted result signal (which the
+   * guest-detail preview reads). Call before every new scan session.
+   */
+  resetScanSession() {
+    this.pagesScanned = 0;
+    this.scannedGuestData = {};
+    this.documentData = {
+      document_type: '',
+      scan_type: '',
+      date_of_issue: '',
+      message: '',
+    };
+    this._scanResult.set({ documentData: null, scannedData: null });
   }
 
   private static getFileReader(): FileReader {
