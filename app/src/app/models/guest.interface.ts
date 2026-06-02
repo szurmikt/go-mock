@@ -47,6 +47,14 @@ export interface ScannedDataInterface {
     document_number: string;
     date_of_issue_of_the_document: string;
   } | null;
+  // Populated only when an address card (lakcímkártya) is scanned; nested by
+  // DocuscanService.scannedDataToGuestScannedData from the scan's address_* keys.
+  address?: {
+    country_code: string | null;
+    zip: string | null;
+    city: string | null;
+    address_line: string | null;
+  } | null;
 }
 
 export interface ScannedGuestDataInterface {
