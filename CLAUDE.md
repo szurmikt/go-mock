@@ -512,7 +512,7 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ### 2026-06-02 — Session 17 (current) — Guest Address details section + guest_id-only ID display
 
-> Note: All changes are in the Angular/Ionic app (`app/`). Template + small TS only. No build/version bump, no TestFlight upload (local `npm run build` verification only). Branch `Add-Address-Section`.
+> Note: All changes are in the Angular/Ionic app (`app/`). Branch `Add-Address-Section`. **Shipped builds: iOS 63 (TestFlight), Android versionCode 10 (signed AAB `sabeeapp-go-v10.aab`).** These bundle the whole session: Guest Address details, `guest_id`-only ID display, the property-selector field-swap doc fix, and the cross-property data-isolation fix (logout/switch clearing + home `ionViewWillEnter`). The Android AAB is built but **not auto-uploaded** — manual Play Console drag-drop (Internal testing).
 
 **Address details surfaced on Guest Details + Guest Edit.** The guest API returns an `address` object (`{ country_code, zip, city, address_line }`) that was **already in the model** ([guest.interface.ts:18-23](app/src/app/models/guest.interface.ts#L18-L23)) and **already mapped** by `convertGuest()` ([reservation.ts:162](app/src/app/services/reservation.ts#L162), defaults to all-null) — but never displayed or editable. This was purely a UI gap.
 
