@@ -6,6 +6,7 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { debounceTime } from 'rxjs/operators';
 import { ReservationService, pillStatus, pillLabel } from '../../services/reservation';
 import { StorageService } from '../../services/storage';
+import { MixpanelService } from '../../services/mixpanel';
 import { Config } from '../../config/config';
 import { ReservationInterface } from '../../models/reservation.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
@@ -60,6 +61,7 @@ export class SearchPage implements OnInit, AfterViewInit, OnDestroy {
     private res: ReservationService,
     private storage: StorageService,
     private router: Router,
+    private mixpanel: MixpanelService,
   ) {
     this.debouncedQuery = toSignal(
       toObservable(this.query).pipe(debounceTime(200)),
@@ -94,12 +96,28 @@ export class SearchPage implements OnInit, AfterViewInit, OnDestroy {
 
   onEnter() {
     const term = this.query().trim();
-    if (term.length >= 3) this.saveSearch(term);
+    if (term.length >= 3) {
+      this.trackSearch(term);
+      this.saveSearch(term);
+    }
   }
 
   async goReservation(r: ReservationInterface) {
-    await this.saveSearch(this.query().trim());
+    const term = this.query().trim();
+    this.trackSearch(term);
+    await this.saveSearch(term);
     this.router.navigate(['/reservation', r.reservation_code]);
+  }
+
+  /** Emits search_performed with non-PII signals only (length/count/from_recent),
+   *  never the query text. `from_recent` is read before saveSearch mutates history. */
+  private trackSearch(term: string) {
+    if (term.length < 3) return;
+    this.mixpanel.trackSearchPerformed({
+      query_length: term.length,
+      results_count: this.results().length,
+      from_recent: this.recentSearches().includes(term),
+    });
   }
 
   back() {

@@ -1,0 +1,177 @@
+import { Injectable } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
+import mixpanel from 'mixpanel-browser';
+import { environment } from '../../environments/environment';
+import { Config } from '../config/config';
+import type { ApiEnvMode } from './api-environment';
+
+/** A foreground gap longer than this starts a new analytics session. */
+const SESSION_IDLE_MS = 30 * 60 * 1000;
+
+export interface IdentifyTraits {
+  name?: string;
+  email?: string;
+  propertyId?: string | number;
+  propertyName?: string;
+  company?: string;
+}
+
+/**
+ * Thin, defensive wrapper around the mixpanel-browser singleton (initialised in
+ * main.ts). Depends on nothing app-level so it can be injected anywhere — incl.
+ * AuthService / DocumentReaderService — without a DI cycle. Every call is wrapped
+ * in `safe()`: analytics must never break the app.
+ *
+ * PRIVACY: only the logged-in *staff* user's identity is ever sent (identify /
+ * people.set). No guest PII — no guest names, emails, document numbers, DOB,
+ * nationality, address, or raw search text — is passed to any track call.
+ */
+@Injectable({ providedIn: 'root' })
+export class MixpanelService {
+  private sessionId = '';
+  private foregroundStart = 0;
+  private lastBackgroundAt = 0;
+  private started = false;
+  private foreground = false;
+
+  /** Super properties attached to every event. Call once after apiEnv.init(). */
+  registerSuperProps(apiMode: ApiEnvMode): void {
+    this.safe(() =>
+      mixpanel.register({
+        app_version: Config.APP_VERSION,
+        platform: Capacitor.getPlatform(),
+        environment: environment.production ? 'production' : 'development',
+        api_mode: apiMode,
+      }),
+    );
+  }
+
+  /** Tie events to the staff user. No-op until a real userId is known. */
+  identify(userId: string, traits: IdentifyTraits = {}): void {
+    if (!userId) return;
+    this.safe(() => {
+      mixpanel.identify(userId);
+      const people: Record<string, unknown> = {};
+      if (traits.name) people['$name'] = traits.name;
+      if (traits.email) people['$email'] = traits.email;
+      if (traits.propertyId != null) people['property_id'] = traits.propertyId;
+      if (traits.propertyName) people['property_name'] = traits.propertyName;
+      if (traits.company) people['company'] = traits.company;
+      if (Object.keys(people).length) mixpanel.people.set(people);
+    });
+  }
+
+  /** Clear identity on logout so the next user is not merged with the previous. */
+  reset(): void {
+    this.safe(() => mixpanel.reset());
+  }
+
+  // ---- session lifecycle (driven by Capacitor App.appStateChange) ----
+
+  handleAppActive(): void {
+    if (this.foreground) return; // ignore duplicate active signals
+    this.foreground = true;
+    const now = Date.now();
+    const isNewSession =
+      !this.started || (this.lastBackgroundAt > 0 && now - this.lastBackgroundAt > SESSION_IDLE_MS);
+    this.foregroundStart = now;
+    if (isNewSession) {
+      this.sessionId = this.uuid();
+      this.started = true;
+      this.safe(() => mixpanel.register({ session_id: this.sessionId }));
+      this.track('session_started', { session_id: this.sessionId });
+    }
+  }
+
+  handleAppBackground(): void {
+    if (!this.foreground) return;
+    this.foreground = false;
+    if (!this.started) return;
+    const now = Date.now();
+    this.lastBackgroundAt = now;
+    this.track('session_ended', {
+      session_id: this.sessionId,
+      duration_seconds: Math.round((now - this.foregroundStart) / 1000),
+    });
+  }
+
+  // ---- typed event helpers (one per tracked interaction) ----
+
+  trackLogin(): void {
+    this.track('login_completed', { method: 'mfa' });
+  }
+
+  trackPropertySwitched(p: {
+    property_id: string | number;
+    property_name?: string;
+    from_property_id?: string | number;
+  }): void {
+    this.track('property_switched', { ...p });
+  }
+
+  trackSearchPerformed(p: { query_length: number; results_count: number; from_recent: boolean }): void {
+    this.track('search_performed', { ...p });
+  }
+
+  trackGuestUpdated(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    from_scan: boolean;
+    fields_changed?: number;
+  }): void {
+    this.track('guest_updated', { ...p });
+  }
+
+  trackScanResultEdited(p: { document_type?: string }): void {
+    this.track('scan_result_edited', { ...p });
+  }
+
+  trackScanResultSaved(p: { document_type?: string }): void {
+    this.track('scan_result_saved', { ...p });
+  }
+
+  trackScanSucceeded(p: {
+    attempts: number;
+    document_type: string;
+    document_type_id: number;
+    scan_type: 'optical' | 'rfid';
+  }): void {
+    this.track('scan_succeeded', { ...p });
+  }
+
+  trackScanFailed(p: {
+    reason: 'timed_out' | 'cancelled' | 'interrupted' | 'error';
+    attempt_number: number;
+    scan_type: 'optical' | 'rfid';
+  }): void {
+    this.track('scan_failed', { ...p });
+  }
+
+  trackHomeSegmentChanged(segment: string): void {
+    this.track('home_segment_changed', { segment });
+  }
+
+  // ---- core ----
+
+  track(event: string, props: Record<string, unknown> = {}): void {
+    this.safe(() => mixpanel.track(event, props));
+  }
+
+  private safe(fn: () => void): void {
+    try {
+      fn();
+    } catch {
+      /* analytics must never break the app */
+    }
+  }
+
+  private uuid(): string {
+    const c = (globalThis as { crypto?: Crypto }).crypto;
+    if (c?.randomUUID) return c.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => {
+      const r = (Math.random() * 16) | 0;
+      const v = ch === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+}
