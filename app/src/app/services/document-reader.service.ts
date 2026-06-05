@@ -747,13 +747,26 @@ export class DocumentReaderService {
       };
     }
 
-    this.alterPersonalData();
+    const docTypeId = results.documentType?.[0]?.type ?? -1;
+    const isAddressCard = Config.ADDRESS_CARDS.includes(docTypeId);
+    this.documentData.is_identity_document = !isAddressCard;
 
-    this.fixNameFields();
+    if (isAddressCard) {
+      // Address card (lakcímkártya): capture ONLY the residence address and drop any
+      // name/identity/document fields the OCR returned, so it neither prefills identity
+      // fields nor becomes a scanned ID record. (Skipping fixNameFields also avoids its
+      // hard read of scannedGuestData['first_name'].value.)
+      await this.captureAddressFields(results, issuingAuthority);
+      this.stripToAddressFields();
+    } else {
+      this.alterPersonalData();
 
-    this.fixCountryAndCitizenshipFields();
+      this.fixNameFields();
 
-    await this.captureAddressFields(results, issuingAuthority);
+      this.fixCountryAndCitizenshipFields();
+
+      await this.captureAddressFields(results, issuingAuthority);
+    }
 
     // this.docuscanService.lastGuestPostData = this.guestPostData;
     // console.log(
@@ -860,6 +873,17 @@ export class DocumentReaderService {
     set('address_zip', parsed.zip);
     set('address_city', parsed.city);
     set('address_line', parsed.address_line);
+  }
+
+  /**
+   * Keeps only the `address_*` keys in scannedGuestData, discarding every identity /
+   * document / scan-record field (incl. the seeded doc_reader_scanned_document_id). Used
+   * for address cards so the emitted scan result carries nothing identity-like.
+   */
+  private stripToAddressFields() {
+    for (const key of Object.keys(this.scannedGuestData)) {
+      if (!key.startsWith('address_')) delete this.scannedGuestData[key];
+    }
   }
 
   private fixNameFields() {

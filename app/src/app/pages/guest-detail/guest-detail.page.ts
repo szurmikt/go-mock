@@ -272,10 +272,22 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     const guest = this.guest();
     if (!guest) return;
 
+    const isIdentityDoc = result?.documentData?.is_identity_document !== false;
+
     if (result?.scannedData) {
-      guest.scanned_data = this.docuscan.scannedDataToGuestScannedData(result.scannedData);
+      if (isIdentityDoc) {
+        guest.scanned_data = this.docuscan.scannedDataToGuestScannedData(result.scannedData);
+        this.docuscan.fillGuestDataFromScannedData(guest);
+      } else {
+        // Address card: reuse the per-field address merge, then restore the original
+        // scanned_data — an address card is not a scanned ID document, so the POST /guest
+        // scanned_data section must stay exactly as the guest already had it.
+        const original = guest.scanned_data;
+        guest.scanned_data = this.docuscan.scannedDataToGuestScannedData(result.scannedData);
+        this.docuscan.fillGuestDataFromScannedData(guest); // touches only guest.address
+        guest.scanned_data = original;
+      }
     }
-    this.docuscan.fillGuestDataFromScannedData(guest);
     this.guest.set(guest);
 
     this.res.updateGuest(this.reservationCode, guest).then(() => {
