@@ -510,7 +510,22 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-06-05 — Session 22 (current) — Accent-insensitive reservation search
+### 2026-06-06 — Session 23 (current) — Data freshness: stale-while-revalidate + pull-to-refresh on reservation detail
+
+> Note: All changes are in the Angular/Ionic app (`app/`). Branch `Data-Freshness-SWR`. No build/upload (local verification only — `npm run build` green, `ionic serve` running).
+
+Mitigates the staleness diagnosed in Session 20's caching Q&A (no API changes possible). The app is 100% pull-based; two problems were addressed: the reservation list's 60s gate flashed a list-replacing spinner on every real re-fetch, and the **guest cache had no expiry** (a PMS-side guest change never surfaced for the rest of the session). Approach: silent **stale-while-revalidate (SWR)** with a **60s window for both reservations and guests** — cache serves instantly, a background re-fetch fires at most once/60s, an in-flight lock dedups concurrent calls. The 60s number is unchanged (already in production for reservations); the wins are flicker-free refresh, a *finite* guest TTL, header refresh on back-navigation, a force-fresh-before-edit guard, and pull-to-refresh on the detail screen.
+
+- **[services/reservation.ts](app/src/app/services/reservation.ts):** `fetchReservations()` gained an in-flight lock (`_inFlight`) and now toggles `_loading`/`_error` **only on the empty first load** (`showSpinner = _reservations().length === 0`) — re-entry/pull-to-refresh on a populated list revalidates silently (the list signal is never cleared, so old data stays visible). `fetchGuests(code, force=false)` gained a 60s TTL (`GUEST_STALE_MS` + `_guestFetchedAt` map) and a per-`reservationCode` in-flight lock (`_inFlightGuests`) — fixes the infinite stickiness and collapses the reservation→guest drill-down to one request. New synchronous `peekGuests(code)` for instant first paint. `clear()` clears `_guestFetchedAt`; `updateGuest()` deletes its timestamp too.
+- **[reservation-detail.page.ts](app/src/app/pages/reservation-detail/reservation-detail.page.ts) / [.html](app/src/app/pages/reservation-detail/reservation-detail.page.html):** fetch moved from `ngOnInit` → `ionViewWillEnter` (so back-navigation refreshes the header — `ngOnInit` doesn't re-run on Ionic re-entry). Seeds from cache (`reservations().find` + `peekGuests`) for instant paint, sets `loading` only when nothing is shown yet; `fetchDetail` is always-uncached (fresh header every visit), guests are SWR-gated. Removed the now-redundant booker-name sync block. **Pull-to-refresh added** (`ion-refresher` + `handleRefresh`, mirrors home): force-fetches `fetchDetail` + `fetchGuests(code, true)` for **the given reservation's guests** — and because that overwrites the shared `_guestCache`, the Guest Details screen shows the refreshed data afterwards. Session-20 global `ion-refresher` notch offset already applies (no new CSS).
+- **[guest-detail.page.ts](app/src/app/pages/guest-detail/guest-detail.page.ts):** `loadGuest()` reworked to SWR — paints the cached guest via `peekGuests` instantly, sets `loading` only when `!guest()`, then refreshes silently. Removes the every-entry spinner blank.
+- **[guest-edit.page.ts](app/src/app/pages/guest-edit/guest-edit.page.ts):** the `ngOnInit` load is now `fetchGuests(code, true)` — the edit form always starts from the latest server copy (bypasses the 60s window), guarding against editing/overwriting a stale guest. Covers both entry paths (guest-detail FAB and scan-result edit).
+
+**Trade-offs / out of scope:** `fetchDetail` runs once per detail entry (intended). Idle-on-screen still won't auto-update (no timer) — freshness is on navigation + pull-to-refresh. 60s windows are tunable constants.
+
+**Verification:** `npm run build` passes (only the known `global.scss` Sass `@import` deprecation). Not yet device/serve-verified by hand: open the Network tab on `ionic serve` to confirm no spinner flash on re-entry, 60s dedup, single `guests` call on drill-down, fresh `guests` on Edit, and fresh `reservations/details` + `guests` on pull-to-refresh.
+
+### 2026-06-05 — Session 22 — Accent-insensitive reservation search
 
 > Note: All changes are in the Angular/Ionic app (`app/`). Branch `Improve-guest-search`. No build/upload (local verification only).
 

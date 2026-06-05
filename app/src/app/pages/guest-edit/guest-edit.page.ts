@@ -68,7 +68,9 @@ export class GuestEditPage implements OnInit {
     this.guestId = this.route.snapshot.paramMap.get('guestId')!;
 
     try {
-      const guests = await this.res.fetchGuests(this.reservationCode);
+      // Force a fresh fetch so the edit form always starts from the latest server copy
+      // (bypasses the 60s SWR window) — guards against editing/overwriting a stale guest.
+      const guests = await this.res.fetchGuests(this.reservationCode, true);
       const found = guests.find(
         (g: GuestInterface) => g.reservation_guest_id === this.guestId,
       );
