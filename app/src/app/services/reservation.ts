@@ -161,9 +161,16 @@ export class ReservationService {
       phone_number: g.phone_number ?? '',
       address: g.address ?? { country_code: null, zip: null, city: null, address_line: null },
       document: g.document ?? null,
-      scanned_data: g.scanned_data ?? null,
+      scanned_data: this.hasScanRecord(g.scanned_data) ? g.scanned_data : null,
       locked: g.locked ?? false,
     };
+  }
+
+  // A guest counts as "scanned" only when the API returns a scan record id. The API
+  // can return an empty/all-null scanned_data placeholder for never-scanned guests,
+  // which is truthy — so a bare `?? null` would wrongly light up the scan icon.
+  private hasScanRecord(sd: any): boolean {
+    return sd != null && typeof sd === 'object' && !!sd.doc_reader_scanned_document_id;
   }
 
   private convert(r: any): ReservationInterface {

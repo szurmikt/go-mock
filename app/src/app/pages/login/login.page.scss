@@ -1,1 +1,33 @@
-// Component styles — layout handled globally in sabeeapp-design.scss
+// Login brand styling — scoped to this component so it can never leak to the
+// other screens that share the global `.login-page` layout class
+// (property-select, update-required). Layout itself lives in sabeeapp-design.scss.
+
+// Blue background behind the content (prevents grey flash on iOS overscroll/safe-area bounce)
+ion-content {
+  --background: var(--primary);
+}
+
+.login-page {
+  background: var(--primary);
+
+  .login-footer {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .lang-select {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.55);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ffffff' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    &:focus { border-color: #fff; }
+  }
+
+  // Dark Ebony Clay sign-in CTA — differentiates from the white fields.
+  // Scoped under .login-page so the error-sheet "Try again" button (in this
+  // template but outside .login-page) stays the default blue.
+  .btn {
+    background: #1C242A; color: #fff;
+    &:hover    { background: #28323a; }
+    &:active   { background: #1C242A; }
+    &:disabled { background: rgba(28, 36, 42, 0.45); color: rgba(255, 255, 255, 0.85); opacity: 1; }
+  }
+}

@@ -8,6 +8,7 @@ import { OptionsService } from '../../services/options.service';
 import { DocuscanService } from 'src/app/services/docuscan';
 import { MixpanelService } from '../../services/mixpanel';
 import { AuthService } from '../../services/auth';
+import { toInputDate } from '../../utils/date';
 
 @Component({
   selector: 'app-guest-edit',
@@ -111,8 +112,10 @@ export class GuestEditPage implements OnInit {
             found.scanned_data.maiden_name ?? this.form.maiden_name;
           this.form.mother_name =
             found.scanned_data.mother_name ?? this.form.mother_name;
+          // Normalize to strict YYYY-MM-DD: <input type="date"> silently rejects
+          // any other shape, leaving the field blank.
           this.form.birth_date =
-            found.scanned_data.birth_date ?? this.form.birth_date;
+            toInputDate(found.scanned_data.birth_date) || this.form.birth_date;
           this.form.birth_place =
             found.scanned_data.birth_place ?? this.form.birth_place;
           this.form.citizenship =

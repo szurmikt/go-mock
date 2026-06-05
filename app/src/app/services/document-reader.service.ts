@@ -119,7 +119,9 @@ export class DocumentReaderService {
       // in scan() (resets the accumulated package).
       this.reader.processParams.multipageProcessing = false;
       this.reader.functionality.manualMultipageMode = true;
-      this.reader.processParams.dateFormat = 'yyyy-mm-dd';
+      // 'MM' = month; lowercase 'mm' is MINUTES, which yields an invalid date like
+      // 1985-00-22 that <input type="date"> and `new Date(...)` both silently reject.
+      this.reader.processParams.dateFormat = 'yyyy-MM-dd';
       this.reader.functionality.showTorchButton = true;
     }
   }
