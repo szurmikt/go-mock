@@ -10,6 +10,7 @@ import { MixpanelService } from '../../services/mixpanel';
 import { Config } from '../../config/config';
 import { ReservationInterface } from '../../models/reservation.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
+import { normalizeText } from '../../utils/text';
 
 @Component({
   selector: 'app-search',
@@ -29,15 +30,15 @@ export class SearchPage implements OnInit, AfterViewInit, OnDestroy {
   private t(fn: () => void, ms: number) { this.timeouts.push(setTimeout(fn, ms)); }
 
   readonly results = computed(() => {
-    const q = (this.debouncedQuery() ?? '').trim().toLowerCase();
+    const q = normalizeText(this.debouncedQuery()).trim();
     if (q.length < 3) return [];
     const today = new Date().toISOString().slice(0, 10);
     return this.res.reservations()
       .filter(r => {
-        const code  = r.reservation_code.toLowerCase();
-        const first = (r.booker.first_name ?? '').toLowerCase();
-        const last  = (r.booker.last_name  ?? '').toLowerCase();
-        const email = (r.booker.email      ?? '').toLowerCase();
+        const code  = normalizeText(r.reservation_code);
+        const first = normalizeText(r.booker.first_name);
+        const last  = normalizeText(r.booker.last_name);
+        const email = normalizeText(r.booker.email);
         return code.startsWith(q) ||
           first.split(' ').some(w => w.startsWith(q)) ||
           last.split(' ').some(w => w.startsWith(q)) ||
