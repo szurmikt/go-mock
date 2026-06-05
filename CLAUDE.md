@@ -510,7 +510,20 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-06-05 — Session 21 (current) — Address card scan fills address only (not an ID document) + property filter by ID
+### 2026-06-05 — Session 22 (current) — Accent-insensitive reservation search
+
+> Note: All changes are in the Angular/Ionic app (`app/`). Branch `Improve-guest-search`. No build/upload (local verification only).
+
+**Search now folds diacritics so `Tamas` matches `Tamás`.** The search-screen filter compared with only `.toLowerCase()`, so accented and unaccented letters were distinct — a booker named `Tamás` couldn't be found by typing `tamas`.
+
+- New [utils/text.ts](app/src/app/utils/text.ts) `normalizeText()` — `NFD`-decompose, strip combining marks (`/[̀-ͯ]/g`), lowercase; `null`/`undefined` → `''`. Spec [text.spec.ts](app/src/app/utils/text.spec.ts) (5 tests, ChromeHeadless green).
+- Wired into the `results` computed in [search.page.ts](app/src/app/pages/search/search.page.ts) — every `.toLowerCase()` (query + `reservation_code`, booker first/last name, email) swapped for `normalizeText()`. Match semantics unchanged (startsWith-per-word on names + full name, `includes` on email).
+
+**Out of scope (deferred):** searching *within guests* (not just the booker). The reservations list only carries the booker; guests load per-reservation via `/guests`, so a client-side prefetch would fan out to one call per reservation — not viable at hundreds of reservations. The right fix is server-side (guests inline in the list response, or a dedicated guest-search endpoint).
+
+**Verification:** `npm run build` passes (only the known `global.scss` Sass `@import` deprecation); `text.spec.ts` 5/5. Manual: a `Tamás` booker is found by typing `tamas`; code/email search and the <3-char hint still work.
+
+### 2026-06-05 — Session 21 — Address card scan fills address only (not an ID document) + property filter by ID
 
 > Note: All changes are in the Angular/Ionic app (`app/`). Branch `Improve-Property-Selector`. **Shipped builds: iOS 76→77 (TestFlight, processing), Android versionCode 19→20 (signed AAB `sabeeapp-go-v20.aab`, built — manual Play Console drag-drop, not auto-uploaded).** Both builds bundle the two changes below.
 
