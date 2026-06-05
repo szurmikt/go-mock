@@ -123,6 +123,12 @@ ion-content {
   --padding-end: 0;
 }
 
+// Pull-to-refresh spinner sits under the notch by default (content extends under
+// the black-translucent status bar). Offset it below the safe area + breathing room.
+ion-refresher {
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+}
+
 // On mobile the dark body bg shows behind keyboard rounded corners — override to match app bg
 @media (max-width: 719px) {
   body {

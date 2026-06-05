@@ -2,7 +2,7 @@
 
 > **Purpose of this document.** This is an internal, factual reference describing every screen and feature of the SabeeApp Go mobile app. It is written for the Customer Success team to use as the source material when producing the final, customer-facing manual. It aims to be complete and accurate rather than promotional, and it intentionally documents behaviour exactly as the app currently works. Sections marked **⚠ Internal** describe developer or QA mechanics and must **not** be carried over into the customer manual.
 >
-> This document reflects the app as released in build **iOS 55 / Android versionCode 5**.
+> This document reflects the app as released in build **iOS 73 / Android versionCode 16**.
 
 ---
 
@@ -17,12 +17,13 @@ A few facts that apply across the whole app:
 - **Platforms.** The app ships as native iOS and Android applications and can also run as a Progressive Web App (PWA) added to the home screen.
 - **Languages.** The interface is available in English, Hungarian, German, Turkish, French, Latvian, and Spanish. The language can be chosen on the Login screen and changed at any time in Settings, and the choice is remembered between sessions.
 - **Connectivity.** The app is online-only. All information is loaded live from the SabeeApp API; there is no offline mode and no local copy of the data beyond what is currently on screen.
+- **Branding.** The app carries the SabeeApp Go logo as its home-screen (launcher) icon, on its launch (splash) screen while it starts up, and on the Login screen.
 
 ## 2. Core concepts
 
 These concepts apply throughout the app, and understanding them first makes the individual screens easier to explain.
 
-**The sign-in journey.** A user always moves through the same sequence when opening the app for the first time or after logging out: they sign in on the **Login** screen, confirm their identity on the **MFA** (two-factor) screen, choose which property they are working with on the **Property Select** screen, and then arrive at the **Home** screen. From Home, the main path into detail is: open a **Reservation**, open one of its **Guests**, and from there either **Edit** the guest or run an **ID Scan**.
+**The sign-in journey.** A user always moves through the same sequence when opening the app for the first time or after logging out: they sign in on the **Login** screen, confirm their identity on the **MFA** (two-factor) screen, choose which property they are working with on the **Property Select** screen, and then arrive at the **Home** screen. From Home, the main path into detail is: open a **Reservation**, open one of its **Guests**, and from there either **Edit** the guest or **Scan** their document.
 
 **The data window (important).** When a property is opened, the app loads the reservations whose dates fall between **14 days ago and 14 days from now** — roughly a four-week window centred on today. Every other part of the app works on top of this loaded set. This means the Home day tabs and the Search screen can only display or find reservations inside that window; a reservation that checked out three weeks ago, or one arriving in two months, is simply not loaded and therefore cannot be shown or searched. This is the single most important limitation to communicate to users.
 
@@ -50,7 +51,7 @@ Each screen below is described in terms of its purpose, what it shows, what the 
 
 **Purpose.** The Login screen authenticates the user against their SabeeApp account and is the entry point to the whole app.
 
-**What it shows.** There is an email field and a password field (both use floating labels that lift above the text as the user types) and a language selector in the top corner. While the app is connecting, the Sign-in button shows a spinner.
+**What it shows.** The SabeeApp Go logo sits at the top of the screen, above an email field and a password field (both use floating labels that lift above the text as the user types), with a language selector in the top corner. While the app is connecting, the Sign-in button shows a spinner.
 
 **What the user can do.** The user enters their email and password and taps Sign in, which begins authentication and, on success, takes them to the MFA screen. The language selector changes the interface language immediately.
 
@@ -110,29 +111,29 @@ Each screen below is described in terms of its purpose, what it shows, what the 
 
 **Purpose.** This screen presents one guest's complete record.
 
-**What it shows.** The information is grouped into cards: personal details (name, maiden name, mother's name, date and place of birth, citizenship), contact details (phone number and email), and document details (document type, whether it has been scanned, and the document number).
+**What it shows.** The information is grouped into cards: personal details (name, maiden name, mother's name, date and place of birth, citizenship), contact details (phone number and email), address details (postal code, city, country, and street address), and document details (document type, whether it has been scanned, and the document number).
 
-**What the user can do.** Shortcut buttons next to the contact details let the user place a call or start an email. A floating action button opens a small menu with two choices: **Edit guest**, which opens the editing form, and **ID Scan**, which begins a document scan for this guest.
+**What the user can do.** Shortcut buttons next to the contact details let the user place a call or start an email. A floating action button opens a small menu with two choices: **Edit guest**, which opens the editing form, and **Scan Document**, which begins a document scan for this guest.
 
-**Checks and mandatory fields.** None — this is a viewing screen; all changes are made through Edit guest or ID Scan.
+**Checks and mandatory fields.** None — this is a viewing screen; all changes are made through Edit guest or Scan Document.
 
 ### Edit Guest
 
 **Purpose.** This form lets the user correct or complete a guest's details.
 
-**What it shows.** Editable fields for first name, last name, maiden name, mother's name, date of birth, place of birth, citizenship, gender, phone number, email, document type (chosen from a dropdown of Passport, ID Card, Driving Licence, or Residence Permit), and document number.
+**What it shows.** Editable fields for first name, last name, maiden name, mother's name, date of birth, place of birth, citizenship, gender, phone number, email, address (postal code, city, country chosen from a dropdown, and street address), document type (chosen from a dropdown of Passport, ID Card, Driving Licence, or Residence Permit), and document number.
 
-**What the user can do.** The user edits any field and taps Save, which writes the changes to the server and returns to the previous screen. If the user has just completed an ID scan, the relevant fields are **pre-filled** with the scanned values so they only need to confirm or adjust them.
+**What the user can do.** The user edits any field and taps Save, which writes the changes to the server and returns to the previous screen. If the user has just completed a document scan, the relevant fields are **pre-filled** with the scanned values so they only need to confirm or adjust them.
 
 **Checks and mandatory fields.** **There are none.** The form currently performs **no required-field validation and no format checking** of any kind — whatever is entered, including empty fields, is saved exactly as typed. *(Note for the final manual: any expectations about which guest fields "must" be completed are a matter of staff procedure, not something the app enforces today.)*
 
-### ID Scan
+### Scan Document
 
-**Purpose.** ID Scan reads a guest's travel document — a passport, ID card, driving licence, or residence permit — and extracts the guest's data automatically, using optical character recognition and, where the document supports it, the RFID chip.
+**Purpose.** Scan Document reads a guest's document with the phone camera and extracts the data automatically, using optical character recognition and, where the document supports it, the RFID chip. The scanner recognises **ID cards, passports, driving licences, and Hungarian address cards (lakcímkártya)**. It detects the document type automatically — there is a single scan action, and the user does not pick the type beforehand.
 
 **What it shows.** A camera view with a scanning frame, a brief loading state while the document scanner initialises, and a result panel once the document has been read.
 
-**What the user can do.** When a document is read, the user can **Save** the extracted data directly onto the guest, or choose **Edit** to open the Edit Guest form with the scanned values pre-filled for review. The captured fields are the guest's name, date and place of birth, gender, citizenship, age, mother's name, document type, and document number. If a scan does not complete — for example it times out, is cancelled, or is interrupted — the screen offers a **Scan again** option.
+**What the user can do.** When a document is read, the user can **Save** the extracted data directly onto the guest, or choose **Edit** to open the Edit Guest form with the scanned values pre-filled for review. For an identity document (ID card, passport, or driving licence) the captured fields are the guest's name, date and place of birth, gender, citizenship, age, mother's name, document type, and document number. For a **Hungarian address card** the scan instead fills the guest's **address** (postal code, city, country, and street address). Saving an address card does not overwrite the guest's identity details, and vice versa. If a scan does not complete — for example it times out, is cancelled, or is interrupted — the screen offers a **Scan again** option.
 
 **Checks and mandatory fields.** Scanning requires the device camera and therefore **works only on a real phone**; it is intentionally disabled in a desktop browser, where the shutter button cannot be used.
 
@@ -159,7 +160,7 @@ This table summarises, for each place the user enters data, what is required and
 | Property Select | A property selection | One property must be chosen to proceed. |
 | Search | At least three characters | Fewer than three characters returns no results. |
 | Edit Guest | **Nothing** | **No required fields and no format validation** — data is saved exactly as entered. |
-| ID Scan | A real device with a camera | Scanning is disabled in a browser. |
+| Scan Document | A real device with a camera | Scanning is disabled in a browser. |
 
 ---
 
@@ -170,7 +171,7 @@ These short flows describe the most common things a front-desk user will do, and
 - **Review who is arriving today.** Open the app, sign in, choose the property, and read the Today tab on Home. Switch to Yesterday or Tomorrow to look around that day.
 - **Look up a specific booking.** From Home, tap the search field, type at least three characters of the reservation code, guest name, or email, and open the matching result.
 - **Check or correct a guest's details.** Open the reservation, tap the guest, review the cards on Guest Detail, then use the floating button to choose Edit guest, make changes, and Save.
-- **Capture a guest's ID document.** Open the guest, use the floating button to choose ID Scan, scan the document on a phone, review the extracted data, and either Save it to the guest or open Edit guest to adjust it first.
+- **Capture a guest's document.** Open the guest, use the floating button to choose Scan Document, scan an ID card, passport, driving licence, or Hungarian address card on a phone, review the extracted data, and either Save it to the guest or open Edit guest to adjust it first.
 - **Switch to another property.** On Home, tap the property name in the header and choose a different property from the panel.
 
 ---
@@ -181,12 +182,12 @@ The following exist for development and QA and should **not** appear in the cust
 
 - **Test ↔ Live API switch (Login screen).** Tapping the bottom-left corner of the Login screen seven times toggles the app between the Live and Test API environments. Taps four through six show a small countdown message, and the seventh tap logs the user out and switches the environment. This is a QA convenience for pointing real builds at the test API and is not a customer feature.
 - **Session lock (Settings).** A "lock" action locks the session behind the device's biometrics. It is a minor, internal capability.
-- **Preview deep-links.** Developer-only URL parameters (`?preview=…` on the ID Scan screen and `?previewScanSheet=…` on Guest Detail) render the scan result and error states without performing a real scan, so those screens can be reviewed during development.
+- **Preview deep-links.** Developer-only URL parameters (`?preview=…` on the Scan Document screen and `?previewScanSheet=…` on Guest Detail) render the scan result and error states without performing a real scan, so those screens can be reviewed during development.
 - **Empty-credentials behaviour.** In the released app, pressing Sign in with empty fields simply does nothing; there is no hidden shortcut that bypasses login.
 
 ## 7. Known limitations (for awareness)
 
 - **The ±14-day window.** Home and Search only cover reservations dated from 14 days ago to 14 days ahead. There is no date-range picker and no full booking-history search.
 - **Status is read-only.** Checking in or out, and any change of reservation status, is performed in the PMS, not in this app.
-- **ID scanning is native-only.** Documents cannot be scanned in the browser or PWA preview.
+- **Document scanning is native-only.** Documents cannot be scanned in the browser or PWA preview.
 - **The `Cancelled` and `No show` status labels** are best-effort mappings of the underlying PMS values and may need confirmation against live data.

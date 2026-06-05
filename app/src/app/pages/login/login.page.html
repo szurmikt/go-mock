@@ -12,8 +12,8 @@
     </div>
 
     <div class="login-body">
-      <div style="text-align:center; margin-bottom:80px">
-        <img src="assets/app-icon.png" alt="SabeeApp Go" style="width:112px; height:112px; display:block; margin:0 auto; border-radius:25px; box-shadow:0 6px 20px rgba(0,128,255,0.35)">
+      <div style="text-align:center; margin-bottom:56px">
+        <img src="assets/logo-horizontal-white.png" alt="SabeeApp Go" style="width:min(70%, 300px); height:auto; display:block; margin:0 auto">
       </div>
 
       <form (submit)="submit($event)">
@@ -58,7 +58,7 @@
     @if (apiEnv.isTest()) {
       <div class="test-mode-banner">
         <span class="pill" data-status="test">TEST MODE</span>
-        <div style="font-size:var(--font-sm); font-weight:600; color:var(--warn); margin-top:8px">
+        <div style="font-size:var(--font-sm); font-weight:600; color:#fff; margin-top:8px">
           You are signing in against the test API
         </div>
       </div>
