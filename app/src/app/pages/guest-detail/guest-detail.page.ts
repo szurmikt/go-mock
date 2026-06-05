@@ -162,15 +162,24 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
   }
 
   private async loadGuest() {
-    this.loading.set(true);
-    this.error.set(null);
+    // Stale-while-revalidate: paint the cached guest instantly, then refresh silently.
+    // Only show the spinner (which blanks the screen) when there's nothing to show yet.
+    const peeked = this.res.peekGuests(this.reservationCode)
+      ?.find(g => g.reservation_guest_id === this.guestId);
+    if (peeked) this.guest.set(peeked);
+
+    const firstLoad = !this.guest();
+    if (firstLoad) {
+      this.loading.set(true);
+      this.error.set(null);
+    }
     try {
       const guests = await this.res.fetchGuests(this.reservationCode);
       const found = guests.find(g => g.reservation_guest_id === this.guestId);
       this.guest.set(found ?? null);
       if (!found) this.error.set('Guest not found');
     } catch (e: any) {
-      this.error.set(e.message ?? 'Failed to load guest');
+      if (firstLoad) this.error.set(e.message ?? 'Failed to load guest');
     } finally {
       this.loading.set(false);
     }

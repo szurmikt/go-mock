@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TitleCasePipe } from '@angular/common';
-import { IonContent } from '@ionic/angular/standalone';
+import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
 import { ViewWillEnter } from '@ionic/angular';
 import { ReservationService, pillStatus, pillLabel } from '../../services/reservation';
 import { OptionsService } from '../../services/options.service';
@@ -15,7 +15,7 @@ import { LocalizedTimePipe } from '../../pipes/localized-time.pipe';
   templateUrl: './reservation-detail.page.html',
   styleUrls: ['./reservation-detail.page.scss'],
   standalone: true,
-  imports: [IonContent, TitleCasePipe, LocalizedDatePipe, LocalizedTimePipe],
+  imports: [IonContent, IonRefresher, IonRefresherContent, TitleCasePipe, LocalizedDatePipe, LocalizedTimePipe],
 })
 export class ReservationDetailPage implements OnInit, ViewWillEnter {
   reservation = signal<ReservationInterface | null>(null);
@@ -35,14 +35,32 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
 
   private reservationCode!: string;
 
-  async ngOnInit() {
-    const code = this.route.snapshot.paramMap.get('code')!;
-    this.reservationCode = code;;
+  ngOnInit() {
+    this.reservationCode = this.route.snapshot.paramMap.get('code')!;
+  }
 
-    // Try to use cached reservation from the list first, then fetch detail
-    const cached = this.res.reservations().find(r => r.reservation_code === code);
-    if (cached) this.reservation.set(cached);
+  // Refresh on every entry (including back-navigation, where ngOnInit does not re-run).
+  // Seed from cache for an instant paint and only show the spinner when there's nothing
+  // to show yet; otherwise the refresh is silent (fetchDetail is always uncached, guests
+  // are SWR-gated).
+  async ionViewWillEnter() {
+    const code = this.reservationCode;
+    if (!code) return;
 
+    if (!this.reservation()) {
+      const cached = this.res.reservations().find(r => r.reservation_code === code);
+      if (cached) this.reservation.set(cached);
+    }
+    if (this.guests().length === 0) {
+      const peeked = this.res.peekGuests(code);
+      if (peeked) this.guests.set(peeked);
+    }
+
+    const firstLoad = !this.reservation() || this.guests().length === 0;
+    if (firstLoad) {
+      this.loading.set(true);
+      this.error.set(null);
+    }
     try {
       const [detail, guests] = await Promise.all([
         this.res.fetchDetail(code),
@@ -51,23 +69,25 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
       this.reservation.set(detail);
       this.guests.set(guests);
     } catch (e: any) {
-      this.error.set(e.message ?? 'Failed to load reservation');
+      if (firstLoad) this.error.set(e.message ?? 'Failed to load reservation');
     } finally {
       this.loading.set(false);
     }
   }
 
-  async ionViewWillEnter() {
-    if (!this.reservationCode) return;
-    // Re-fetch guests — cache is cleared after any guest edit so this gets fresh data.
+  // Pull-to-refresh: force a fresh detail + guests fetch (bypassing the 60s window) for
+  // this reservation. fetchGuests(force) overwrites the shared guest cache, so the Guest
+  // Details screen also shows the refreshed data afterwards.
+  async handleRefresh(event: CustomEvent) {
     try {
-      this.guests.set(await this.res.fetchGuests(this.reservationCode));
-    } catch { /* keep existing list */ }
-    // Sync booker name from service signal (updated optimistically by updateGuest).
-    const synced = this.res.reservations().find(r => r.reservation_code === this.reservationCode);
-    if (synced) {
-      this.reservation.update(prev => prev ? { ...prev, booker: synced.booker } : prev);
-    }
+      const [detail, guests] = await Promise.all([
+        this.res.fetchDetail(this.reservationCode),
+        this.res.fetchGuests(this.reservationCode, true),
+      ]);
+      this.reservation.set(detail);
+      this.guests.set(guests);
+    } catch { /* keep existing data */ }
+    (event.target as HTMLIonRefresherElement).complete();
   }
 
   back() {

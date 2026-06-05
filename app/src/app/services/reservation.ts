@@ -45,8 +45,12 @@ export class ReservationService {
   private api = inject(ApiService);
 
   private static readonly STALE_MS = 60_000;
+  private static readonly GUEST_STALE_MS = 60_000;
   private _fetchedAt: number | null = null;
+  private _inFlight: Promise<void> | null = null;
   private _guestCache = new Map<string, GuestInterface[]>();
+  private _guestFetchedAt = new Map<string, number>();
+  private _inFlightGuests = new Map<string, Promise<GuestInterface[]>>();
 
   private _reservations = signal<ReservationInterface[]>([]);
   private _loading = signal(false);
@@ -63,40 +67,54 @@ export class ReservationService {
     this._reservations.set([]);
     this._fetchedAt = null;
     this._guestCache.clear();
+    this._guestFetchedAt.clear();
   }
 
+  // Stale-while-revalidate: serves the in-memory list instantly and only re-fetches
+  // when stale (>STALE_MS) or forced. The re-fetch is SILENT when a list is already
+  // shown — `loading` is toggled only on the genuine empty first load — so re-entering
+  // a populated screen never flashes the spinner that replaces the list.
   async fetchReservations(force = false): Promise<void> {
     if (!force && this._fetchedAt !== null && Date.now() - this._fetchedAt < ReservationService.STALE_MS) {
       return;
     }
-    this._loading.set(true);
-    this._error.set(null);
-    try {
-      const now = new Date();
-      const start = new Date(now);
-      start.setDate(start.getDate() - 14);
-      const end = new Date(now);
-      end.setDate(end.getDate() + 14);
+    if (this._inFlight) return this._inFlight;
 
-      const resp = await firstValueFrom(
-        this.api.get<ApiResponse<{ reservations: any[] }>>('reservations', {
-          start_date: dateStr(start),
-          end_date: dateStr(end),
-        }),
-      );
-
-      if (!resp.success) {
-        this._error.set('Failed to load reservations');
-        return;
+    const showSpinner = this._reservations().length === 0;
+    this._inFlight = (async () => {
+      if (showSpinner) {
+        this._loading.set(true);
+        this._error.set(null);
       }
+      try {
+        const now = new Date();
+        const start = new Date(now);
+        start.setDate(start.getDate() - 14);
+        const end = new Date(now);
+        end.setDate(end.getDate() + 14);
 
-      this._reservations.set(resp.data.reservations.map(r => this.convert(r)));
-      this._fetchedAt = Date.now();
-    } catch {
-      this._error.set('Network error');
-    } finally {
-      this._loading.set(false);
-    }
+        const resp = await firstValueFrom(
+          this.api.get<ApiResponse<{ reservations: any[] }>>('reservations', {
+            start_date: dateStr(start),
+            end_date: dateStr(end),
+          }),
+        );
+
+        if (!resp.success) {
+          if (showSpinner) this._error.set('Failed to load reservations');
+          return;
+        }
+
+        this._reservations.set(resp.data.reservations.map(r => this.convert(r)));
+        this._fetchedAt = Date.now();
+      } catch {
+        if (showSpinner) this._error.set('Network error');
+      } finally {
+        if (showSpinner) this._loading.set(false);
+        this._inFlight = null;
+      }
+    })();
+    return this._inFlight;
   }
 
   async fetchDetail(reservationCode: string): Promise<ReservationInterface> {
@@ -114,6 +132,7 @@ export class ReservationService {
     );
     if (!resp.success) throw new Error('Failed to save guest');
     this._guestCache.delete(reservationCode);
+    this._guestFetchedAt.delete(reservationCode);
     this._reservations.update(list =>
       list.map(r => {
         if (r.reservation_code !== reservationCode) return r;
@@ -126,17 +145,39 @@ export class ReservationService {
     );
   }
 
-  async fetchGuests(reservationCode: string): Promise<GuestInterface[]> {
-    const cached = this._guestCache.get(reservationCode);
-    if (cached) return cached;
+  // Synchronous cache peek so screens can paint instantly before an SWR refresh lands.
+  peekGuests(reservationCode: string): GuestInterface[] | null {
+    return this._guestCache.get(reservationCode) ?? null;
+  }
 
-    const resp = await firstValueFrom(
-      this.api.get<ApiResponse<{ guests: any[] }>>('guests', { reservation_code: reservationCode }),
-    );
-    if (!resp.success) throw new Error('Failed to load guests');
-    const guests = (resp.data.guests ?? []).map(g => this.convertGuest(g));
-    this._guestCache.set(reservationCode, guests);
-    return guests;
+  // Stale-while-revalidate per reservation: serves the cache while it's within
+  // GUEST_STALE_MS, otherwise (or when forced) fetches fresh. The per-code in-flight
+  // lock collapses the reservation→guest drill-down into a single request.
+  async fetchGuests(reservationCode: string, force = false): Promise<GuestInterface[]> {
+    const cached = this._guestCache.get(reservationCode);
+    const fetchedAt = this._guestFetchedAt.get(reservationCode);
+    const fresh = fetchedAt != null && Date.now() - fetchedAt < ReservationService.GUEST_STALE_MS;
+    if (cached && fresh && !force) return cached;
+
+    const inFlight = this._inFlightGuests.get(reservationCode);
+    if (inFlight) return inFlight;
+
+    const promise = (async () => {
+      const resp = await firstValueFrom(
+        this.api.get<ApiResponse<{ guests: any[] }>>('guests', { reservation_code: reservationCode }),
+      );
+      if (!resp.success) throw new Error('Failed to load guests');
+      const guests = (resp.data.guests ?? []).map(g => this.convertGuest(g));
+      this._guestCache.set(reservationCode, guests);
+      this._guestFetchedAt.set(reservationCode, Date.now());
+      return guests;
+    })();
+    this._inFlightGuests.set(reservationCode, promise);
+    try {
+      return await promise;
+    } finally {
+      this._inFlightGuests.delete(reservationCode);
+    }
   }
 
   private convertGuest(g: any): GuestInterface {
