@@ -95,43 +95,41 @@ export class GuestEditPage implements OnInit {
         document_type: found.document?.document_type ?? '',
         document_number: found.document?.document_number ?? '',
       };
-      if (
-        this.docuscanService.lastScanResult != null &&
-        this.docuscanService.lastScanResult.scannedData != null
-      ) {
+      const last = this.docuscanService.lastScanResult;
+      if (last != null && last.scannedData != null) {
         this.fromScan = true;
-        found.scanned_data = this.docuscanService.scannedDataToGuestScannedData(
-          this.docuscanService.lastScanResult.scannedData!,
+        const isIdentityDoc = last.documentData?.is_identity_document !== false;
+        const scanned = this.docuscanService.scannedDataToGuestScannedData(
+          last.scannedData!,
         );
-        if (found.scanned_data) {
-          this.form.first_name =
-            found.scanned_data.first_name ?? this.form.first_name;
-          this.form.last_name =
-            found.scanned_data.last_name ?? this.form.last_name;
-          this.form.maiden_name =
-            found.scanned_data.maiden_name ?? this.form.maiden_name;
-          this.form.mother_name =
-            found.scanned_data.mother_name ?? this.form.mother_name;
+        // Only an identity scan marks the guest as scanned. For an address card we leave
+        // found.scanned_data at its fetched value (real ID record or null), so save()'s
+        // `...g` spread sends the POST /guest scanned_data section unchanged.
+        if (isIdentityDoc) {
+          found.scanned_data = scanned;
+        }
+        const sd = isIdentityDoc ? found.scanned_data : scanned;
+        if (sd) {
+          this.form.first_name = sd.first_name ?? this.form.first_name;
+          this.form.last_name = sd.last_name ?? this.form.last_name;
+          this.form.maiden_name = sd.maiden_name ?? this.form.maiden_name;
+          this.form.mother_name = sd.mother_name ?? this.form.mother_name;
           // Normalize to strict YYYY-MM-DD: <input type="date"> silently rejects
           // any other shape, leaving the field blank.
           this.form.birth_date =
-            toInputDate(found.scanned_data.birth_date) || this.form.birth_date;
-          this.form.birth_place =
-            found.scanned_data.birth_place ?? this.form.birth_place;
-          this.form.citizenship =
-            found.scanned_data.citizenship ?? this.form.citizenship;
-          this.form.gender = (found.scanned_data.gender ?? this.form.gender).toLowerCase();
+            toInputDate(sd.birth_date) || this.form.birth_date;
+          this.form.birth_place = sd.birth_place ?? this.form.birth_place;
+          this.form.citizenship = sd.citizenship ?? this.form.citizenship;
+          this.form.gender = (sd.gender ?? this.form.gender).toLowerCase();
           this.form.document_type = (
-            found.scanned_data.document?.document_type ??
-            this.form.document_type
+            sd.document?.document_type ?? this.form.document_type
           ).toLowerCase();
           this.form.document_number =
-            found.scanned_data.document?.document_number ??
-            this.form.document_number;
+            sd.document?.document_number ?? this.form.document_number;
           // Address card (lakcímkártya): prefill the address fields too. Nested
           // under scanned_data.address by scannedDataToGuestScannedData; absent
           // for identity docs, so this keeps the existing values then.
-          const addr = found.scanned_data.address;
+          const addr = sd.address;
           if (addr) {
             this.form.zip = addr.zip ?? this.form.zip;
             this.form.city = addr.city ?? this.form.city;

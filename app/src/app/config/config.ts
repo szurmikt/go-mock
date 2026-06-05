@@ -15,6 +15,9 @@ export const Config = {
   STORAGE_SEARCH_HISTORY_KEY: 'searchHistory',
   STORAGE_BACKGROUND_AT_KEY: 'backgroundAt',
   STORAGE_API_ENV_KEY: 'apiEnvironment',
+  // Hungarian address card (lakcímkártya) etc. — DocumentType.AddressCard = 183.
+  // NOT an identity document: fills the address section only, never a scanned ID record.
+  ADDRESS_CARDS: [183] as number[],
   ID_CARDS: [
     12, 16, 20, 28, 75, 76, 77, 83, 97, 98, 106, 121, 159, 160, 161, 162, 177,
     212, 213, 216, 224, 225,

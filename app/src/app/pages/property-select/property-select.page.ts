@@ -29,7 +29,8 @@ export class PropertySelectPage implements OnInit {
     if (!q) return this.properties;
     return this.properties.filter(p =>
       (p.property_name ?? '').toLowerCase().includes(q) ||
-      (p.property_company_name ?? '').toLowerCase().includes(q),
+      (p.property_company_name ?? '').toLowerCase().includes(q) ||
+      String(p.property_id).includes(q),
     );
   }
 

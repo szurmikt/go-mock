@@ -510,7 +510,22 @@ The original design had FAB + action rail + Guests/Services/Finances segment tab
 
 ## 8. Changelog
 
-### 2026-06-04 — Session 20 (current) — Pull-to-refresh notch fix + scanned birth-date fix + scan-icon fix; RFID NFC failure diagnosed
+### 2026-06-05 — Session 21 (current) — Address card scan fills address only (not an ID document) + property filter by ID
+
+> Note: All changes are in the Angular/Ionic app (`app/`). Branch `Improve-Property-Selector`. **Shipped builds: iOS 76→77 (TestFlight, processing), Android versionCode 19→20 (signed AAB `sabeeapp-go-v20.aab`, built — manual Play Console drag-drop, not auto-uploaded).** Both builds bundle the two changes below.
+
+**Address card (lakcímkártya) is no longer treated as an identity document.** Reported issue: scanning a Hungarian address card filled the guest's identity fields (name, etc.) and lit the "scanned ID document" indicators — but an address card is not a person-identifier. Now an address-card scan fills **only** the address section and never counts as a scanned ID. **Hard requirement (user):** the `POST /guest` payload's `scanned_data` section must never carry address-card data — on save it stays exactly as the guest already had it (prior real ID scan record, or `null`); address data goes only into the guest's flat `address` object.
+
+- **Classify once at scan production** ([document-reader.service.ts](app/src/app/services/document-reader.service.ts) `processResults`): new `Config.ADDRESS_CARDS = [183]` (`DocumentType.AddressCard`, kept out of the identity lists so it isn't mislabeled "id"). When the detected type is an address card, set `documentData.is_identity_document = false`, capture the address, then `stripToAddressFields()` deletes every non-`address_*` key (incl. the seeded `doc_reader_scanned_document_id`) and the identity post-processing (`alterPersonalData`/`fixNameFields`/`fixCountryAndCitizenshipFields`) is skipped. So the emitted scan result carries nothing identity-like — the result sheet's identity `@if` blocks hide automatically; only the Address section (and the informational detected-type row) render. New `is_identity_document?: boolean` on `DocumentData` ([statistics-interface.ts](app/src/app/models/statistics-interface.ts); `undefined` ⇒ treat as identity, so identity docs and preview are unaffected).
+- **Save path** ([guest-detail.page.ts](app/src/app/pages/guest-detail/guest-detail.page.ts) `processScanResult('save')`): for an address card, reuse the existing per-field address merge (`scannedDataToGuestScannedData` + `fillGuestDataFromScannedData`, which only touches `guest.address`), then **restore the original `scanned_data`** so `updateGuest`'s payload `scanned_data` is unchanged. Identity docs unchanged.
+- **Edit path** ([guest-edit.page.ts](app/src/app/pages/guest-edit/guest-edit.page.ts) `ngOnInit`): no longer reassigns `found.scanned_data` for address cards (it prefills the form from a local copy instead), so `save()`'s `...g` spread sends `scanned_data` unchanged. Address form fields still prefill from `scanned.address`.
+- Net: the reservation-detail scan icon (`@if (g.scanned_data)`) and guest-detail "Scanned: Yes/No" row stay **No** for address-card-only guests; order-independent (an ID scan + an address card keeps Scanned: Yes and updates the address; vice-versa preserves the address). `id-scan.page.ts` is dead since Session 10 — out of scope.
+
+**Property selector — filter by property ID.** The property filter (home Switch-Property sheet + post-login Select-Property screen) now also matches `String(p.property_id)`; placeholder updated "Filter properties…" → "Filter by name or ID…" ([home.page.ts](app/src/app/home/home.page.ts), [home.page.html](app/src/app/home/home.page.html), [property-select.page.ts](app/src/app/pages/property-select/property-select.page.ts), [property-select.page.html](app/src/app/pages/property-select/property-select.page.html)).
+
+**Verification:** `npm run build` passes (only the known `global.scss` Sass `@import` deprecation). **Device-verify required** (Regula is native-only): scan a HU address card → result sheet shows only the address; Save → `guest.address` populated, scan icon off, "Scanned: No"; then regression-check that a passport/ID still fills identity + "Scanned: Yes". Property-ID filter is verifiable in-browser.
+
+### 2026-06-04 — Session 20 — Pull-to-refresh notch fix + scanned birth-date fix + scan-icon fix; RFID NFC failure diagnosed
 
 > Note: All changes are in the Angular/Ionic app (`app/`). **Shipped builds: iOS 76 (TestFlight, processing), Android versionCode 18→19 (signed AAB `sabeeapp-go-v19.aab`, built — manual Play Console drag-drop, not auto-uploaded).** All three fixes below are bundled into 76/v19.
 
