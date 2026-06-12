@@ -3,14 +3,16 @@ import { Router } from '@angular/router';
 import { IonContent, AlertController } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth';
 import { OptionsService } from '../../services/options.service';
+import { LanguageService } from '../../services/language.service';
 import { PropertyInterface } from '../../models/property.interface';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-property-select',
   templateUrl: './property-select.page.html',
   styleUrls: ['./property-select.page.scss'],
   standalone: true,
-  imports: [IonContent],
+  imports: [IonContent, TranslatePipe],
 })
 export class PropertySelectPage implements OnInit {
   properties: PropertyInterface[] = [];
@@ -22,6 +24,7 @@ export class PropertySelectPage implements OnInit {
     private router: Router,
     private alertCtrl: AlertController,
     private options: OptionsService,
+    private lang: LanguageService,
   ) {}
 
   get filteredProperties(): PropertyInterface[] {
@@ -48,9 +51,9 @@ export class PropertySelectPage implements OnInit {
       this.properties = await this.auth.loadProperties();
     } catch {
       const alert = await this.alertCtrl.create({
-        header: 'Could not load properties',
-        message: 'Please check your connection and try again.',
-        buttons: ['OK'],
+        header: this.lang.t('errors.loadPropertiesTitle'),
+        message: this.lang.t('errors.loadPropertiesMessage'),
+        buttons: [this.lang.t('common.ok')],
       });
       await alert.present();
     } finally {

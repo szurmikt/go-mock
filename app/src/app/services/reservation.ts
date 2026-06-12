@@ -1,6 +1,7 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from './api';
+import { LanguageService } from './language.service';
 import { ApiResponse } from '../models/auth.interfaces';
 import { ReservationInterface } from '../models/reservation.interface';
 import { GuestInterface } from '../models/guest.interface';
@@ -43,6 +44,7 @@ export function pillLabel(apiStatus: string): string {
 @Injectable({ providedIn: 'root' })
 export class ReservationService {
   private api = inject(ApiService);
+  private lang = inject(LanguageService);
 
   private static readonly STALE_MS = 60_000;
   private static readonly GUEST_STALE_MS = 60_000;
@@ -101,14 +103,14 @@ export class ReservationService {
         );
 
         if (!resp.success) {
-          if (showSpinner) this._error.set('Failed to load reservations');
+          if (showSpinner) this._error.set(this.lang.t('errors.failedLoadReservations'));
           return;
         }
 
         this._reservations.set(resp.data.reservations.map(r => this.convert(r)));
         this._fetchedAt = Date.now();
       } catch {
-        if (showSpinner) this._error.set('Network error');
+        if (showSpinner) this._error.set(this.lang.t('errors.networkError'));
       } finally {
         if (showSpinner) this._loading.set(false);
         this._inFlight = null;

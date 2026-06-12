@@ -10,6 +10,7 @@ import { MixpanelService } from '../../services/mixpanel';
 import { Config } from '../../config/config';
 import { ReservationInterface } from '../../models/reservation.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 import { normalizeText } from '../../utils/text';
 
 @Component({
@@ -17,7 +18,7 @@ import { normalizeText } from '../../utils/text';
   templateUrl: './search.page.html',
   styleUrls: ['./search.page.scss'],
   standalone: true,
-  imports: [IonContent, FormsModule, LocalizedDatePipe],
+  imports: [IonContent, FormsModule, LocalizedDatePipe, TranslatePipe],
 })
 export class SearchPage implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;

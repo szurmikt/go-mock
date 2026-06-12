@@ -8,6 +8,8 @@ import { OptionsService } from '../../services/options.service';
 import { DocuscanService } from 'src/app/services/docuscan';
 import { MixpanelService } from '../../services/mixpanel';
 import { AuthService } from '../../services/auth';
+import { LanguageService } from '../../services/language.service';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 import { toInputDate } from '../../utils/date';
 
 @Component({
@@ -15,7 +17,7 @@ import { toInputDate } from '../../utils/date';
   templateUrl: './guest-edit.page.html',
   styleUrls: ['./guest-edit.page.scss'],
   standalone: true,
-  imports: [IonContent, FormsModule],
+  imports: [IonContent, FormsModule, TranslatePipe],
 })
 export class GuestEditPage implements OnInit {
   private docuscanService = inject(DocuscanService);
@@ -61,6 +63,7 @@ export class GuestEditPage implements OnInit {
     public options: OptionsService,
     private mixpanel: MixpanelService,
     private auth: AuthService,
+    private lang: LanguageService,
   ) {}
 
   async ngOnInit() {
@@ -75,7 +78,7 @@ export class GuestEditPage implements OnInit {
         (g: GuestInterface) => g.reservation_guest_id === this.guestId,
       );
       if (!found) {
-        this.error.set('Guest not found');
+        this.error.set(this.lang.t('errors.guestNotFound'));
         return;
       }
       this.guest.set(found);
@@ -143,7 +146,7 @@ export class GuestEditPage implements OnInit {
       // Snapshot the (possibly scan-prefilled) form so save() can count changes.
       this.formSnapshot = { ...this.form };
     } catch (e: any) {
-      this.error.set(e.message ?? 'Failed to load guest');
+      this.error.set(e.message ?? this.lang.t('errors.failedLoadGuest'));
     } finally {
       this.loading.set(false);
     }
@@ -195,7 +198,7 @@ export class GuestEditPage implements OnInit {
         replaceUrl: true,
       });
     } catch (e: any) {
-      this.saveError.set(e.message ?? 'Failed to save');
+      this.saveError.set(e.message ?? this.lang.t('errors.failedSave'));
     } finally {
       this.saving.set(false);
     }

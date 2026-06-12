@@ -8,7 +8,7 @@
           <path d="M15 18l-6-6 6-6"/>
         </svg>
       </button>
-      <span class="title">Edit Guest</span>
+      <span class="title">{{ 'guestEdit.title' | tr }}</span>
     </div>
 
     @if (loading()) {
@@ -23,11 +23,11 @@
 
       <div class="app-scroll" style="padding: 8px 16px calc(80px + env(safe-area-inset-bottom, 0px))">
 
-        <h3 class="group-title" style="margin-top: 8px">Personal</h3>
+        <h3 class="group-title" style="margin-top: 8px">{{ 'guestEdit.personal' | tr }}</h3>
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.first_name" name="first_name" autocomplete="given-name" />
-          <label>First name</label>
+          <label>{{ 'guestEdit.firstName' | tr }}</label>
           @if (isScannedSource('first_name')) {
             <span class="form-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -40,7 +40,7 @@
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.last_name" name="last_name" autocomplete="family-name" />
-          <label>Last name</label>
+          <label>{{ 'guestEdit.lastName' | tr }}</label>
           @if (isScannedSource('last_name')) {
             <span class="form-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -53,7 +53,7 @@
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.maiden_name" name="maiden_name" />
-          <label>Maiden full name</label>
+          <label>{{ 'guestEdit.maidenFullName' | tr }}</label>
           @if (isScannedSource('maiden_name')) {
             <span class="form-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -66,7 +66,7 @@
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.mother_name" name="mother_name" />
-          <label>Mother's full name</label>
+          <label>{{ 'guestEdit.motherFullName' | tr }}</label>
           @if (isScannedSource('mother_name')) {
             <span class="form-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -79,7 +79,7 @@
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.birth_date" name="birth_date" type="date" />
-          <label>Birth Date</label>
+          <label>{{ 'guestEdit.birthDate' | tr }}</label>
           <span class="form-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -92,7 +92,7 @@
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.birth_place" name="birth_place" />
-          <label>Birth place</label>
+          <label>{{ 'guestEdit.birthPlace' | tr }}</label>
         </div>
 
         <div class="form-group">
@@ -102,7 +102,7 @@
               <option [value]="g.value">{{ g.label }}</option>
             }
           </select>
-          <label>Gender</label>
+          <label>{{ 'guestEdit.gender' | tr }}</label>
           <span class="form-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M9 18l6-6-6-6"/>
@@ -117,7 +117,7 @@
               <option [value]="c.country_code">{{ c.name }}</option>
             }
           </select>
-          <label>Citizenship</label>
+          <label>{{ 'guestEdit.citizenship' | tr }}</label>
           <span class="form-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M9 18l6-6-6-6"/>
@@ -125,28 +125,28 @@
           </span>
         </div>
 
-        <h3 class="group-title">Contact Details</h3>
+        <h3 class="group-title">{{ 'guestEdit.contactDetails' | tr }}</h3>
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.phone_number" name="phone_number" type="tel" autocomplete="tel" />
-          <label>Phone</label>
+          <label>{{ 'guestEdit.phone' | tr }}</label>
         </div>
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.email" name="email" type="email" autocomplete="email" />
-          <label>Email</label>
+          <label>{{ 'guestEdit.email' | tr }}</label>
         </div>
 
-        <h3 class="group-title">Address details</h3>
+        <h3 class="group-title">{{ 'guestDetail.addressDetails' | tr }}</h3>
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.zip" name="zip" autocomplete="postal-code" />
-          <label>Postal code</label>
+          <label>{{ 'guestDetail.postalCode' | tr }}</label>
         </div>
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.city" name="city" autocomplete="address-level2" />
-          <label>City</label>
+          <label>{{ 'guestDetail.city' | tr }}</label>
         </div>
 
         <div class="form-group">
@@ -156,7 +156,7 @@
               <option [value]="c.country_code">{{ c.name }}</option>
             }
           </select>
-          <label>Country</label>
+          <label>{{ 'guestDetail.country' | tr }}</label>
           <span class="form-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M9 18l6-6-6-6"/>
@@ -166,10 +166,10 @@
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.address_line" name="address_line" autocomplete="street-address" />
-          <label>Address</label>
+          <label>{{ 'guestDetail.address' | tr }}</label>
         </div>
 
-        <h3 class="group-title">Travelling document</h3>
+        <h3 class="group-title">{{ 'guestEdit.travelDocument' | tr }}</h3>
 
         <div class="form-group">
           <select [(ngModel)]="form.document_type" name="document_type">
@@ -178,7 +178,7 @@
               <option [value]="dt.value">{{ dt.label }}</option>
             }
           </select>
-          <label>Document Type</label>
+          <label>{{ 'guestEdit.documentType' | tr }}</label>
           <span class="form-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M9 18l6-6-6-6"/>
@@ -188,7 +188,7 @@
 
         <div class="form-group">
           <input placeholder=" " [(ngModel)]="form.document_number" name="document_number" />
-          <label>Document Number</label>
+          <label>{{ 'guestEdit.documentNumber' | tr }}</label>
         </div>
 
       </div>
@@ -210,7 +210,7 @@
       @if (saving()) {
         <span class="spin" style="width: 18px; height: 18px; border-width: 2.5px"></span>
       } @else {
-        Save
+        {{ 'common.save' | tr }}
       }
     </button>
   </div>

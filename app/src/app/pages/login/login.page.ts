@@ -9,13 +9,14 @@ import { AuthService } from '../../services/auth';
 import { LanguageService } from '../../services/language.service';
 import { OptionsService } from '../../services/options.service';
 import { ReservationService } from '../../services/reservation';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-login',
   templateUrl: './login.page.html',
   styleUrls: ['./login.page.scss'],
   standalone: true,
-  imports: [FormsModule, IonContent],
+  imports: [FormsModule, IonContent, TranslatePipe],
 })
 export class LoginPage implements OnDestroy {
   email = '';
@@ -132,13 +133,23 @@ export class LoginPage implements OnDestroy {
     clearTimeout(this.tapResetTimer);
   }
 
+  /**
+   * Pick a user-facing message by failure type — don't surface raw API internals.
+   *   • no HTTP response reached the app (status 0 — network / CORS / DNS / TLS) → noInternet
+   *   • credential rejection (API 200 {success:false}, thrown with apiErrors, or HTTP 401) → incorrect
+   *   • anything else unexpected (e.g. 5xx) → generic
+   * Keys live in the `login` namespace so they resolve pre-token (see translations.ts).
+   */
   private extractMessage(err: unknown): string {
-    if (err && typeof err === 'object' && 'error' in err) {
-      const e = (err as { error?: { errors?: string; message?: string } })
-        .error;
-      if (e?.errors) return e.errors;
-      if (e?.message) return e.message;
+    if (err instanceof HttpErrorResponse && err.status === 0) {
+      return this.lang.t('login.errNoInternet');
     }
-    return 'The email or password you entered is incorrect. Please check your credentials and try again.';
+    if (
+      (err instanceof HttpErrorResponse && err.status === 401) ||
+      (err !== null && typeof err === 'object' && 'apiErrors' in err)
+    ) {
+      return this.lang.t('login.errIncorrect');
+    }
+    return this.lang.t('login.errGeneric');
   }
 }

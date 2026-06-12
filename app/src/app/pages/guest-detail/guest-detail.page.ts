@@ -11,6 +11,8 @@ import { MixpanelService } from '../../services/mixpanel';
 import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
+import { TranslatePipe } from '../../pipes/translate.pipe';
+import { LanguageService } from '../../services/language.service';
 
 type ScanPreviewMode = 'starting' | 'loading' | 'result' | 'timeout' | 'cancelled' | 'interrupted';
 type ScanSheetMode = 'loading' | 'result' | 'failed';
@@ -46,7 +48,7 @@ const MOCK_SCAN_RESULT: ScanResultInterface = {
   templateUrl: './guest-detail.page.html',
   styleUrls: ['./guest-detail.page.scss'],
   standalone: true,
-  imports: [IonContent, IonSpinner, TitleCasePipe, LocalizedDatePipe, DashIfEmptyPipe],
+  imports: [IonContent, IonSpinner, TitleCasePipe, LocalizedDatePipe, DashIfEmptyPipe, TranslatePipe],
 })
 export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
   guest = signal<GuestInterface | null>(null);
@@ -64,25 +66,25 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
 
   readonly scanSheetMessage = computed(() => {
     const override = this.previewMessageMode();
-    if (override === 'loading') return 'Loading scan database…';
-    if (override === 'starting') return 'Starting ID scan…';
+    if (override === 'loading') return this.lang.t('guestDetail.scanLoadingDb');
+    if (override === 'starting') return this.lang.t('guestDetail.scanStarting');
     return this.documentReader.readerStatus() === ReaderStatus.INIT
-      ? 'Loading scan database…'
-      : 'Starting ID scan…';
+      ? this.lang.t('guestDetail.scanLoadingDb')
+      : this.lang.t('guestDetail.scanStarting');
   });
 
   readonly scanSheetTitle = computed(() => {
     const mode = this.scanSheetMode();
-    if (mode === 'result') return 'Scan result';
+    if (mode === 'result') return this.lang.t('guestDetail.scanResult');
     if (mode === 'failed') {
       switch (this.failedStatus()) {
-        case ReaderStatus.TIMEOUT:     return 'Scan Timed out';
-        case ReaderStatus.CANCELLED:   return 'Scan Cancelled';
-        case ReaderStatus.INTERRUPTED: return 'Scan Interrupted';
-        default:                       return 'Scan Failed';
+        case ReaderStatus.TIMEOUT:     return this.lang.t('guestDetail.scanTimedOut');
+        case ReaderStatus.CANCELLED:   return this.lang.t('guestDetail.scanCancelled');
+        case ReaderStatus.INTERRUPTED: return this.lang.t('guestDetail.scanInterrupted');
+        default:                       return this.lang.t('guestDetail.scanFailed');
       }
     }
-    return 'Scan Document';
+    return this.lang.t('guestDetail.scanDocument');
   });
 
   readonly scanResult = computed(
@@ -103,6 +105,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     private options: OptionsService,
     private docuscan: DocuscanService,
     private mixpanel: MixpanelService,
+    private lang: LanguageService,
   ) {
     effect(() => {
       if (!this.awaitingScanResult()) return;
@@ -177,9 +180,9 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
       const guests = await this.res.fetchGuests(this.reservationCode);
       const found = guests.find(g => g.reservation_guest_id === this.guestId);
       this.guest.set(found ?? null);
-      if (!found) this.error.set('Guest not found');
+      if (!found) this.error.set(this.lang.t('errors.guestNotFound'));
     } catch (e: any) {
-      if (firstLoad) this.error.set(e.message ?? 'Failed to load guest');
+      if (firstLoad) this.error.set(e.message ?? this.lang.t('errors.failedLoadGuest'));
     } finally {
       this.loading.set(false);
     }

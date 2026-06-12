@@ -8,7 +8,7 @@
           <path d="M15 18l-6-6 6-6"/>
         </svg>
       </button>
-      <span class="title">Guest details</span>
+      <span class="title">{{ 'guestDetail.title' | tr }}</span>
     </div>
 
     @if (loading()) {
@@ -29,46 +29,46 @@
           <div class="card" style="margin-bottom: 16px">
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
               @if (g.guest_id) {
-                <div class="detail-label">ID: {{ g.guest_id }}</div>
+                <div class="detail-label">{{ 'guestDetail.id' | tr }}: {{ g.guest_id }}</div>
               }
               <div class="detail-value">{{ guestName(g) }}</div>
             </div>
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div class="detail-label">Maiden full name</div>
+              <div class="detail-label">{{ 'guestDetail.maidenName' | tr }}</div>
               <div class="detail-value">{{ g.maiden_name || '—' }}</div>
             </div>
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div class="detail-label">Mother's full name</div>
+              <div class="detail-label">{{ 'guestDetail.motherName' | tr }}</div>
               <div class="detail-value">{{ g.mother_name || '—' }}</div>
             </div>
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
               <div style="flex: 1">
-                <div class="detail-label">Birth date</div>
+                <div class="detail-label">{{ 'guestDetail.birthDate' | tr }}</div>
                 <div class="detail-value">{{ g.birth_date | localizedDate }}</div>
               </div>
               <div style="flex: 1">
-                <div class="detail-label">Birth place</div>
+                <div class="detail-label">{{ 'guestDetail.birthPlace' | tr }}</div>
                 <div class="detail-value">{{ g.birth_place || '—' }}</div>
               </div>
             </div>
             <div style="display: flex; gap: 24px; padding: 12px 0 0">
               <div style="flex: 1">
-                <div class="detail-label">Gender</div>
+                <div class="detail-label">{{ 'guestDetail.gender' | tr }}</div>
                 <div class="detail-value">{{ (g.gender | titlecase) || '—' }}</div>
               </div>
               <div style="flex: 1">
-                <div class="detail-label">Citizenship</div>
+                <div class="detail-label">{{ 'guestDetail.citizenship' | tr }}</div>
                 <div class="detail-value">{{ citizenshipName(g.citizenship) || '—' }}</div>
               </div>
             </div>
           </div>
 
           <!-- Contact details -->
-          <h3 class="group-title">Contact details</h3>
+          <h3 class="group-title">{{ 'guestDetail.contact' | tr }}</h3>
           <div class="card" style="margin-bottom: 16px">
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line)">
               <div>
-                <div class="detail-label">Phone</div>
+                <div class="detail-label">{{ 'guestDetail.phone' | tr }}</div>
                 <div class="detail-value">{{ g.phone_number || '—' }}</div>
               </div>
               @if (g.phone_number) {
@@ -81,7 +81,7 @@
             </div>
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0">
               <div>
-                <div class="detail-label">Email</div>
+                <div class="detail-label">{{ 'guestDetail.email' | tr }}</div>
                 <div class="detail-value">{{ g.email || '—' }}</div>
               </div>
               @if (g.email) {
@@ -96,43 +96,43 @@
           </div>
 
           <!-- Address details -->
-          <h3 class="group-title">Address details</h3>
+          <h3 class="group-title">{{ 'guestDetail.addressDetails' | tr }}</h3>
           <div class="card" style="margin-bottom: 16px">
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
               <div style="flex: 1">
-                <div class="detail-label">Postal code</div>
+                <div class="detail-label">{{ 'guestDetail.postalCode' | tr }}</div>
                 <div class="detail-value">{{ g.address?.zip || '—' }}</div>
               </div>
               <div style="flex: 1">
-                <div class="detail-label">City</div>
+                <div class="detail-label">{{ 'guestDetail.city' | tr }}</div>
                 <div class="detail-value">{{ g.address?.city || '—' }}</div>
               </div>
             </div>
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div class="detail-label">Country</div>
+              <div class="detail-label">{{ 'guestDetail.country' | tr }}</div>
               <div class="detail-value">{{ countryName(g.address?.country_code) || '—' }}</div>
             </div>
             <div style="padding: 12px 0 0">
-              <div class="detail-label">Address</div>
+              <div class="detail-label">{{ 'guestDetail.address' | tr }}</div>
               <div class="detail-value">{{ g.address?.address_line || '—' }}</div>
             </div>
           </div>
 
           <!-- Travelling document -->
-          <h3 class="group-title">Travelling document</h3>
+          <h3 class="group-title">{{ 'guestDetail.document' | tr }}</h3>
           <div class="card">
             <div style="display: flex; gap: 24px; padding: 8px 0; border-bottom: 1px solid var(--line)">
               <div style="flex: 1">
-                <div class="detail-label">Document Type</div>
+                <div class="detail-label">{{ 'guestDetail.docType' | tr }}</div>
                 <div class="detail-value">{{ docTypeName(g.document?.document_type || '') }}</div>
               </div>
               <div style="flex: 1">
-                <div class="detail-label">Scanned</div>
-                <div class="detail-value">{{ g.scanned_data ? 'Yes' : 'No' }}</div>
+                <div class="detail-label">{{ 'guestDetail.scanned' | tr }}</div>
+                <div class="detail-value">{{ g.scanned_data ? ('common.yes' | tr) : ('common.no' | tr) }}</div>
               </div>
             </div>
             <div style="padding: 12px 0 0">
-              <div class="detail-label">Number</div>
+              <div class="detail-label">{{ 'guestDetail.docNumber' | tr }}</div>
               <div class="detail-value">{{ g.document?.document_number || '—' }}</div>
             </div>
           </div>
@@ -175,7 +175,7 @@
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </span>
-            Edit guest
+            {{ 'guestDetail.editGuest' | tr }}
           </button>
           <button class="action-item" (click)="goScan()">
             <span class="action-icon">
@@ -185,7 +185,7 @@
                 <circle cx="8" cy="15" r="1" fill="currentColor"/>
               </svg>
             </span>
-            Scan Document
+            {{ 'guestDetail.scanDocument' | tr }}
           </button>
         </div>
       </div>
@@ -220,7 +220,7 @@
         <div style="margin-top: 8px">
           @if (_scannedData?.['first_name']?.['value'] || _scannedData?.['last_name']?.['value']) {
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div class="detail-label">First &amp; Last name</div>
+              <div class="detail-label">{{ 'idScan.fullName' | tr }}</div>
               <div class="detail-value">{{ scanFullName() | dashIfEmpty }}</div>
             </div>
           }
@@ -228,11 +228,11 @@
           @if (_documentData?.document_type || _scannedData?.['document_number']?.['value']) {
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
               <div style="flex: 1">
-                <div class="detail-label">Document type</div>
+                <div class="detail-label">{{ 'idScan.docType' | tr }}</div>
                 <div class="detail-value">{{ docTypeName(_documentData?.document_type || '') | dashIfEmpty }}</div>
               </div>
               <div style="flex: 1">
-                <div class="detail-label">Document number</div>
+                <div class="detail-label">{{ 'idScan.docNumber' | tr }}</div>
                 <div class="detail-value">{{ _scannedData?.['document_number']?.['value'] | dashIfEmpty }}</div>
               </div>
             </div>
@@ -241,11 +241,11 @@
           @if (_scannedData?.['age']?.['value'] || _scannedData?.['gender']?.['value']) {
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
               <div style="flex: 1">
-                <div class="detail-label">Age</div>
+                <div class="detail-label">{{ 'idScan.age' | tr }}</div>
                 <div class="detail-value">{{ _scannedData?.['age']?.['value'] | dashIfEmpty }}</div>
               </div>
               <div style="flex: 1">
-                <div class="detail-label">Gender</div>
+                <div class="detail-label">{{ 'idScan.gender' | tr }}</div>
                 <div class="detail-value">{{ (_scannedData?.['gender']?.['value'] | titlecase) | dashIfEmpty }}</div>
               </div>
             </div>
@@ -254,11 +254,11 @@
           @if (_scannedData?.['birth_place']?.['value'] || _scannedData?.['birth_date']?.['value']) {
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
               <div style="flex: 1">
-                <div class="detail-label">Place of birth</div>
+                <div class="detail-label">{{ 'idScan.birthPlace' | tr }}</div>
                 <div class="detail-value">{{ _scannedData?.['birth_place']?.['value'] | dashIfEmpty }}</div>
               </div>
               <div style="flex: 1">
-                <div class="detail-label">Date of birth</div>
+                <div class="detail-label">{{ 'idScan.birthDate' | tr }}</div>
                 <div class="detail-value">{{ (_scannedData?.['birth_date']?.['value'] | localizedDate) | dashIfEmpty }}</div>
               </div>
             </div>
@@ -266,14 +266,14 @@
 
           @if (_scannedData?.['citizenship']?.['value']) {
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div class="detail-label">Citizenship</div>
+              <div class="detail-label">{{ 'idScan.citizenship' | tr }}</div>
               <div class="detail-value">{{ citizenshipName(_scannedData?.['citizenship']?.['value']) | dashIfEmpty }}</div>
             </div>
           }
 
           @if (_scannedData?.['mother_name']?.['value']) {
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div class="detail-label">Mother's name</div>
+              <div class="detail-label">{{ 'idScan.motherName' | tr }}</div>
               <div class="detail-value">{{ _scannedData?.['mother_name']?.['value'] | dashIfEmpty }}</div>
             </div>
           }
@@ -283,33 +283,33 @@
           @if (_scannedData?.['address_zip']?.['value'] || _scannedData?.['address_city']?.['value'] || _scannedData?.['address_line']?.['value'] || _scannedData?.['address_country_code']?.['value']) {
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
               <div style="flex: 1">
-                <div class="detail-label">Postal code</div>
+                <div class="detail-label">{{ 'guestDetail.postalCode' | tr }}</div>
                 <div class="detail-value">{{ _scannedData?.['address_zip']?.['value'] | dashIfEmpty }}</div>
               </div>
               <div style="flex: 1">
-                <div class="detail-label">City</div>
+                <div class="detail-label">{{ 'guestDetail.city' | tr }}</div>
                 <div class="detail-value">{{ _scannedData?.['address_city']?.['value'] | dashIfEmpty }}</div>
               </div>
             </div>
             <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div class="detail-label">Country</div>
+              <div class="detail-label">{{ 'guestDetail.country' | tr }}</div>
               <div class="detail-value">{{ countryName(_scannedData?.['address_country_code']?.['value']) | dashIfEmpty }}</div>
             </div>
             <div style="padding: 12px 0">
-              <div class="detail-label">Address</div>
+              <div class="detail-label">{{ 'guestDetail.address' | tr }}</div>
               <div class="detail-value">{{ _scannedData?.['address_line']?.['value'] | dashIfEmpty }}</div>
             </div>
           }
         </div>
 
         <div class="actions">
-          <button class="btn secondary" (click)="processScanResult('edit')">Edit</button>
-          <button class="btn" (click)="processScanResult('save')">Save</button>
+          <button class="btn secondary" (click)="processScanResult('edit')">{{ 'common.edit' | tr }}</button>
+          <button class="btn" (click)="processScanResult('save')">{{ 'common.save' | tr }}</button>
         </div>
       } @else if (scanSheetMode() === 'failed') {
         <div class="actions">
-          <button class="btn secondary" (click)="cancelScanSheet()">Cancel</button>
-          <button class="btn" (click)="scanAgain()">Scan Again</button>
+          <button class="btn secondary" (click)="cancelScanSheet()">{{ 'common.cancel' | tr }}</button>
+          <button class="btn" (click)="scanAgain()">{{ 'idScan.scanAgain' | tr }}</button>
         </div>
       }
     </div>

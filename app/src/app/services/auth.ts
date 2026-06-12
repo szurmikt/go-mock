@@ -7,6 +7,7 @@ import { ApiEnvironmentService } from './api-environment';
 import { ReservationService } from './reservation';
 import { DocuscanService } from './docuscan';
 import { MixpanelService } from './mixpanel';
+import { LanguageService } from './language.service';
 import {
   AuthState,
   ApiResponse,
@@ -55,7 +56,19 @@ export class AuthService {
     private reservations: ReservationService,
     private docuscan: DocuscanService,
     private mixpanel: MixpanelService,
+    private lang: LanguageService,
   ) {}
+
+  /**
+   * The startup LanguageService.init() fetch runs unauthenticated (app initializer,
+   * before loadStoredAuth), so the /languages API only returns the `login` namespace
+   * then. Re-fetch once an access token exists to pull the full authenticated set.
+   * Driven from here (not an effect inside LanguageService) to avoid the DI cycle
+   * LanguageService → AuthService → ReservationService → LanguageService. Fire-and-forget.
+   */
+  private refreshTranslations(): void {
+    this.lang.fetchLanguages().catch(() => {});
+  }
 
   /**
    * Push the current staff user + active property to Mixpanel. No-ops until the
@@ -92,6 +105,8 @@ export class AuthService {
     const auth = await this.storage.get<AuthState>(Config.STORAGE_AUTH_KEY);
     if (auth?.refreshToken) {
       this._auth.set(auth);
+      // Cold start with a stored session — pull the full authenticated translation set.
+      this.refreshTranslations();
     }
     const property = await this.storage.get<PropertyInterface>(Config.STORAGE_PROPERTY_KEY);
     if (property) {
@@ -149,6 +164,7 @@ export class AuthService {
       name: '',
       userId: '',
     });
+    this.refreshTranslations();
     this.mixpanel.trackLogin();
   }
 

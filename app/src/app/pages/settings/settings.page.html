@@ -8,7 +8,7 @@
           <path d="M15 18l-6-6 6-6"/>
         </svg>
       </button>
-      <span class="title">Settings</span>
+      <span class="title">{{ 'settings.title' | tr }}</span>
     </div>
 
     <div class="app-scroll" style="padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px))">
@@ -30,7 +30,7 @@
         <div style="border-top: 1.5px solid var(--line-strong); margin: 16px 0"></div>
 
         <!-- Language -->
-        <button class="btn secondary" (click)="openLangPicker()">Language</button>
+        <button class="btn secondary" (click)="openLangPicker()">{{ 'settings.language' | tr }}</button>
 
         <!-- Request a Feature -->
         <button class="btn secondary" (click)="fb.open()">
@@ -39,7 +39,7 @@
             <path d="M10 22h4"/>
             <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.76.76 1.23 1.52 1.41 2.5"/>
           </svg>
-          Request a Feature
+          {{ 'feedback.featureTitle' | tr }}
         </button>
 
         <!-- Logout -->
@@ -47,7 +47,7 @@
           @if (loggingOut()) {
             <span class="spin" style="width: 18px; height: 18px; border-width: 2.5px; border-top-color: var(--warn)"></span>
           } @else {
-            Log out
+            {{ 'settings.logout' | tr }}
           }
         </button>
 
@@ -67,7 +67,7 @@
   <div class="sheet-backdrop" (click)="closeLangPicker()">
     <div class="sheet" (click)="$event.stopPropagation()">
       <div class="head">
-        <h3>Language</h3>
+        <h3>{{ 'settings.language' | tr }}</h3>
         <button class="icon-btn" (click)="closeLangPicker()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M18 6L6 18M6 6l12 12"/>
@@ -81,7 +81,7 @@
           </div>
         } @else if (lang.displayLanguages().length === 0) {
           <div style="text-align: center; color: var(--ink-4); font-size: var(--font-sm); padding: 24px 0">
-            No languages available
+            {{ 'settings.noLanguages' | tr }}
           </div>
         } @else {
           @for (l of lang.displayLanguages(); track l.code) {

@@ -2,12 +2,14 @@ import { Component, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth';
 import { BiometricService } from '../../services/biometric';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-lock-overlay',
   templateUrl: './lock-overlay.component.html',
   styleUrls: ['./lock-overlay.component.scss'],
   standalone: true,
+  imports: [TranslatePipe],
 })
 export class LockOverlayComponent implements OnInit {
   readonly failCount = signal(0);

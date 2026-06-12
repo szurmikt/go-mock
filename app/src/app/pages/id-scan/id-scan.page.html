@@ -15,7 +15,7 @@
           <path d="M15 18l-6-6 6-6" />
         </svg>
       </button>
-      <span class="title">Id Scan</span>
+      <span class="title">{{ 'idScan.title' | tr }}</span>
     </div>
     <div class="app-scroll">
       @if (readerStatus() != ReaderStatus.FINISHED ) {
@@ -28,51 +28,33 @@
           </div>
         </div>
         } @if (readerStatus() == ReaderStatus.TIMEOUT) {
-        <div class="not-processed">Scan Timeout</div>
+        <div class="not-processed">{{ 'guestDetail.scanTimedOut' | tr }}</div>
         <div class="button-container row-view">
           <ion-button class="blue" expand="block" (click)="scan()">
-            <span class="btn-text">
-              <!-- {{ "scanModalComponent.btnIdScan" | translateIT }} -->
-              Scan Again
-            </span>
+            <span class="btn-text">{{ 'idScan.scanAgain' | tr }}</span>
           </ion-button>
           <ion-button class="grey" expand="block" (click)="back()">
-            <span class="btn-text">
-              <!-- {{ "global.btnCancel" | translateIT }} -->
-              Cancel
-            </span>
+            <span class="btn-text">{{ 'common.cancel' | tr }}</span>
           </ion-button>
         </div>
         } @if (readerStatus() == ReaderStatus.CANCELLED) {
-        <div class="not-processed">Scan Cancelled</div>
+        <div class="not-processed">{{ 'guestDetail.scanCancelled' | tr }}</div>
         <div class="button-container row-view">
           <ion-button class="blue" expand="block" (click)="scan()">
-            <span class="btn-text">
-              <!-- {{ "scanModalComponent.btnIdScan" | translateIT }} -->
-              Scan Again
-            </span>
+            <span class="btn-text">{{ 'idScan.scanAgain' | tr }}</span>
           </ion-button>
           <ion-button class="grey" expand="block" (click)="back()">
-            <span class="btn-text">
-              <!-- {{ "global.btnCancel" | translateIT }} -->
-              Cancel
-            </span>
+            <span class="btn-text">{{ 'common.cancel' | tr }}</span>
           </ion-button>
         </div>
         } @if (readerStatus() == ReaderStatus.INTERRUPTED) {
-        <div class="not-processed">Scan Interrupted</div>
+        <div class="not-processed">{{ 'guestDetail.scanInterrupted' | tr }}</div>
         <div class="button-container row-view">
           <ion-button class="blue" expand="block" (click)="scan()">
-            <span class="btn-text">
-              <!-- {{ "scanModalComponent.btnIdScan" | translateIT }} -->
-              Scan Again
-            </span>
+            <span class="btn-text">{{ 'idScan.scanAgain' | tr }}</span>
           </ion-button>
           <ion-button class="grey" expand="block" (click)="back()">
-            <span class="btn-text">
-              <!-- {{ "global.btnCancel" | translateIT }} -->
-              Cancel
-            </span>
+            <span class="btn-text">{{ 'common.cancel' | tr }}</span>
           </ion-button>
         </div>
         }
@@ -210,7 +192,7 @@
               color: var(--ink);
               flex: 1;
             "
-            >ID Scan result</span
+            >{{ 'idScan.resultTitle' | tr }}</span
           >
           <!-- <button class="icon-btn" (click)="back()" style="color: var(--ink-3)">
             <svg
@@ -234,13 +216,13 @@
           `${_scannedData?.['first_name']?.['value'] || ''}
           ${_scannedData?.['last_name']?.['value'] || ''}`;
           <div style="padding: 14px 0; border-bottom: 1px solid var(--line)">
-            <div class="detail-label">First &amp; Last name</div>
+            <div class="detail-label">{{ 'idScan.fullName' | tr }}</div>
             <div class="detail-value">{{ fullName | dashIfEmpty }}</div>
           </div>
           } @if (_documentData?.['document_type']) {
           <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line)">
             <div style="flex: 1">
-              <div class="detail-label">Document type</div>
+              <div class="detail-label">{{ 'idScan.docType' | tr }}</div>
               <div class="detail-value">
                 {{ _documentData?.document_type ?? "" | defaultValue: options :
                 "document_type" : "" | dashIfEmpty }}
@@ -248,7 +230,7 @@
             </div>
             @if (_scannedData?.['document_number']?.['value']) {
             <div style="flex: 1">
-              <div class="detail-label">Document number</div>
+              <div class="detail-label">{{ 'idScan.docNumber' | tr }}</div>
               <div class="detail-value">
                 {{ _scannedData?.['document_number']?.['value'] ?? "" |
                 defaultValue: options : "document_number" : "" | dashIfEmpty }}
@@ -261,12 +243,12 @@
           <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line)">
             @if (_scannedData?.['age']?.['value']) {
             <div style="flex: 1">
-              <div class="detail-label">Age</div>
+              <div class="detail-label">{{ 'idScan.age' | tr }}</div>
               <div class="detail-value">{{ _scannedData?.['age']?.['value'] }}</div>
             </div>
             } @if (_scannedData?.['gender']?.['value']) {
             <div style="flex: 1">
-              <div class="detail-label">Gender</div>
+              <div class="detail-label">{{ 'idScan.gender' | tr }}</div>
               <div class="detail-value">{{ _scannedData?.['gender']?.['value'] }}</div>
             </div>
             }
@@ -276,14 +258,14 @@
           <div style="display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line)">
             @if (_scannedData?.['birth_place']?.['value']) {
             <div style="flex: 1">
-              <div class="detail-label">Place of birth</div>
+              <div class="detail-label">{{ 'idScan.birthPlace' | tr }}</div>
               <div class="detail-value">
                 {{ _scannedData?.['birth_place']?.['value'] ?? "" | dashIfEmpty }}
               </div>
             </div>
             } @if (_scannedData?.['birth_date']?.['value']) {
             <div style="flex: 1">
-              <div class="detail-label">Date of birth</div>
+              <div class="detail-label">{{ 'idScan.birthDate' | tr }}</div>
               <div class="detail-value">
                 {{ _scannedData?.['birth_date']?.['value'] | localizedDate }}
               </div>
@@ -292,7 +274,7 @@
           </div>
           } @if (_scannedData?.['citizenship']?.['value']) {
           <div style="padding: 14px 0; border-bottom: 1px solid var(--line)">
-            <div class="detail-label">Citizenship</div>
+            <div class="detail-label">{{ 'idScan.citizenship' | tr }}</div>
             <div class="detail-value">
               {{ _scannedData?.['citizenship']?.['value'] ?? "" | defaultValue:
               options : "country" : "NAME" | dashIfEmpty}}
@@ -300,7 +282,7 @@
           </div>
           } @if (_scannedData?.['mother_name']?.['value']) {
           <div style="padding: 14px 0">
-            <div class="detail-label">Mother's name</div>
+            <div class="detail-label">{{ 'idScan.motherName' | tr }}</div>
             <div class="detail-value">
               {{ _scannedData?.['mother_name']?.['value'] ?? "" | defaultValue:
               options : "mother_name" : "" | dashIfEmpty }}
@@ -323,16 +305,10 @@
           <!-- <button class="btn secondary" style="flex: 1; width: auto">Edit</button>
       <button class="btn" style="flex: 1; width: auto">Save</button> -->
           <ion-button class="blue" (click)="processDocument('edit')">
-            <span>
-              <!-- {{ "global.btnEdit" | translateIT }} -->
-              Edit
-            </span>
+            <span>{{ 'common.edit' | tr }}</span>
           </ion-button>
           <ion-button class="green" (click)="processDocument('save')">
-            <span>
-              <!-- {{ "global.btnSave" | translateIT }} -->
-              Save
-            </span>
+            <span>{{ 'common.save' | tr }}</span>
           </ion-button>
         </div>
       </div>

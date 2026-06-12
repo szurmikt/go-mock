@@ -25,7 +25,7 @@
             name="email"
             autocomplete="email"
             [disabled]="loading" />
-          <label>Email</label>
+          <label>{{ 'login.emailLabel' | tr }}</label>
         </div>
 
         <div class="form-group" style="margin-bottom:24px">
@@ -36,7 +36,7 @@
             name="password"
             autocomplete="current-password"
             [disabled]="loading" />
-          <label>Password</label>
+          <label>{{ 'login.passwordLabel' | tr }}</label>
         </div>
 
         <button
@@ -46,10 +46,10 @@
           @if (loading) {
             <span style="display:inline-flex; align-items:center; gap:8px">
               <span class="spin"></span>
-              Signing in…
+              {{ 'login.signingIn' | tr }}
             </span>
           } @else {
-            Sign in
+            {{ 'login.signInBtn' | tr }}
           }
         </button>
       </form>
@@ -65,7 +65,7 @@
     }
 
     <div class="login-footer">
-      Account management is handled through your SabeeApp PMS
+      {{ 'login.accountNote' | tr }}
     </div>
 
     <button
@@ -86,7 +86,7 @@
   <div class="sheet-backdrop" (click)="dismissError()">
     <div class="sheet" (click)="$event.stopPropagation()">
       <div class="head">
-        <h3>Sign in failed</h3>
+        <h3>{{ 'login.errorTitle' | tr }}</h3>
         <button class="icon-btn" (click)="dismissError()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M18 6L6 18M6 6l12 12"/>
@@ -99,7 +99,7 @@
         </div>
       </div>
       <div style="margin-top: 24px">
-        <button class="btn" (click)="dismissError()">Try again</button>
+        <button class="btn" (click)="dismissError()">{{ 'login.tryAgain' | tr }}</button>
       </div>
     </div>
   </div>

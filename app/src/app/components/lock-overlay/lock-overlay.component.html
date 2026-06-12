@@ -18,10 +18,10 @@
 
   <div style="text-align: center">
     <h2 style="font-size: var(--font-xl); font-weight: 800; color: var(--ink); margin: 0 0 6px">
-      SabeeApp Go
+      {{ 'lock.appName' | tr }}
     </h2>
     <p style="color: var(--ink-3); font-size: var(--font-base); margin: 0">
-      Verify your identity to continue
+      {{ 'lock.subtitle' | tr }}
     </p>
   </div>
 
@@ -31,19 +31,19 @@
 
   @if (!attempting() && failCount() > 0) {
     <p style="color: var(--warn); font-weight: 700; font-size: var(--font-sm); margin: 0">
-      Authentication failed. Try again.
+      {{ 'lock.failed' | tr }}
     </p>
   }
 
   @if (!attempting()) {
     <button class="btn tap-anim" style="max-width: 280px; width: 100%" (click)="tryUnlock()">
-      Unlock
+      {{ 'lock.unlock' | tr }}
     </button>
   }
 
   @if (failCount() >= 3) {
     <button class="btn secondary tap-anim" style="max-width: 280px; width: 100%" (click)="forceLogout()">
-      Use password instead
+      {{ 'lock.usePassword' | tr }}
     </button>
   }
 

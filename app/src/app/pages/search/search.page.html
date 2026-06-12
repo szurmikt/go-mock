@@ -16,7 +16,7 @@
         </svg>
         <input #searchInput
           type="text"
-          placeholder="Search reservations…"
+          [placeholder]="'search.placeholder' | tr"
           [value]="query()"
           (input)="setQuery($any($event.target).value)"
           (keyup.enter)="onEnter()"
@@ -40,7 +40,7 @@
       @if (query().trim().length === 0) {
         @if (recentSearches().length > 0) {
           <div style="padding: 24px var(--pad) 0">
-            <div style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 12px">Recent</div>
+            <div style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 12px">{{ 'search.recent' | tr }}</div>
             <div style="display: flex; flex-wrap: wrap; gap: 8px">
               @for (s of recentSearches(); track s) {
                 <button (click)="setQuery(s)"
@@ -53,11 +53,11 @@
         }
       } @else if (query().trim().length < 3) {
         <div class="empty-state">
-          Type at least 3 characters to search
+          {{ 'search.minChars' | tr }}
         </div>
       } @else if (results().length === 0) {
         <div class="empty-state">
-          No results for "{{ query() }}"
+          {{ 'search.noResults' | tr }} "{{ query() }}"
         </div>
       } @else {
         <div style="padding-top: 8px">

@@ -9,13 +9,14 @@ import {
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-mfa',
   templateUrl: './mfa.page.html',
   styleUrls: ['./mfa.page.scss'],
   standalone: true,
-  imports: [IonContent],
+  imports: [IonContent, TranslatePipe],
 })
 export class MfaPage implements AfterViewInit, OnDestroy {
   @ViewChildren('digitInput') digitInputs!: QueryList<ElementRef<HTMLInputElement>>;

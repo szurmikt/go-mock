@@ -12,7 +12,7 @@
         (click)="switchOpen.set(true)">
         <span style="flex: 1; min-width: 0">
           <h1 style="margin: 0; font-size: var(--font-xl); font-weight: 800; letter-spacing: -0.02em; color: var(--ink); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
-            {{ auth.selectedProperty()?.property_name || 'Select Property' }}
+            {{ auth.selectedProperty()?.property_name || ('propertySelect.title' | tr) }}
           </h1>
           @if (auth.selectedProperty()?.property_company_name) {
             <div style="font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); line-height: 1.2; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
@@ -29,14 +29,14 @@
         @if (apiEnv.isTest()) {
           <span class="pill home-test-pill" data-status="test">TEST</span>
         }
-        <button class="icon-btn" aria-label="Send feedback" (click)="fb.open()">
+        <button class="icon-btn" [attr.aria-label]="'home.ariaFeedback' | tr" (click)="fb.open()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 18h6"/>
             <path d="M10 22h4"/>
             <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.76.76 1.23 1.52 1.41 2.5"/>
           </svg>
         </button>
-        <button class="icon-btn" aria-label="Settings" (click)="goSettings()">
+        <button class="icon-btn" [attr.aria-label]="'home.ariaSettings' | tr" (click)="goSettings()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -81,7 +81,7 @@
         <circle cx="11" cy="11" r="7"/>
         <path d="m21 21-4.3-4.3"/>
       </svg>
-      <span style="flex: 1; color: var(--ink-4); font-size: 18px; font-weight: 600">Search</span>
+      <span style="flex: 1; color: var(--ink-4); font-size: 18px; font-weight: 600">{{ 'common.search' | tr }}</span>
     </button>
 
     <!-- Scrollable content -->
@@ -91,7 +91,7 @@
       <div class="segment">
         <div class="seg-thumb" [style.left.px]="thumb().left" [style.width.px]="thumb().width"></div>
         @for (t of tabs; track t; let i = $index) {
-          <button #segBtn class="seg" [class.active]="tab() === t" (click)="setTab(t)">{{ t }}</button>
+          <button #segBtn class="seg" [class.active]="tab() === t" (click)="setTab(t)">{{ ('home.' + t.toLowerCase()) | tr }}</button>
         }
       </div>
 
@@ -105,7 +105,7 @@
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
               <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
-            Guests
+            {{ 'home.guests' | tr }}
           </div>
           <div class="value">{{ guestCount() }}</div>
         </div>
@@ -115,7 +115,7 @@
               <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
               <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
             </svg>
-            Reservations
+            {{ 'home.reservations' | tr }}
           </div>
           <div class="value">{{ arrivals().length }}</div>
         </div>
@@ -123,7 +123,7 @@
 
       <!-- Section title -->
       <div class="section-title">
-        <h2>{{ tab() }}'s Arrivals</h2>
+        <h2>{{ 'home.arrivalsHeading' | tr:{ day: dayLabel() } }}</h2>
       </div>
 
       <!-- Loading state -->
@@ -137,7 +137,7 @@
         </div>
       } @else if (arrivals().length === 0) {
         <div class="empty-state">
-          No arrivals for {{ tab() | lowercase }}
+          {{ 'home.noArrivalsFor' | tr:{ day: (dayLabel() | lowercase) } }}
         </div>
       } @else {
         <!-- Arrivals list -->
@@ -176,7 +176,7 @@
   <div class="sheet-backdrop" (click)="closeSwitch()">
     <div class="sheet" [class.sheet--tall]="auth.properties().length > 10" (click)="$event.stopPropagation()">
       <div class="head">
-        <h3>Switch Property</h3>
+        <h3>{{ 'home.switchProperty' | tr }}</h3>
         <button class="icon-btn" (click)="closeSwitch()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M18 6L6 18M6 6l12 12"/>
@@ -192,7 +192,7 @@
           </svg>
           <input
             type="text"
-            placeholder="Filter by name or ID…"
+            [placeholder]="'common.filterPlaceholder' | tr"
             [value]="propertyQuery()"
             (input)="setPropertyQuery($any($event.target).value)"
             autocomplete="off"
@@ -231,7 +231,7 @@
         }
         @if (propertyQuery().trim().length > 0 && filteredProperties().length === 0) {
           <div style="text-align: center; padding: 24px 0; color: var(--ink-4); font-size: var(--font-base); font-weight: 600">
-            No properties match.
+            {{ 'propertySelect.noMatch' | tr }}
           </div>
         }
       </div>

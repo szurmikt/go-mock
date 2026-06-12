@@ -5,17 +5,19 @@ import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/st
 import { ViewWillEnter } from '@ionic/angular';
 import { ReservationService, pillStatus, pillLabel } from '../../services/reservation';
 import { OptionsService } from '../../services/options.service';
+import { LanguageService } from '../../services/language.service';
 import { ReservationInterface } from '../../models/reservation.interface';
 import { GuestInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { LocalizedTimePipe } from '../../pipes/localized-time.pipe';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-reservation-detail',
   templateUrl: './reservation-detail.page.html',
   styleUrls: ['./reservation-detail.page.scss'],
   standalone: true,
-  imports: [IonContent, IonRefresher, IonRefresherContent, TitleCasePipe, LocalizedDatePipe, LocalizedTimePipe],
+  imports: [IonContent, IonRefresher, IonRefresherContent, TitleCasePipe, LocalizedDatePipe, LocalizedTimePipe, TranslatePipe],
 })
 export class ReservationDetailPage implements OnInit, ViewWillEnter {
   reservation = signal<ReservationInterface | null>(null);
@@ -31,6 +33,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     private router: Router,
     private res: ReservationService,
     private options: OptionsService,
+    private lang: LanguageService,
   ) {}
 
   private reservationCode!: string;
@@ -69,7 +72,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
       this.reservation.set(detail);
       this.guests.set(guests);
     } catch (e: any) {
-      if (firstLoad) this.error.set(e.message ?? 'Failed to load reservation');
+      if (firstLoad) this.error.set(e.message ?? this.lang.t('errors.failedLoadReservation'));
     } finally {
       this.loading.set(false);
     }

@@ -21,9 +21,11 @@ import {
 import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
 import { DefaultValuePipe } from '../../pipes/default-value.pipe';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 import { DocuscanService } from 'src/app/services/docuscan';
 import { DocumentData } from 'src/app/models/statistics-interface';
 import { ReservationService } from 'src/app/services/reservation';
+import { LanguageService } from '../../services/language.service';
 
 type Phase = 'camera' | 'scanning' | 'result';
 
@@ -59,6 +61,7 @@ const MOCK_SCAN_RESULT: ScanResultInterface = {
     DashIfEmptyPipe,
     DefaultValuePipe,
     LocalizedDatePipe,
+    TranslatePipe,
   ],
   providers: [DashIfEmptyPipe, DefaultValuePipe],
 })
@@ -68,6 +71,7 @@ export class IdScanPage implements OnInit, OnDestroy {
   private documentReader = inject(DocumentReaderService);
   private docuscanService = inject(DocuscanService);
   private reservationService = inject(ReservationService);
+  private lang = inject(LanguageService);
 
   phase = signal<Phase>('camera');
   result = signal<ScannedDataInterface | null>(null);
@@ -135,7 +139,7 @@ export class IdScanPage implements OnInit, OnDestroy {
 
     await this.documentReader.init().catch((e) => {
       console.error('Error initializing document reader', e);
-      alert('Error initializing document reader: ' + String(e));
+      alert(this.lang.t('errors.scanInitError') + ': ' + String(e));
     });
     this.scan();
   }

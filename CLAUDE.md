@@ -938,7 +938,7 @@ Two small visual fixes for what happens when the iOS keyboard opens.
 
 **Translation / Language system** (`app/src/app/services/language.service.ts`):
 - New `LanguageService` — fetches translations from API (`languages` endpoint), caches in device storage, reads device locale on first launch, merges API translations over bundled English fallback; background refresh on every app start
-- `TranslatePipe` — `{{ 'key' | translate }}` syntax
+- `TranslatePipe` — `{{ 'ns.key' | tr }}` syntax (pipe name is `tr`; wired into all templates in app Session 2026-06-09)
 - Bundled fallback translations in `translations.ts` + `translations.en.json`
 - Language selection persists across sessions
 

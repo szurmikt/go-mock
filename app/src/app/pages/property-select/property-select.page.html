@@ -3,9 +3,9 @@
     <div style="flex: 1; padding: 60px var(--pad) 0; overflow-y: auto">
 
       <div style="text-align: center; margin-bottom: 40px">
-        <div style="font-size: 13px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--primary); margin-bottom: 8px">SabeeApp Go</div>
-        <div style="font-size: 28px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; line-height: 1.15">Select Property</div>
-        <div style="font-size: var(--font-base); font-weight: 600; color: var(--ink-4); margin-top: 6px">Choose a property to manage</div>
+        <div style="font-size: 13px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--primary); margin-bottom: 8px">{{ 'propertySelect.appName' | tr }}</div>
+        <div style="font-size: 28px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; line-height: 1.15">{{ 'propertySelect.title' | tr }}</div>
+        <div style="font-size: var(--font-base); font-weight: 600; color: var(--ink-4); margin-top: 6px">{{ 'propertySelect.subtitle' | tr }}</div>
       </div>
 
       @if (loading) {
@@ -22,7 +22,7 @@
             </svg>
             <input
               type="text"
-              placeholder="Filter by name or ID…"
+              [placeholder]="'common.filterPlaceholder' | tr"
               [value]="query"
               (input)="query = $any($event.target).value"
               autocomplete="off"
@@ -62,7 +62,7 @@
         }
         @if (query.trim().length > 0 && filteredProperties.length === 0) {
           <div style="text-align: center; padding: 24px 0; color: var(--ink-4); font-size: var(--font-base); font-weight: 600">
-            No properties match.
+            {{ 'propertySelect.noMatch' | tr }}
           </div>
         }
       }

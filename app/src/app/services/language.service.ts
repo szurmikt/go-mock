@@ -55,6 +55,31 @@ export class LanguageService {
     this.fetchLanguages().catch(() => {});
   }
 
+  /**
+   * Instant translation lookup for use in TS code (alerts, error signals, sheet
+   * titles) where the `tr` template pipe isn't available.
+   *
+   * Resolution order: active (merged) map → bundled English `TRANSLATIONS`
+   * (ultimate EN floor, covers a key the API stripped) → the raw key.
+   */
+  t(key: string, params?: Record<string, string | number>): string {
+    const dotIndex = key.indexOf('.');
+    if (dotIndex === -1) return key;
+
+    const ns = key.slice(0, dotIndex);
+    const prop = key.slice(dotIndex + 1);
+    let text =
+      this.translations()?.[ns]?.[prop] ?? TRANSLATIONS?.[ns]?.[prop] ?? key;
+
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        text = text.replace(`{{${k}}}`, String(v));
+      }
+    }
+
+    return text;
+  }
+
   async setLanguage(code: string): Promise<void> {
     this.currentLanguage.set(this.normalize(code));
     await this.storage.set(STORAGE_KEY_LANG, this.currentLanguage());

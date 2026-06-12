@@ -5,11 +5,12 @@ import { App } from '@capacitor/app';
 import { AuthService } from '../../services/auth';
 import { LanguageService } from '../../services/language.service';
 import { FeedbackSheetComponent } from '../../components/feedback-sheet/feedback-sheet.component';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.page.html',
   standalone: true,
-  imports: [IonContent, FeedbackSheetComponent],
+  imports: [IonContent, FeedbackSheetComponent, TranslatePipe],
 })
 export class SettingsPage {
   loggingOut = signal(false);

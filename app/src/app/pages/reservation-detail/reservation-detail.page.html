@@ -12,7 +12,7 @@
           <path d="M15 18l-6-6 6-6"/>
         </svg>
       </button>
-      <span class="title">Reservation Details</span>
+      <span class="title">{{ 'reservationDetail.title' | tr }}</span>
     </div>
 
     @if (loading() && !reservation()) {
@@ -47,7 +47,7 @@
                   <line x1="8" y1="2" x2="8" y2="6"/>
                   <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
-                Check-in
+                {{ 'reservationDetail.checkIn' | tr }}
               </div>
               <div class="v">{{ r.arrival_date | localizedDate:'dayMonth' }}{{ r.checked_in_time ? '  ' + (r.checked_in_time | localizedTime) : '' }}</div>
             </div>
@@ -59,7 +59,7 @@
                   <line x1="8" y1="2" x2="8" y2="6"/>
                   <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
-                Check-out
+                {{ 'reservationDetail.checkOut' | tr }}
               </div>
               <div class="v">{{ r.departure_date | localizedDate:'dayMonth' }}{{ r.checked_out_time ? '  ' + (r.checked_out_time | localizedTime) : '' }}</div>
             </div>
@@ -71,7 +71,7 @@
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                   <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
-                Guests
+                {{ 'reservationDetail.guestsSection' | tr }}
               </div>
               <div class="v">{{ composition(r) }}</div>
             </div>
@@ -81,9 +81,9 @@
                   <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
                   <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
                 </svg>
-                Partner
+                {{ 'reservationDetail.partner' | tr }}
               </div>
-              <div class="v">{{ r.partner?.partner_name || 'Direct' }}</div>
+              <div class="v">{{ r.partner?.partner_name || ('reservationDetail.direct' | tr) }}</div>
             </div>
             <div class="fact" style="grid-column: 1 / -1">
               <div class="l">
@@ -91,7 +91,7 @@
                   <path d="M3 9.5L12 3l9 6.5V21H3V9.5z"/>
                   <rect x="9" y="13" width="6" height="8"/>
                 </svg>
-                Room / Type
+                {{ 'reservationDetail.roomType' | tr }}
               </div>
               <div class="v">{{ r.room_name }} ({{ r.room_type_name }})</div>
             </div>
@@ -100,7 +100,7 @@
 
         <!-- Guests section -->
         <div class="section-title">
-          <h2>Guests</h2>
+          <h2>{{ 'reservationDetail.guestsSection' | tr }}</h2>
         </div>
 
         @if (loading()) {
@@ -124,32 +124,32 @@
                 <div class="id">
                   {{ g.guest_id }}
                   @if (isFirstGuest(g)) {
-                    <span class="booker">(Booker)</span>
+                    <span class="booker">{{ 'reservationDetail.booker' | tr }}</span>
                   }
                 </div>
                 <div class="name">{{ guestName(g) }}</div>
                 <div class="fact-grid" style="gap: 8px 16px">
                   <div>
-                    <div class="detail-label">Age</div>
+                    <div class="detail-label">{{ 'reservationDetail.age' | tr }}</div>
                     <div class="fact-value">{{ (g.guest_age | titlecase) || '—' }}</div>
                   </div>
                   <div>
-                    <div class="detail-label">Gender</div>
+                    <div class="detail-label">{{ 'reservationDetail.gender' | tr }}</div>
                     <div class="fact-value">{{ (g.gender | titlecase) || '—' }}</div>
                   </div>
                   <div>
-                    <div class="detail-label">Nationality</div>
+                    <div class="detail-label">{{ 'reservationDetail.nationality' | tr }}</div>
                     <div class="fact-value">{{ citizenshipName(g.citizenship) || '—' }}</div>
                   </div>
                   <div>
-                    <div class="detail-label">City Tax Liable</div>
-                    <div class="fact-value">{{ g.city_tax_liable ? 'Yes' : 'No' }}</div>
+                    <div class="detail-label">{{ 'reservationDetail.cityTaxLiable' | tr }}</div>
+                    <div class="fact-value">{{ g.city_tax_liable ? ('common.yes' | tr) : ('common.no' | tr) }}</div>
                   </div>
                 </div>
               </div>
             }
             @if (guests().length === 0) {
-              <div class="empty-state">No guests registered</div>
+              <div class="empty-state">{{ 'reservationDetail.noGuests' | tr }}</div>
             }
           </div>
         }

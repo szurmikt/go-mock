@@ -10,6 +10,8 @@ import {
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth';
 import { SupabaseService } from '../../services/supabase';
+import { LanguageService } from '../../services/language.service';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 import { Config } from '../../config/config';
 
 type Segment = 'feature_request' | 'feedback';
@@ -18,7 +20,7 @@ type Mode = 'form' | 'success';
 @Component({
   selector: 'app-feedback-sheet',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, TranslatePipe],
   templateUrl: './feedback-sheet.component.html',
 })
 export class FeedbackSheetComponent {
@@ -26,10 +28,11 @@ export class FeedbackSheetComponent {
 
   private auth = inject(AuthService);
   private supabase = inject(SupabaseService);
+  private lang = inject(LanguageService);
 
-  readonly segments: { key: Segment; label: string }[] = [
-    { key: 'feature_request', label: 'Feature Request' },
-    { key: 'feedback', label: 'Feedback' },
+  readonly segments: { key: Segment; labelKey: string }[] = [
+    { key: 'feature_request', labelKey: 'feedback.featureRequestSeg' },
+    { key: 'feedback', labelKey: 'feedback.feedbackSeg' },
   ];
 
   visible = signal(false);
@@ -41,12 +44,18 @@ export class FeedbackSheetComponent {
   thumb = signal({ left: 3, width: 0 });
 
   readonly title = computed(() =>
-    this.segment() === 'feature_request' ? 'Request a Feature' : 'Feedback',
+    this.lang.t(
+      this.segment() === 'feature_request'
+        ? 'feedback.featureTitle'
+        : 'feedback.feedbackTitle',
+    ),
   );
   readonly placeholder = computed(() =>
-    this.segment() === 'feature_request'
-      ? 'What would you like the app to do?'
-      : "What's on your mind?",
+    this.lang.t(
+      this.segment() === 'feature_request'
+        ? 'feedback.featurePlaceholder'
+        : 'feedback.feedbackPlaceholder',
+    ),
   );
   readonly canSubmit = computed(
     () => this.text().trim().length > 0 && !this.submitting(),
@@ -101,7 +110,7 @@ export class FeedbackSheetComponent {
       if (error) throw error;
       this.mode.set('success');
     } catch {
-      this.error.set('Could not send right now. Please try again.');
+      this.error.set(this.lang.t('feedback.errorSend'));
     } finally {
       this.submitting.set(false);
     }

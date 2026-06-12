@@ -15,7 +15,7 @@
         <div class="segment" style="margin: 12px 0 0">
           <div class="seg-thumb" [style.left.px]="thumb().left" [style.width.px]="thumb().width"></div>
           @for (s of segments; track s.key) {
-            <button #segBtn class="seg" [class.active]="segment() === s.key" (click)="setSegment(s.key)">{{ s.label }}</button>
+            <button #segBtn class="seg" [class.active]="segment() === s.key" (click)="setSegment(s.key)">{{ s.labelKey | tr }}</button>
           }
         </div>
 
@@ -35,7 +35,7 @@
           @if (submitting()) {
             <span class="spin" style="width: 18px; height: 18px; border-width: 2.5px"></span>
           } @else {
-            Submit
+            {{ 'common.submit' | tr }}
           }
         </button>
       } @else {
@@ -47,10 +47,10 @@
             </svg>
           </span>
           <div style="margin-top: 16px; font-size: var(--font-md); font-weight: 700; color: var(--ink); line-height: 1.4">
-            Thanks! We'll be in touch if we have questions.
+            {{ 'feedback.successMessage' | tr }}
           </div>
         </div>
-        <button class="btn" style="margin-top: 16px" (click)="close()">Done</button>
+        <button class="btn" style="margin-top: 16px" (click)="close()">{{ 'common.done' | tr }}</button>
       }
     </div>
   </div>
