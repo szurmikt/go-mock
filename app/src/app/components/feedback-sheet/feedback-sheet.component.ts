@@ -9,8 +9,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth';
-import { SupabaseService } from '../../services/supabase';
 import { LanguageService } from '../../services/language.service';
+import { environment } from '../../../environments/environment';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { Config } from '../../config/config';
 
@@ -27,8 +27,8 @@ export class FeedbackSheetComponent {
   @ViewChildren('segBtn') segBtns!: QueryList<ElementRef<HTMLButtonElement>>;
 
   private auth = inject(AuthService);
-  private supabase = inject(SupabaseService);
   private lang = inject(LanguageService);
+  private readonly feedbackFnUrl = `${environment.supabaseUrl}/functions/v1/feedback`;
 
   readonly segments: { key: Segment; labelKey: string }[] = [
     { key: 'feature_request', labelKey: 'feedback.featureRequestSeg' },
@@ -106,8 +106,15 @@ export class FeedbackSheetComponent {
     };
 
     try {
-      const { error } = await this.supabase.db.from('feedback').insert(row);
-      if (error) throw error;
+      const res = await fetch(this.feedbackFnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: environment.supabaseAnonKey,
+        },
+        body: JSON.stringify(row),
+      });
+      if (!res.ok) throw new Error(res.statusText);
       this.mode.set('success');
     } catch {
       this.error.set(this.lang.t('feedback.errorSend'));

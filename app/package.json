@@ -40,7 +40,6 @@
     "@regulaforensics/document-reader": "^9.3.695",
     "@regulaforensics/document-reader-core-fullrfid": "^9.3.1818",
     "@sentry/angular": "^10.53.1",
-    "@supabase/supabase-js": "^2.106.2",
     "capacitor-native-biometric": "^4.2.2",
     "ionicons": "^7.0.0",
     "mixpanel-browser": "^2.80.0",
