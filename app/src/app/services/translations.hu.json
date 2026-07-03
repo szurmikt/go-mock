@@ -7,7 +7,6 @@
     "ok": "OK",
     "yes": "Igen",
     "no": "Nem",
-    "tryAgain": "Próbálja újra",
     "loading": "Betöltés…",
     "search": "Keresés",
     "submit": "Küldés",
@@ -16,24 +15,26 @@
   },
   "login": {
     "appName": "SabeeApp Go",
-    "welcomeTitle": "Üdvözöljük újra",
-    "welcomeSubtitle": "Jelentkezzen be a fiókjába",
+    "welcomeTitle": "Üdvözlünk újra",
+    "welcomeSubtitle": "Jelentkezz be a fiókodba",
     "emailLabel": "E-mail",
     "passwordLabel": "Jelszó",
     "signInBtn": "Bejelentkezés",
     "signingIn": "Bejelentkezés…",
     "accountNote": "A fiókkezelés a SabeeApp PMS rendszerén keresztül történik",
-    "errorTitle": "A bejelentkezés sikertelen"
-  },
-  "mfa": {
-    "title": "Kétlépcsős azonosítás",
-    "subtitle": "Adja meg a hitelesítő alkalmazás 6 jegyű kódját",
-    "invalidCode": "Érvénytelen kód."
+    "errorTitle": "A bejelentkezés sikertelen",
+    "mfaTitle": "Kétlépcsős azonosítás",
+    "mfaSubtitle": "Add meg a hitelesítő alkalmazás 6 jegyű kódját",
+    "mfaInvalidCode": "Érvénytelen kód.",
+    "tryAgain": "Próbáld újra",
+    "errIncorrect": "A megadott e-mail cím vagy jelszó helytelen. Ellenőrizd az adataidat, és próbáld újra.",
+    "errNoInternet": "Nincs internetkapcsolat",
+    "errGeneric": "Hiba történt. Kérjük, próbáld újra."
   },
   "propertySelect": {
     "appName": "SabeeApp Go",
     "title": "Szálláshely kiválasztása",
-    "subtitle": "Válasszon kezelendő szálláshelyet",
+    "subtitle": "Válassz kezelendő szálláshelyet",
     "noMatch": "Nincs találat."
   },
   "home": {
@@ -117,13 +118,13 @@
     "birthPlace": "Születési hely",
     "gender": "Nem",
     "citizenship": "Állampolgárság",
-    "selectCountry": "— Válasszon országot —",
-    "selectGender": "— Válasszon nemet —",
+    "selectCountry": "— Válassz országot —",
+    "selectGender": "— Válassz nemet —",
     "contactDetails": "Elérhetőségek",
     "phone": "Telefon",
     "email": "E-mail",
     "travelDocument": "Úti okmány",
-    "selectDocType": "— Válasszon típust —",
+    "selectDocType": "— Válassz típust —",
     "documentType": "Okmány típusa",
     "documentNumber": "Okmány száma",
     "saved": "A vendég adatai elmentve"
@@ -132,7 +133,7 @@
     "title": "Okmány beolvasása",
     "webNotAvailable": "Az okmánybeolvasás csak a mobilalkalmazásban érhető el.",
     "initializing": "Beolvasó inicializálása…",
-    "instruction": "Tartsa az okmányt a kereten belül",
+    "instruction": "Tartsd az okmányt a kereten belül",
     "resultTitle": "Beolvasás eredménye",
     "fullName": "Vezeték- és keresztnév",
     "docType": "Okmány típusa",
@@ -152,7 +153,7 @@
     "title": "Keresés",
     "placeholder": "Foglalások keresése…",
     "recent": "Legutóbbi",
-    "minChars": "A kereséshez írjon be legalább 3 karaktert",
+    "minChars": "A kereséshez írj be legalább 3 karaktert",
     "noResults": "Nincs találat erre:"
   },
   "settings": {
@@ -167,19 +168,19 @@
     "feedbackSeg": "Visszajelzés",
     "featureTitle": "Funkció kérése",
     "feedbackTitle": "Visszajelzés",
-    "featurePlaceholder": "Mit szeretne, mit tudjon az alkalmazás?",
-    "feedbackPlaceholder": "Mi jár a fejében?",
-    "successMessage": "Köszönjük! Felvesszük Önnel a kapcsolatot, ha kérdésünk van.",
-    "errorSend": "A küldés most nem sikerült. Kérjük, próbálja újra."
+    "featurePlaceholder": "Mit szeretnél, mit tudjon az alkalmazás?",
+    "feedbackPlaceholder": "Mi jár a fejedben?",
+    "successMessage": "Köszönjük! Felvesszük veled a kapcsolatot, ha kérdésünk van.",
+    "errorSend": "A küldés most nem sikerült. Kérjük, próbáld újra."
   },
   "updateRequired": {
     "title": "Frissítés szükséges",
-    "message": "A SabeeApp Go új verziója szükséges. A folytatáshoz frissítse az alkalmazást."
+    "message": "A SabeeApp Go új verziója szükséges. A folytatáshoz frissítsd az alkalmazást."
   },
   "lock": {
     "appName": "SabeeApp Go",
-    "subtitle": "A folytatáshoz igazolja személyazonosságát",
-    "failed": "A hitelesítés sikertelen. Próbálja újra.",
+    "subtitle": "A folytatáshoz igazold a személyazonosságodat",
+    "failed": "A hitelesítés sikertelen. Próbáld újra.",
     "unlock": "Feloldás",
     "usePassword": "Inkább jelszóval"
   },
@@ -187,19 +188,18 @@
     "cantFindReservationTitle": "A foglalás nem található",
     "cantFindReservationDescription": "Nem találtuk a keresett foglalást.",
     "noInternet": "Nincs internetkapcsolat",
-    "generic": "Hiba történt. Kérjük, próbálja újra.",
+    "generic": "Hiba történt. Kérjük, próbáld újra.",
     "okBtn": "OK",
-    "tryAgainBtn": "Próbálja újra",
+    "tryAgainBtn": "Próbáld újra",
     "backBtn": "Vissza",
     "loadPropertiesTitle": "A szálláshelyek betöltése sikertelen",
-    "loadPropertiesMessage": "Ellenőrizze a kapcsolatot, és próbálja újra.",
+    "loadPropertiesMessage": "Ellenőrizd a kapcsolatot, és próbáld újra.",
     "guestNotFound": "A vendég nem található",
     "failedLoadReservation": "A foglalás betöltése sikertelen",
     "failedLoadReservations": "A foglalások betöltése sikertelen",
     "networkError": "Hálózati hiba",
     "failedLoadGuest": "A vendég betöltése sikertelen",
     "failedSave": "A mentés sikertelen",
-    "loginIncorrect": "A megadott e-mail-cím vagy jelszó helytelen. Ellenőrizze az adatait, és próbálja újra.",
     "scanInitError": "Hiba az okmányolvasó inicializálásakor"
   }
 }
