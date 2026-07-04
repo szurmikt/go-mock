@@ -52,7 +52,7 @@ export const routes: Routes = [
   {
     path: 'guest/:code/:guestId/scan',
     canActivate: [authGuard],
-    loadComponent: () => import('./pages/id-scan/id-scan.page').then(m => m.IdScanPage),
+    loadComponent: () => import('./regula/pages/id-scan/id-scan.page').then(m => m.IdScanPage),
   },
   {
     // THROWAWAY MOCK — single-property morning-briefing prototype. Remove with pages/briefing.

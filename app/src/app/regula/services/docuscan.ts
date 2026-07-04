@@ -1,14 +1,14 @@
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom, Observable } from 'rxjs';
-import { ApiService } from './api';
-import { ApiResponse } from '../models/auth.interfaces';
-import { StorageService } from './storage';
+import { ApiService } from '../../services/api';
+import { ApiResponse } from '../../models/auth.interfaces';
+import { StorageService } from '../../services/storage';
 import {
   GuestInterface,
   ScannedDataInterface,
   ScannedGuestDataInterface,
   ScanResultInterface,
-} from '../models/guest.interface';
+} from '../../models/guest.interface';
 
 const STORAGE_KEY = 'fieldsToScan';
 

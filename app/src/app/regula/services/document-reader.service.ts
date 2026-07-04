@@ -15,21 +15,21 @@ import {
   DocReaderScenario,
 } from '@regulaforensics/document-reader';
 
-import { Config } from '../config/config';
+import { Config } from '../../config/config';
 
 import {
   GuestPostInterface,
   ScannedDataInterface,
   ScannedGuestDataInterface,
   ScanResultInterface,
-} from '../models/guest.interface';
-import { DocumentData } from '../models/statistics-interface';
+} from '../../models/guest.interface';
+import { DocumentData } from '../../models/statistics-interface';
 
 import { DocuscanService } from './docuscan.service';
-import { MixpanelService } from './mixpanel';
+import { MixpanelService } from '../../services/mixpanel';
 
-import { DefaultValuePipe } from '../pipes/default-value.pipe';
-import { parseHungarianAddress } from '../utils/hungarian-address';
+import { DefaultValuePipe } from '../../pipes/default-value.pipe';
+import { parseHungarianAddress } from '../../utils/hungarian-address';
 
 @Injectable({ providedIn: 'root' })
 export class DocumentReaderService {

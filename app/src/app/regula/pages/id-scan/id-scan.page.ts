@@ -17,15 +17,15 @@ import {
   GuestInterface,
   ScannedDataInterface,
   ScanResultInterface,
-} from '../../models/guest.interface';
-import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
-import { DefaultValuePipe } from '../../pipes/default-value.pipe';
-import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
-import { TranslatePipe } from '../../pipes/translate.pipe';
-import { DocuscanService } from 'src/app/services/docuscan';
+} from '../../../models/guest.interface';
+import { DashIfEmptyPipe } from '../../../pipes/dash-if-empty.pipe';
+import { DefaultValuePipe } from '../../../pipes/default-value.pipe';
+import { LocalizedDatePipe } from '../../../pipes/localized-date.pipe';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { DocuscanService } from 'src/app/regula/services/docuscan';
 import { DocumentData } from 'src/app/models/statistics-interface';
 import { ReservationService } from 'src/app/services/reservation';
-import { LanguageService } from '../../services/language.service';
+import { LanguageService } from '../../../services/language.service';
 
 type Phase = 'camera' | 'scanning' | 'result';
 

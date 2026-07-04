@@ -5,7 +5,7 @@ import { IonContent } from '@ionic/angular/standalone';
 import { ReservationService } from '../../services/reservation';
 import { GuestInterface } from '../../models/guest.interface';
 import { OptionsService } from '../../services/options.service';
-import { DocuscanService } from 'src/app/services/docuscan';
+import { DocuscanService } from 'src/app/regula/services/docuscan';
 import { MixpanelService } from '../../services/mixpanel';
 import { AuthService } from '../../services/auth';
 import { LanguageService } from '../../services/language.service';

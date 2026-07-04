@@ -1,14 +1,14 @@
 import { inject, Injectable } from '@angular/core';
-import { ApiService } from './api';
+import { ApiService } from '../../services/api';
 import {
   GuestInterface,
   GuestPostInterface,
   ScannedDataInterface,
   ScannedGuestDataInterface,
   ScanResultInterface,
-} from '../models/guest.interface';
-import { StorageService } from './storage';
-import { DocumentData } from '../models/statistics-interface';
+} from '../../models/guest.interface';
+import { StorageService } from '../../services/storage';
+import { DocumentData } from '../../models/statistics-interface';
 import { Observable } from 'rxjs';
 
 @Injectable({

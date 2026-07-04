@@ -5,7 +5,7 @@ import { Config } from '../config/config';
 import { StorageService } from './storage';
 import { ApiEnvironmentService } from './api-environment';
 import { ReservationService } from './reservation';
-import { DocuscanService } from './docuscan';
+import { DocuscanService } from '../regula/services/docuscan';
 import { MixpanelService } from './mixpanel';
 import { LanguageService } from './language.service';
 import {
