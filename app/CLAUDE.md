@@ -687,6 +687,15 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-07-04 — IDScanly: Review page header style + horizontal margins to match the rest of the app
+
+> Branch `add-idscanly`. No build/version bump yet. Follow-up to the layout/dark-theme fix above — requested to (1) use the same left-right content margin as every other screen, and (2) match the Scan screen's plain header instead of the global boxed/centered-title header.
+
+- **Horizontal margin** ([review.page.scss](src/app/idscanly/pages/review/review.page.scss) `.review-scroll`): was `padding-bottom` only (cards ran edge-to-edge). Other detail screens inset their scrollable content by `var(--pad)` (16px) on an inner wrapper (e.g. guest-detail's `<div style="padding: 0 16px">`) — `.review-scroll` now gets `padding: 0 var(--pad) calc(80px + env(safe-area-inset-bottom, 0px))`, matching that convention with the design-token variable rather than a hardcoded value.
+- **Header style**: the global `.sub-header` centers its `.title` via `position:absolute;left:50%;transform:translate(-50%,-50%)` with an 800-weight/17px look, and its `.back` button is a 44×44 rounded hit-box with hover/active background states — a heavier, more decorative treatment than the Scan screen's `.scan-header` (plain flex row, title sits directly next to a bare icon button, no box, no centering, 16px/500-weight). Since Angular scopes component styles, the review page's `.sub-header`/`.back`/`.title` are overridden locally (same markup, no HTML change) to drop the absolute centering and the button's box/hover treatment, matching `.scan-header`'s plain look and palette (`#b4b2a9` back icon, `#f0efe8` title, same `calc(14px + safe-area-inset-top) 16px 10px` padding). Purely a scoped CSS override — no shared class/component was introduced (mirrors how each page already owns its own header CSS in this codebase).
+
+**Verification:** `npm run build` clean (same two pre-existing budget/CommonJS warnings, both below the error threshold). Not yet device-verified.
+
 ### 2026-07-04 — IDScanly: Review page layout bug (missing header/2nd retake button) + dark theme
 
 > Branch `add-idscanly`. No build/version bump yet. Reported from a TestFlight screenshot: the Review (capture-preview) page looked "weird" — the sub-header wasn't visible, there was a large empty gap above the sticky submit button, and the 2nd side's Retake button was missing. Also requested: the Review page should match the Scan screen's dark look instead of its original light design.

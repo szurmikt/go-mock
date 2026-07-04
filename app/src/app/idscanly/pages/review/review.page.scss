@@ -13,9 +13,32 @@
   --card-border: 1px solid #3a3a36;
   --card-shadow: none;
 
+  // Plain header matching the scan screen's .scan-header — a left-aligned title next
+  // to a bare back icon, not the global .sub-header's boxed/centered-title treatment.
   .sub-header {
-    .back { color: #b4b2a9; }
-    .title { color: #f0efe8; }
+    height: auto;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 10px;
+    gap: 8px;
+
+    .back {
+      position: static;
+      width: auto;
+      height: auto;
+      padding: 0;
+      border-radius: 0;
+      color: #b4b2a9;
+
+      &:hover, &:active { background: none; transform: none; }
+    }
+
+    .title {
+      position: static;
+      transform: none;
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: normal;
+      color: #f0efe8;
+    }
   }
 }
 
@@ -24,7 +47,7 @@
 }
 
 .review-scroll {
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding: 0 var(--pad) calc(80px + env(safe-area-inset-bottom, 0px));
 }
 
 .review-summary {
