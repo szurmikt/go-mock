@@ -1,5 +1,5 @@
-<ion-content>
-  <div class="page">
+<ion-content class="review-content">
+  <div class="page" style="display: flex; flex-direction: column">
     <div class="sub-header">
       <button class="back" (click)="goBack()" aria-label="Back">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
@@ -131,19 +131,6 @@
         <p class="empty-state">No capture found. Start a new scan.</p>
       }
     </div>
-
-    <!-- Sticky submit button -->
-    @if (images().length) {
-      <div class="sticky-btn-bar">
-        <button class="btn" type="button" [disabled]="submitting()" (click)="submit()">
-          @if (submitting()) {
-            <span class="spin"></span>
-          } @else {
-            {{ submitLabel() }}
-          }
-        </button>
-      </div>
-    }
   </div>
 
   <!-- Fullscreen zoom lightbox -->
@@ -169,3 +156,16 @@
     </div>
   }
 </ion-content>
+
+<!-- Sticky submit button fixed outside ion-content so it never scrolls or overlaps content -->
+@if (images().length) {
+  <div class="sticky-btn-bar">
+    <button class="btn" type="button" [disabled]="submitting()" (click)="submit()">
+      @if (submitting()) {
+        <span class="spin"></span>
+      } @else {
+        {{ submitLabel() }}
+      }
+    </button>
+  </div>
+}

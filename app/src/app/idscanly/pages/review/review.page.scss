@@ -1,3 +1,28 @@
+// Dark theme matching the scan (capture) screen — same palette as scan.page.scss:
+// page bg #1c1c1a, elevated surface #242420, divider #3a3a36, primary text #f0efe8,
+// secondary text #b4b2a9. Scoped to this component so it doesn't affect other pages.
+.review-content {
+  --background: #1c1c1a;
+}
+
+.page {
+  background: #1c1c1a;
+  // Recolor the shared .card token set so .review-summary / .side-card render as
+  // dark elevated surfaces instead of the app's default white cards.
+  --card-bg: #242420;
+  --card-border: 1px solid #3a3a36;
+  --card-shadow: none;
+
+  .sub-header {
+    .back { color: #b4b2a9; }
+    .title { color: #f0efe8; }
+  }
+}
+
+.empty-state {
+  color: #b4b2a9;
+}
+
 .review-scroll {
   padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
 }
@@ -13,13 +38,13 @@
     width: 40px;
     height: 40px;
     border-radius: var(--radius-xs);
-    background: var(--primary-soft-bg);
+    background: rgba(0, 142, 255, 0.18);
     color: var(--primary);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    border: 1px solid var(--primary-soft);
+    border: 1px solid var(--primary);
   }
 
   &__text {
@@ -31,12 +56,12 @@
   &__title {
     font-size: var(--font-base);
     font-weight: 700;
-    color: var(--ink);
+    color: #f0efe8;
   }
 
   &__meta {
     font-size: var(--font-xs);
-    color: var(--ink-3);
+    color: #b4b2a9;
   }
 }
 
@@ -55,7 +80,7 @@
 
 .side-card__preview {
   position: relative;
-  background: var(--line);
+  background: #0d0d0c;
 
   .side-card__img-btn {
     display: block;
@@ -139,12 +164,14 @@
   gap: 2px;
   flex: 1;
   min-width: 0;
+
+  .detail-label { color: #b4b2a9; }
 }
 
 .side-card__status-line {
   font-size: var(--font-sm);
   font-weight: 600;
-  color: var(--ink);
+  color: #f0efe8;
 }
 
 .retake-btn {
@@ -152,15 +179,17 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid #3a3a36;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--ink-2);
+  color: #b4b2a9;
   font-size: var(--font-xs);
   font-weight: 600;
   padding: 8px 12px;
   cursor: pointer;
   flex-shrink: 0;
+
+  &:active { background: #1f1f1d; }
 }
 
 /* ---- Footer ---- */
@@ -183,8 +212,8 @@
 
 .review-error {
   font-size: var(--font-sm);
-  color: var(--warn);
-  background: var(--warn-soft);
+  color: #ffe7e7;
+  background: rgba(120, 30, 30, 0.85);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin: 8px 0 0;
@@ -196,8 +225,8 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bg);
-  border-top: 1px solid var(--line);
+  background: #1c1c1a;
+  border-top: 1px solid #3a3a36;
   padding: 12px var(--pad) calc(12px + env(safe-area-inset-bottom, 0px));
 }
 
