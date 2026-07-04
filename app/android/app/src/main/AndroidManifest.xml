@@ -33,6 +33,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Camera permission required for IDScanly browser-based document capture. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <!-- Document chip reading over NFC. required="false" so the app still installs and
          runs (optical fallback) on devices without NFC hardware. -->
     <uses-permission android:name="android.permission.NFC" />

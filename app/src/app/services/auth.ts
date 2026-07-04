@@ -6,6 +6,7 @@ import { StorageService } from './storage';
 import { ApiEnvironmentService } from './api-environment';
 import { ReservationService } from './reservation';
 import { DocuscanService } from '../regula/services/docuscan';
+import { PropertyConfigService } from './property-config.service';
 import { MixpanelService } from './mixpanel';
 import { LanguageService } from './language.service';
 import {
@@ -57,6 +58,7 @@ export class AuthService {
     private docuscan: DocuscanService,
     private mixpanel: MixpanelService,
     private lang: LanguageService,
+    private propertyConfig: PropertyConfigService,
   ) {}
 
   /**
@@ -98,6 +100,7 @@ export class AuthService {
   private clearSessionData(): void {
     this.reservations.clear();
     this.docuscan.clear();
+    this.propertyConfig.clear();
   }
 
   async loadStoredAuth(): Promise<void> {
@@ -224,6 +227,7 @@ export class AuthService {
     await this.storage.set(Config.STORAGE_PROPERTY_KEY, property);
     if (!this._auth()?.name || !this._auth()?.userId) await this.fetchUser();
     this.identifyToMixpanel();
+    this.propertyConfig.load(property.property_id).catch(() => {});
   }
 
   async logout(): Promise<void> {

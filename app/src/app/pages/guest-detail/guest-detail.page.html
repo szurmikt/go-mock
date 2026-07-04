@@ -177,20 +177,51 @@
             </span>
             {{ 'guestDetail.editGuest' | tr }}
           </button>
-          <button class="action-item" (click)="goScan()">
-            <span class="action-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="5" width="20" height="14" rx="2"/>
-                <line x1="2" y1="10" x2="22" y2="10"/>
-                <circle cx="8" cy="15" r="1" fill="currentColor"/>
-              </svg>
-            </span>
-            {{ 'guestDetail.scanDocument' | tr }}
-          </button>
+          @if (propertyConfig.scanVendor()) {
+            <button class="action-item" (click)="openScanDocument()">
+              <span class="action-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <line x1="2" y1="10" x2="22" y2="10"/>
+                  <circle cx="8" cy="15" r="1" fill="currentColor"/>
+                </svg>
+              </span>
+              {{ 'guestDetail.scanDocument' | tr }}
+            </button>
+          }
         </div>
       </div>
     </div>
   }
+}
+
+<!-- Document type picker sheet (IDScanly flow) -->
+@if (docTypeSheetOpen()) {
+  <div class="sheet-backdrop" (click)="docTypeSheetOpen.set(false)">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      <div class="head">
+        <h3>Select Document Type</h3>
+        <button class="icon-btn" (click)="docTypeSheetOpen.set(false)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div style="margin-top: 8px">
+        @for (type of availableDocTypes(); track type.id) {
+          <button class="action-item" (click)="startIdscanly(type)">
+            <span class="action-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <path d="M2 10h20"/>
+              </svg>
+            </span>
+            {{ type.label }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
 }
 
 <!-- Scan bottom sheet — covers both pre-camera (loading) and post-scan (result)

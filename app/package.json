@@ -42,6 +42,7 @@
     "@sentry/angular": "^10.53.1",
     "capacitor-native-biometric": "^4.2.2",
     "ionicons": "^7.0.0",
+    "jscanify": "^1.4.2",
     "mixpanel-browser": "^2.80.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

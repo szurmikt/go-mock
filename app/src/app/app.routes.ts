@@ -55,6 +55,16 @@ export const routes: Routes = [
     loadComponent: () => import('./regula/pages/id-scan/id-scan.page').then(m => m.IdScanPage),
   },
   {
+    path: 'idscanly/scan',
+    canActivate: [authGuard],
+    loadComponent: () => import('./idscanly/pages/scan/scan.page').then(m => m.IdscanScanPage),
+  },
+  {
+    path: 'idscanly/review',
+    canActivate: [authGuard],
+    loadComponent: () => import('./idscanly/pages/review/review.page').then(m => m.IdscanReviewPage),
+  },
+  {
     // THROWAWAY MOCK — single-property morning-briefing prototype. Remove with pages/briefing.
     path: 'briefing',
     canActivate: [authGuard],

@@ -8,6 +8,9 @@ import { DocumentReaderService, ReaderStatus } from '../../regula/services/docum
 import { OptionsService } from '../../services/options.service';
 import { DocuscanService } from '../../regula/services/docuscan';
 import { MixpanelService } from '../../services/mixpanel';
+import { PropertyConfigService } from '../../services/property-config.service';
+import { CaptureSessionService } from '../../idscanly/services/capture-session.service';
+import { DOCUMENT_TYPES, DocumentTypeConfig } from '../../idscanly/models/document-type';
 import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
@@ -59,10 +62,12 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
   scanSheetOpen = signal(false);
   scanSheetMode = signal<ScanSheetMode>('loading');
   failedStatus = signal<ReaderStatus | null>(null);
+  docTypeSheetOpen = signal(false);
   private awaitingScanResult = signal(false);
   private previewMessageMode = signal<ScanPreviewMode | null>(null);
   private _previewScanResult = signal<ScanResultInterface | null>(null);
   private _previewFailed = signal(false);
+  private _idscanlyResult = signal<ScanResultInterface | null>(null);
 
   readonly scanSheetMessage = computed(() => {
     const override = this.previewMessageMode();
@@ -88,8 +93,14 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
   });
 
   readonly scanResult = computed(
-    () => this._previewScanResult() ?? this.documentReader.scanResult(),
+    () => this._idscanlyResult() ?? this._previewScanResult() ?? this.documentReader.scanResult(),
   );
+
+  readonly availableDocTypes = computed(() => {
+    const allowed = this.propertyConfig.scanDocTypes();
+    if (!allowed.length) return DOCUMENT_TYPES;
+    return DOCUMENT_TYPES.filter(t => allowed.includes(t.id));
+  });
 
   private reservationCode!: string;
   private guestId!: string;
@@ -106,6 +117,8 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     private docuscan: DocuscanService,
     private mixpanel: MixpanelService,
     private lang: LanguageService,
+    public propertyConfig: PropertyConfigService,
+    private captureSession: CaptureSessionService,
   ) {
     effect(() => {
       if (!this.awaitingScanResult()) return;
@@ -161,6 +174,14 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
   }
 
   ionViewWillEnter() {
+    // Consume an IDScanly result left by the review page before re-entering this view.
+    const idResult = this.captureSession.scanResult();
+    if (idResult) {
+      this._idscanlyResult.set(idResult);
+      this.captureSession.clearScanResult();
+      this.scanSheetMode.set('result');
+      this.scanSheetOpen.set(true);
+    }
     this.loadGuest();
   }
 
@@ -240,6 +261,24 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     this._previewScanResult.set(null);
     this._previewFailed.set(false);
     this.failedStatus.set(null);
+    this._idscanlyResult.set(null);
+  }
+
+  /** Open the scan document flow — routes to IDScanly doc-type picker or starts Regula. */
+  openScanDocument() {
+    if (this.propertyConfig.scanVendor() === 'idscanly') {
+      this.menuOpen.set(false);
+      this.docTypeSheetOpen.set(true);
+    } else {
+      this.goScan();
+    }
+  }
+
+  startIdscanly(type: DocumentTypeConfig) {
+    this.docTypeSheetOpen.set(false);
+    this.captureSession.start(type);
+    this.captureSession.context.set({ reservationCode: this.reservationCode, guestId: this.guestId });
+    void this.router.navigate(['/idscanly/scan']);
   }
 
   scanFullName(): string {
@@ -274,6 +313,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
       });
       this.scanSheetOpen.set(false);
       this.scanSheetMode.set('loading');
+      this._idscanlyResult.set(null);
       this.t(
         () => this.router.navigate(['/guest', this.reservationCode, this.guestId, 'edit']),
         300,
@@ -307,6 +347,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
         document_type: result?.documentData?.document_type ?? undefined,
       });
       this.docuscan.lastScanResult = null;
+      this._idscanlyResult.set(null);
       this.scanSheetOpen.set(false);
       this.scanSheetMode.set('loading');
       this.loadGuest();
