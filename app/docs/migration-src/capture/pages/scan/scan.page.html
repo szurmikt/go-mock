@@ -1,0 +1,152 @@
+<ion-content [fullscreen]="true" class="scan-content">
+  <div class="scan">
+    <header class="scan-header">
+      <button class="scan-header__back" (click)="goBack()" aria-label="Back">
+        <i class="ti ti-arrow-left"></i>
+      </button>
+      <span class="scan-header__title">{{ pageTitle() }}</span>
+    </header>
+
+    <p class="scan-message">{{ message() }}</p>
+
+    <section class="viewfinder-wrap">
+      <div class="viewfinder">
+        <video #video class="viewfinder__video" autoplay muted playsinline></video>
+
+        <div class="viewfinder__flash" [class.viewfinder__flash--active]="captureFlash()"></div>
+
+        @if (selectedType(); as type) {
+          <div
+            #guide
+            class="guide"
+            [class.guide--active]="bracketActive()"
+            [class.guide--warn]="bracketWarn()"
+            [style.aspect-ratio]="type.guideRatio"
+          >
+            <span class="guide__corner guide__corner--tl"></span>
+            <span class="guide__corner guide__corner--tr"></span>
+            <span class="guide__corner guide__corner--bl"></span>
+            <span class="guide__corner guide__corner--br"></span>
+          </div>
+
+          @if (showFlipPrompt()) {
+            <div class="turn-card">
+              <i class="turn-card__icon ti ti-{{ type.icon }}"></i>
+              <span class="turn-card__label">Flip the {{ type.label }}.</span>
+            </div>
+          }
+
+        }
+
+        @if (errorMessage(); as message) {
+          <div class="viewfinder__error">{{ message }}</div>
+        }
+
+        @if (showLoader()) {
+          <div class="scanner-loader">
+            <div class="scanner-loader__spinner"></div>
+            <span>Starting scanner…</span>
+          </div>
+        }
+
+        <!-- Detection debug overlay (toggle with the bug button). -->
+        <div class="debug" [class.debug--hidden]="!showDebug() || !selectedType()">
+          <canvas #debugCanvas class="debug__pip"></canvas>
+          @if (debug(); as d) {
+            @if (d.error) {
+              <div class="debug__error">err: {{ d.error }}</div>
+            } @else {
+              <div class="debug__metrics">
+                <span [class.ok]="d.found">found {{ d.found ? 'Y' : 'N' }}</span>
+                <span [class.ok]="d.ratioOk">ratio {{ d.ratio }}</span>
+                <span [class.ok]="d.areaOk">area {{ d.areaFraction }}</span>
+                <span [class.ok]="d.centreOk">centre {{ d.centreOk ? 'Y' : 'N' }}</span>
+                <span [class.ok]="d.stable">stable {{ d.stable ? 'Y' : 'N' }}</span>
+                <span [class.ok]="d.aligned">aligned {{ d.aligned ? 'Y' : 'N' }}</span>
+                @if (d.meanLuminance !== undefined) {
+                  <span>lum {{ d.meanLuminance }}</span>
+                  <span>clip {{ d.clippedFraction }}</span>
+                }
+                @if (d.awaitingExit) {
+                  <span>awaiting exit</span>
+                }
+              </div>
+            }
+          }
+        </div>
+      </div>
+
+      @if (selectedType()) {
+        <button class="debug-toggle" (click)="toggleDebug()">
+          <i class="ti ti-bug"></i> {{ showDebug() ? 'Hide' : 'Show' }} debug
+        </button>
+      }
+
+      @if (showDebug() && logs().length) {
+        <div class="debug-log">
+          @for (line of logs(); track $index) {
+            <div class="debug-log__line">{{ line }}</div>
+          }
+        </div>
+      }
+    </section>
+  </div>
+
+  @if (selectedType()) {
+    <div class="control-bar">
+      <button
+        class="control-bar__torch"
+        [class.control-bar__torch--on]="torchOn()"
+        [disabled]="!torchSupported()"
+        (click)="toggleTorch()"
+        aria-label="Toggle flashlight"
+      >
+        <i class="ti ti-bolt"></i>
+      </button>
+
+      <div class="control-bar__capture">
+        <button class="control-bar__shutter" (click)="captureManualNow()" aria-label="Capture now">
+          <span class="control-bar__shutter-ring"></span>
+        </button>
+        <span class="control-bar__caption">Tap to capture</span>
+      </div>
+
+      <button
+        class="control-bar__auto"
+        [class.control-bar__auto--on]="autoCaptureOn()"
+        (click)="toggleAutoCapture()"
+        aria-label="Toggle auto capture"
+      >
+        AUTO
+      </button>
+    </div>
+  }
+
+  <!-- Weekly nag: shown when tapping manual capture while auto-capture is still on. -->
+  @if (pendingManualCapture()) {
+    <div class="nag-dialog">
+      <div class="nag-dialog__card">
+        <p class="nag-dialog__message">
+          Auto capture is on. Hold the document steady inside the focus area — auto capture waits
+          for a sharp, glare-free shot before it fires.
+        </p>
+        <div class="nag-dialog__actions">
+          <button
+            class="nag-dialog__btn nag-dialog__btn--secondary"
+            type="button"
+            (click)="retakeWithAutoCapture()"
+          >
+            Retake with auto capture
+          </button>
+          <button
+            class="nag-dialog__btn nag-dialog__btn--primary"
+            type="button"
+            (click)="useTakenPhoto()"
+          >
+            Use taken photo
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</ion-content>

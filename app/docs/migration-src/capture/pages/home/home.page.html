@@ -1,0 +1,18 @@
+<ion-content [fullscreen]="true" class="home-content">
+  <div class="home">
+    <div class="home__brand">
+      <i class="ti ti-scan"></i>
+      <h1>Document capture</h1>
+      <p>SabeeApp GO — capture prototype</p>
+    </div>
+
+    <div class="home__types">
+      @for (type of documentTypes; track type.id) {
+        <button class="home__type-btn" (click)="chooseType(type)">
+          <i class="ti ti-{{ type.icon }}"></i>
+          <span>{{ type.label }}</span>
+        </button>
+      }
+    </div>
+  </div>
+</ion-content>

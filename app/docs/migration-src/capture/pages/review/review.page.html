@@ -1,0 +1,105 @@
+<ion-content [fullscreen]="true" class="review-content">
+  <div class="review">
+    <header class="review-header">
+      <button class="review-header__back" type="button" (click)="goBack()" aria-label="Back">
+        <i class="ti ti-arrow-left"></i>
+      </button>
+      <span class="review-header__title">Review</span>
+    </header>
+
+    @if (images().length) {
+      <div class="review-summary">
+        <span class="review-summary__icon"><i class="ti ti-id-badge-2"></i></span>
+        <div class="review-summary__text">
+          <span class="review-summary__title">{{ documentType()?.label }}</span>
+          <span class="review-summary__meta">{{ captureSummary() }}</span>
+        </div>
+      </div>
+
+      <div class="review-cards">
+        @for (image of images(); track image.side) {
+          <article class="side-card">
+            <div class="side-card__preview">
+              <button
+                class="side-card__img-btn"
+                type="button"
+                (click)="openLightbox(image)"
+                [attr.aria-label]="'Zoom ' + image.label + ' capture'"
+              >
+                <img [src]="image.src" [alt]="image.label + ' capture'" />
+              </button>
+              <span class="side-card__chip">{{ image.label }}</span>
+              <span
+                class="quality-pill"
+                [class.quality-pill--good]="image.quality.verdict === 'good'"
+                [class.quality-pill--recheck]="image.quality.verdict === 'recheck'"
+              >
+                <i class="ti" [class.ti-circle-check]="image.quality.verdict === 'good'" [class.ti-info-circle]="image.quality.verdict === 'recheck'"></i>
+                {{ image.quality.verdict === 'good' ? 'Good quality' : 'Recheck' }}
+              </span>
+            </div>
+
+            <div class="side-card__status">
+              <span
+                class="side-card__status-icon"
+                [class.side-card__status-icon--good]="image.quality.verdict === 'good'"
+                [class.side-card__status-icon--recheck]="image.quality.verdict === 'recheck'"
+              >
+                <i class="ti" [class.ti-check]="image.quality.verdict === 'good'" [class.ti-alert-triangle]="image.quality.verdict === 'recheck'"></i>
+              </span>
+              <div class="side-card__status-text">
+                <span class="side-card__status-line">{{ image.quality.summary }}</span>
+                <span class="side-card__status-sub">{{ image.quality.verdict === 'good' ? 'Ready to submit' : 'Could be clearer' }}</span>
+              </div>
+              <button class="retake-btn" type="button" (click)="retake(image.side)">
+                <i class="ti ti-refresh"></i> Retake
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+
+      <footer class="review-footer">
+        <p
+          class="review-footer__note"
+          [class.review-footer__note--warn]="!allGood()"
+        >
+          <i class="ti" [class.ti-info-circle]="!allGood()" [class.ti-circle-check]="allGood()"></i>
+          {{ footerNote() }}
+        </p>
+        <button class="review-action" type="button" (click)="submit()">
+          <i class="ti ti-send"></i> {{ submitLabel() }}
+        </button>
+      </footer>
+    } @else {
+      <p class="review-empty">No capture found. Start a new scan.</p>
+    }
+  </div>
+
+  <!-- Fullscreen zoom lightbox: tap image to toggle 2.5x zoom (pan by scrolling); backdrop/X closes. -->
+  @if (lightbox(); as image) {
+    <div class="lightbox" (click)="closeLightbox()">
+      <button class="lightbox__close" type="button" (click)="closeLightbox()" aria-label="Close">
+        <i class="ti ti-x"></i>
+      </button>
+      <div class="lightbox__scroll" [class.lightbox__scroll--zoomed]="zoomed()">
+        <img
+          class="lightbox__img"
+          [class.lightbox__img--zoomed]="zoomed()"
+          [src]="image.src"
+          [alt]="image.label + ' capture'"
+          (click)="toggleZoom($event)"
+        />
+      </div>
+      <span class="lightbox__caption">{{ image.label }} — tap image to {{ zoomed() ? 'fit' : 'zoom' }}</span>
+    </div>
+  }
+
+  <!-- Brief "Submitted" confirmation before the session resets to Home (prototype has no backend). -->
+  @if (submitted()) {
+    <div class="submit-toast">
+      <span class="submit-toast__icon"><i class="ti ti-circle-check"></i></span>
+      <span class="submit-toast__text">Submitted</span>
+    </div>
+  }
+</ion-content>

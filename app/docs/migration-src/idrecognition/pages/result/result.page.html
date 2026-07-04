@@ -1,0 +1,66 @@
+<ion-content [fullscreen]="true" class="result-content">
+  <div class="result">
+    <header class="result-header">
+      <span class="result-header__title">Recognition result</span>
+    </header>
+
+    @switch (state()) {
+      @case ('loading') {
+        <div class="result-status">
+          <i class="ti ti-loader-2 result-status__spinner"></i>
+          <p>Scanning document…</p>
+        </div>
+      }
+      @case ('success') {
+        <div class="result-status result-status--success">
+          <i class="ti ti-circle-check"></i>
+          <p>{{ response()?.summary?.isComplete ? 'Recognition complete' : 'Partial result' }}</p>
+        </div>
+        @if (fields().length) {
+          <div class="result-fields">
+            @for (field of fields(); track field.key) {
+              <div class="result-field">
+                <span class="result-field__label">{{ field.label }}</span>
+                <span class="result-field__value">{{ field.value }}</span>
+                @if (field.confidencePct !== null) {
+                  <span class="result-field__confidence">{{ field.confidencePct }}%</span>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="result-empty">No fields were extracted.</p>
+        }
+      }
+      @case ('processing') {
+        <div class="result-status result-status--processing">
+          <i class="ti ti-clock"></i>
+          <p>Still processing — try again in a moment.</p>
+        </div>
+        <button class="result-retry" type="button" (click)="retry()">
+          <i class="ti ti-refresh"></i> Try again
+        </button>
+      }
+      @case ('error') {
+        <div class="result-status result-status--error">
+          <i class="ti ti-alert-triangle"></i>
+          <p>Request failed</p>
+        </div>
+      }
+    }
+
+    @if (state() === 'success' || state() === 'error') {
+      <div class="result-raw-wrap">
+        <button class="result-copy" type="button" (click)="copy()">
+          <i class="ti" [class.ti-copy]="!copied()" [class.ti-check]="copied()"></i>
+          {{ copied() ? 'Copied' : 'Copy' }}
+        </button>
+        <pre class="result-raw">{{ rawResponse() }}</pre>
+      </div>
+    }
+
+    <button class="result-action" type="button" (click)="done()">
+      <i class="ti ti-home"></i> Back to Home
+    </button>
+  </div>
+</ion-content>
