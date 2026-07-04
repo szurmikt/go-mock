@@ -5,8 +5,13 @@ import { CapturedSide } from './capture-session.service';
 export interface IdRecognitionFields {
   documentType?: string;
   documentCountry?: string;
+  issuingCountry?: string;
   documentNumber?: string;
   fullName?: string;
+  // The live idrecognition response uses `givenNames`/`surname`/`motherMaidenName`.
+  // The `firstName`/`lastName`/`motherName` variants are kept as fallbacks.
+  givenNames?: string;
+  surname?: string;
   firstName?: string;
   lastName?: string;
   dateOfBirth?: string;
@@ -15,9 +20,11 @@ export interface IdRecognitionFields {
   citizenship?: string;
   sex?: string;
   gender?: string;
+  motherMaidenName?: string;
   motherName?: string;
   dateOfIssue?: string;
   dateOfExpiry?: string;
+  visibleDates?: string[];
   address?: string;
   [key: string]: unknown;
 }

@@ -373,10 +373,15 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
       passport: 'Passport',
       idcard: 'ID Card',
       id_card: 'ID Card',
+      identity_card: 'ID Card',
+      identitycard: 'ID Card',
       drivinglicence: 'Driving Licence',
       driving_licence: 'Driving Licence',
+      driving_license: 'Driving Licence',
       residencepermit: 'Residence Permit',
       residence_permit: 'Residence Permit',
+      addresscard: 'Address Card',
+      address_card: 'Address Card',
     };
     return map[type?.toLowerCase()] ?? type ?? '—';
   }

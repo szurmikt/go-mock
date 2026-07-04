@@ -853,7 +853,7 @@ ion-refresher {
 /* ─── Detail row (label + value pairs in info cards) ─────── */
 
 .detail-label { font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; }
-.detail-value { font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 2px; }
+.detail-value { font-size: 19px; color: var(--ink); font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; }
 .fact-value   { font-size: var(--font-md); font-weight: 700; }
 
 /* ─── Animations ──────────────────────────────────────────── */

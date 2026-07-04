@@ -258,11 +258,11 @@
 
           @if (_documentData?.document_type || _scannedData?.['document_number']?.['value']) {
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div style="flex: 1">
+              <div style="flex: 1; min-width: 0">
                 <div class="detail-label">{{ 'idScan.docType' | tr }}</div>
                 <div class="detail-value">{{ docTypeName(_documentData?.document_type || '') | dashIfEmpty }}</div>
               </div>
-              <div style="flex: 1">
+              <div style="flex: 1; min-width: 0">
                 <div class="detail-label">{{ 'idScan.docNumber' | tr }}</div>
                 <div class="detail-value">{{ _scannedData?.['document_number']?.['value'] | dashIfEmpty }}</div>
               </div>
@@ -271,11 +271,11 @@
 
           @if (_scannedData?.['age']?.['value'] || _scannedData?.['gender']?.['value']) {
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div style="flex: 1">
+              <div style="flex: 1; min-width: 0">
                 <div class="detail-label">{{ 'idScan.age' | tr }}</div>
                 <div class="detail-value">{{ _scannedData?.['age']?.['value'] | dashIfEmpty }}</div>
               </div>
-              <div style="flex: 1">
+              <div style="flex: 1; min-width: 0">
                 <div class="detail-label">{{ 'idScan.gender' | tr }}</div>
                 <div class="detail-value">{{ (_scannedData?.['gender']?.['value'] | titlecase) | dashIfEmpty }}</div>
               </div>
@@ -284,11 +284,11 @@
 
           @if (_scannedData?.['birth_place']?.['value'] || _scannedData?.['birth_date']?.['value']) {
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div style="flex: 1">
+              <div style="flex: 1; min-width: 0">
                 <div class="detail-label">{{ 'idScan.birthPlace' | tr }}</div>
                 <div class="detail-value">{{ _scannedData?.['birth_place']?.['value'] | dashIfEmpty }}</div>
               </div>
-              <div style="flex: 1">
+              <div style="flex: 1; min-width: 0">
                 <div class="detail-label">{{ 'idScan.birthDate' | tr }}</div>
                 <div class="detail-value">{{ (_scannedData?.['birth_date']?.['value'] | localizedDate) | dashIfEmpty }}</div>
               </div>
@@ -313,11 +313,11 @@
                scan returned address data; identity docs skip this entirely. -->
           @if (_scannedData?.['address_zip']?.['value'] || _scannedData?.['address_city']?.['value'] || _scannedData?.['address_line']?.['value'] || _scannedData?.['address_country_code']?.['value']) {
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
-              <div style="flex: 1">
+              <div style="flex: 1; min-width: 0">
                 <div class="detail-label">{{ 'guestDetail.postalCode' | tr }}</div>
                 <div class="detail-value">{{ _scannedData?.['address_zip']?.['value'] | dashIfEmpty }}</div>
               </div>
-              <div style="flex: 1">
+              <div style="flex: 1; min-width: 0">
                 <div class="detail-label">{{ 'guestDetail.city' | tr }}</div>
                 <div class="detail-value">{{ _scannedData?.['address_city']?.['value'] | dashIfEmpty }}</div>
               </div>

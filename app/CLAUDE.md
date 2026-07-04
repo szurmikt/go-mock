@@ -687,6 +687,22 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-07-04 — IDScanly: field-map fixes from first device test
+
+> Branch `add-idscanly`. **Shipped build: iOS 79→80 (TestFlight).** Follow-up to the integration below, after the first on-device scan (Hungarian ID, property 6250) returned a live `idrecognition` response.
+
+The mapper's field names were written blind and **didn't match the live response**, silently dropping the guest's **name and mother's name** from both the scan-result sheet and the saved guest. The captured `summary.fields` uses `givenNames`/`surname`/`motherMaidenName` (not `firstName`/`lastName`/`motherName`), has no `dateOfIssue` (issue date is in `visibleDates[0]`), and no `age`. Five fixes:
+
+- **Name + mother's name (data loss, primary)** ([idscanly-docuscan.service.ts](src/app/idscanly/services/idscanly-docuscan.service.ts) + `IdRecognitionFields` in [idrecognition.service.ts](src/app/idscanly/services/idrecognition.service.ts)): read `givenNames ?? firstName` → `first_name`, `surname ?? lastName` → `last_name`, `motherMaidenName ?? motherName` → `mother_name` (old names kept as fallbacks). The sheet's name row `@if` guards on `first_name`/`last_name`, so it was hidden entirely until this. Downstream unchanged — Regula's shared `fillGuestDataFromScannedData()` flat-copies these boxes onto the guest, so they now display **and** persist on Save.
+- **Age** — computed from `dateOfBirth` via a new pure `computeAge()` helper (was hard-null → "N/A").
+- **Issue date** — `dateOfIssue ?? visibleDates[0]` → `date_of_issue_of_the_document` + `documentData.date_of_issue` (best-effort; feeds the saved guest).
+- **Document type label** ([guest-detail.page.ts](src/app/pages/guest-detail/guest-detail.page.ts) `docTypeName`): added the API/DB enum spellings `identity_card`/`driving_license`/`address_card` (+ no-underscore variants) → the sheet showed raw `identity_card` instead of "ID Card". Single display chokepoint — also fixes the guest read view. Mapper still stores the API's faithful value; only display resolves.
+- **Two-column clipping** ([guest-detail.page.html](src/app/pages/guest-detail/guest-detail.page.html) scan-sheet + address rows, [sabeeapp-design.scss](src/theme/sabeeapp-design.scss) `.detail-value`): a long unbreakable value (`KECSKEMET(MAGYARORSZAG)`) overflowed the `flex:1` column and pushed Date-of-birth off-screen. Added `min-width:0` to the flex columns + `overflow-wrap:anywhere` on `.detail-value` (benefits every two-column detail row app-wide).
+
+**Boundary note:** field *extraction* is IDScanly-only (the mapper) — no Regula impact. The doc-type-label + clipping fixes are in **shared** result-sheet/read-view code, so they also improve the Regula sheet (additive lookup-map keys + CSS; no behaviour change). The **save** path (`scannedDataToGuestScannedData` + `fillGuestDataFromScannedData`) is Regula's `DocuscanService`, reused by both — which is why the field-name bug dropped the name on save too, not just in the sheet.
+
+**Verification:** `npm run build` clean (only the known warnings). Field names verified against the captured live payload; transform is pure renames + a pure age helper. Real camera + Edge Function round-trip only runs on device → **re-test on build 80** (confirm the sheet shows Name, Mother's name, friendly "ID Card", numeric Age, and no column clipping; Save → reopen → persisted). **Still unverified pre-device:** the address-card (`is_identity_document:false`) live field names, and whether the API's `documentType` string is accepted by `POST /guest`.
+
 ### 2026-07-04 — IDScanly: second scan backend, selected per-property via Supabase
 
 > Branch `add-idscanly`. **Shipped build: iOS 78→79 (TestFlight).** Two commits: `ef60605` (pure file-move of Regula into `src/app/regula/`) + `ff33cd8` (the IDScanly module) + the cold-start fix below.
