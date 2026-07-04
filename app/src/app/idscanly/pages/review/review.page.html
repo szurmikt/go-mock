@@ -12,22 +12,8 @@
 
     <div class="app-scroll review-scroll">
       @if (images().length) {
-        <!-- Document type summary row -->
-        <div class="review-summary card">
-          <div class="review-summary__icon">
-            <!-- id-card icon -->
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="5" width="20" height="14" rx="2"/>
-              <circle cx="8" cy="12" r="2"/>
-              <path d="M14 10h4M14 14h4"/>
-            </svg>
-          </div>
-          <div class="review-summary__text">
-            <span class="review-summary__title">{{ documentType()?.label }}</span>
-            <span class="review-summary__meta">{{ captureSummary() }}</span>
-          </div>
-        </div>
+        <!-- Plain instructional line, matching the Scan screen's .scan-message style -->
+        <p class="review-message">{{ documentType()?.label }} — {{ captureSummary() }}</p>
 
         <!-- Per-side capture cards -->
         <div class="review-cards">

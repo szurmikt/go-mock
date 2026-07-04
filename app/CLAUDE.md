@@ -687,6 +687,15 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-07-04 — IDScanly: Review page summary card replaced with plain instructional text
+
+> Branch `add-idscanly`. No build/version bump yet. Follow-up: the boxed "ID card / 2 sides captured · check before submitting" summary row (icon + bordered card) was replaced with a single plain text line, styled like the Scan screen's `.scan-message` instructional text ("Scanning the 1st page") — no icon, no border/card.
+
+- **[review.page.html](src/app/idscanly/pages/review/review.page.html):** the `.review-summary` block (id-card icon box + title/meta text pair) removed; replaced with `<p class="review-message">{{ documentType()?.label }} — {{ captureSummary() }}</p>`, still driven by the same `documentType()`/`captureSummary()` signals — content unchanged, just the presentation.
+- **[review.page.scss](src/app/idscanly/pages/review/review.page.scss):** `.review-summary` and its `__icon`/`__text`/`__title`/`__meta` rules deleted; new `.review-message` mirrors `.scan-message`'s typography (21px/600-weight/`#f0efe8`), sized down slightly in vertical spacing since `.review-scroll` already provides the horizontal inset (unlike `.scan`, which has no container padding and relies on each child section setting its own).
+
+**Verification:** `npm run build` clean (same two pre-existing budget/CommonJS warnings). Not yet device-verified.
+
 ### 2026-07-04 — IDScanly: Review page header style + horizontal margins to match the rest of the app
 
 > Branch `add-idscanly`. No build/version bump yet. Follow-up to the layout/dark-theme fix above — requested to (1) use the same left-right content margin as every other screen, and (2) match the Scan screen's plain header instead of the global boxed/centered-title header.
