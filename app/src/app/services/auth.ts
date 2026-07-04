@@ -114,6 +114,9 @@ export class AuthService {
     const property = await this.storage.get<PropertyInterface>(Config.STORAGE_PROPERTY_KEY);
     if (property) {
       this._selectedProperty.set(property);
+      // Cold start with a restored property re-reads the scan config; otherwise
+      // scanVendor stays null and "Scan Document" is hidden until a manual switch.
+      this.propertyConfig.load(property.property_id).catch(() => {});
     }
     const properties = await this.storage.get<PropertyInterface[]>(Config.STORAGE_PROPERTIES_KEY);
     if (properties?.length) {
