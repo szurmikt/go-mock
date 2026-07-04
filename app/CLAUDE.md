@@ -687,6 +687,16 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-07-04 — IDScanly: scan-screen header sat under the status bar (unreachable back button)
+
+> Branch `add-idscanly`. No build/version bump yet. Reported from a TestFlight screenshot: the back chevron + "ID card: 2nd Page" title rendered at the very top of the screen, overlapping the status bar/TestFlight ribbon, making back navigation impossible.
+
+App-wide convention ([sabeeapp-design.scss](src/theme/sabeeapp-design.scss)): `ion-content { --padding-top: 0 }` globally (content extends under the notch/status bar, `viewport-fit=cover` + `black-translucent`), so **every page header is individually responsible for adding its own `env(safe-area-inset-top)`** — e.g. `.sub-header` does this already. The IDScanly scan page's custom `.scan-header` ([scan.page.scss](src/app/idscanly/pages/scan/scan.page.scss)) never got this treatment — flat `padding: 14px 16px 10px` with no top inset — so on a real device (status bar present) the header rendered under it instead of below it.
+
+- **Fix:** `padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 10px;` — same pattern as `.sub-header`, `env()` written directly in the property value per the project's safe-area rule (never nested in a custom property — WebKit bug). The Review page already uses the shared `.sub-header` class, so it was unaffected.
+
+**Verification:** `npm run build` clean. **Not yet device-verified** — needs a TestFlight/device check that the back button is now below the status bar and tappable.
+
 ### 2026-07-04 — IDScanly: Document Type not prefilled on guest-edit (value-vocabulary fix)
 
 > Branch `add-idscanly`. No build/version bump yet (local verification; ship with the next TestFlight build). Follow-up to the field-map fixes above, reported after clicking Edit from an IDScanly scan-result sheet.

@@ -15,7 +15,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 16px 10px;
+  // ion-content has --padding-top: 0 app-wide (content extends under the notch/status
+  // bar); every header adds its own top inset — see .sub-header. This one never did,
+  // so the back button/title rendered under the status bar and were unreachable.
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 10px;
 
   &__back {
     appearance: none;
