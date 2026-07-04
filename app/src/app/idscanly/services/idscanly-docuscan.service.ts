@@ -4,8 +4,24 @@ import {
   ScanResultInterface,
 } from '../../models/guest.interface';
 import { DocumentData } from '../../models/statistics-interface';
-import { DocumentTypeConfig } from '../models/document-type';
+import { DocumentTypeConfig, DocumentTypeId } from '../models/document-type';
 import { IdRecognitionFields, IdRecognitionResponse } from './idrecognition.service';
+
+/**
+ * Maps the app's own DocumentTypeId (the type the user explicitly picked before scanning)
+ * to the SabeeApp API's document_type enum — the same vocabulary `GET /options` populates
+ * the guest-edit Document Type <select> from, and the same one Regula's scan path produces
+ * via its own Config.ID_CARDS/PASSPORTS/DRIVING_LICENCES → 'id'/'passport'/'driving_license'
+ * mapping (document-reader.service.ts). The OCR's own freeform classification string (e.g.
+ * "identity_card") does NOT belong in this vocabulary — using it left the edit-page select
+ * unmatched (blank) and would have saved an invalid enum value to the API.
+ * address-card is intentionally omitted: it isn't an identity document.
+ */
+const CANONICAL_DOCUMENT_TYPE: Partial<Record<DocumentTypeId, string>> = {
+  'id-card': 'id',
+  passport: 'passport',
+  'driving-licence': 'driving_license',
+};
 
 /**
  * Maps an IdRecognitionResponse → ScanResultInterface (the same type Regula produces),
@@ -69,8 +85,11 @@ export class IdscanlyDocuscanService {
       gender: box(normGender(f.sex ?? f.gender)),
       citizenship: box(f.citizenship ?? f.nationality),
       age: box(computeAge(f.dateOfBirth)),
-      // Document sub-fields
-      document_type: box(f.documentType ?? documentType.label),
+      // Document sub-fields. document_type must be the API's canonical enum (not the OCR's
+      // freeform string) — it feeds guest-edit's <select> and the save payload; see
+      // CANONICAL_DOCUMENT_TYPE above. null for address-card, matching Regula's behaviour of
+      // never populating this field for a non-identity document.
+      document_type: box(CANONICAL_DOCUMENT_TYPE[documentType.id] ?? null),
       document_number: box(f.documentNumber),
       date_of_issue_of_the_document: box(issueDate),
       // IDs set by Regula flow — IDScanly has no equivalent doc_reader_scanned_document_id
