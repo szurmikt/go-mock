@@ -687,6 +687,12 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-07-05 — IDScanly: build 81 ships the accumulated Review-page fixes
+
+> Branch `add-idscanly`. **Shipped build: iOS 80→81 (TestFlight).** Bundles every fix logged below that was previously marked "No build/version bump yet": the document-type canonical-enum mapping (guest-edit prefill + save), the scan-screen header safe-area-inset fix (unreachable back button), the Review page layout bug + dark theme, the Review header/margin match to the rest of the app, and the review-summary-card → plain-instructional-text replacement.
+
+**Verification:** each fix's own entry below already covers build-clean status; none had been device-verified before this shipment. Build 81 is now processing in TestFlight — device-verify all five together (Document Type select prefill/save, scan-header back button reachable, Review page fixed header + visible Retake buttons + dark theme, Review margins/header match, plain-text review summary).
+
 ### 2026-07-04 — IDScanly: Review page summary card replaced with plain instructional text
 
 > Branch `add-idscanly`. No build/version bump yet. Follow-up: the boxed "ID card / 2 sides captured · check before submitting" summary row (icon + bordered card) was replaced with a single plain text line, styled like the Scan screen's `.scan-message` instructional text ("Scanning the 1st page") — no icon, no border/card.
