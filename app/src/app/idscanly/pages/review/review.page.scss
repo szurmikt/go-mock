@@ -169,6 +169,27 @@
   color: #f0efe8;
 }
 
+/* ---- Dev/QA debug readout — reuses .debug-toggle's dim monospace look from the Scan page ---- */
+.side-card__debug {
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  color: #6f6e68;
+  word-break: break-word;
+}
+
+.debug-toggle {
+  align-self: flex-start;
+  margin: -4px 0 4px;
+  appearance: none;
+  background: transparent;
+  border: 0.5px solid #3a3a36;
+  border-radius: 6px;
+  color: #888780;
+  font-size: 11px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
 .retake-btn {
   appearance: none;
   display: inline-flex;
@@ -187,11 +208,7 @@
   &:active { background: #1f1f1d; }
 }
 
-/* ---- Footer ---- */
-.review-footer {
-  margin-top: var(--gap);
-}
-
+/* ---- Quality warning / submit error — rendered inside .sticky-btn-bar, above the button ---- */
 .review-footer__note {
   display: flex;
   align-items: flex-start;
@@ -294,4 +311,57 @@
     color: rgba(255, 255, 255, 0.7);
     pointer-events: none;
   }
+}
+
+/* ---- Submit-progress overlay — mirrors .scanner-loader on the Scan page ---- */
+.submit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 32px;
+  text-align: center;
+  background: rgba(13, 13, 12, 0.92);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  &__dots {
+    display: flex;
+    gap: 7px;
+  }
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    animation: submit-dot-chase 1.6s ease-in-out infinite;
+
+    // Staggers the "chase" across 10 slots — each dot lights up ~0.13s after the previous one.
+    @for $i from 1 through 10 {
+      &:nth-child(#{$i}) { animation-delay: #{($i - 1) * 0.13}s; }
+    }
+  }
+
+  &__message {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: #f0efe8;
+  }
+
+  &__privacy {
+    margin: 0;
+    font-size: var(--font-xs);
+    color: #b4b2a9;
+  }
+}
+
+@keyframes submit-dot-chase {
+  0%, 100% { background: rgba(255, 255, 255, 0.18); transform: scale(1); }
+  30% { background: var(--primary); transform: scale(1.3); }
 }

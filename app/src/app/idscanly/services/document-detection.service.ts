@@ -12,6 +12,15 @@ export type LightingIssue = 'dark' | 'glare';
 /** Whether a capture was auto-fired by the dwell timer or triggered by the manual shutter. */
 export type CaptureSource = 'auto' | 'manual';
 
+/** Result of the pre-crop completeness analysis — see `analyzeCompletenessOnFrame`. */
+interface CompletenessResult {
+  complete: boolean;
+  cornersFound: boolean;
+  coverageFraction: number;
+  ratio: number;
+  reason: 'not-found' | 'clipped' | 'geometry' | null;
+}
+
 export interface DetectionStartOptions {
   video: HTMLVideoElement;
   /** Expected document aspect ratio (width / height) for the active type. */
@@ -751,13 +760,19 @@ export class DocumentDetectionService {
 
   /**
    * Quality verdict for a finished capture — the Review screen's signal and the ONLY quality control on
-   * the manual-shutter path. Computed on the full-res captured canvas (downscaled to `analysisWidth` for
-   * consistent thresholds + speed). Mirrors the guard/cleanup style of `analyzeLighting`; degrades to a
-   * passing verdict rather than throwing if OpenCV ops are missing.
+   * the manual-shutter path. Sharpness/exposure/glare are computed on the full-res captured canvas
+   * (downscaled to `analysisWidth` for consistent thresholds + speed) — that's the image being
+   * submitted. Completeness is measured separately by the caller on the PRE-crop full frame (see
+   * `analyzeCompletenessOnFrame`) and passed in. Mirrors the guard/cleanup style of `analyzeLighting`;
+   * degrades to a passing verdict rather than throwing if OpenCV ops are missing.
    */
-  private analyzeCaptureQuality(canvas: HTMLCanvasElement, cv: any): CaptureQuality {
+  private analyzeCaptureQuality(
+    canvas: HTMLCanvasElement,
+    cv: any,
+    completeness: CompletenessResult,
+  ): CaptureQuality {
     if (!cv || typeof cv.imread !== 'function' || typeof cv.cvtColor !== 'function' || cv.COLOR_RGBA2GRAY == null) {
-      return this.buildQuality(Infinity, 255, 0);
+      return this.buildQuality(Infinity, 255, 0, completeness);
     }
     let src: any = null;
     let work: any = null;
@@ -778,10 +793,10 @@ export class DocumentDetectionService {
 
       const laplacianVar = this.measureSharpness(gray, cv);
       const { mean, clipped } = this.measureExposure(gray, cv);
-      return this.buildQuality(laplacianVar, mean, clipped);
+      return this.buildQuality(laplacianVar, mean, clipped, completeness);
     } catch {
       // Couldn't measure → don't block submission on a check we couldn't run.
-      return this.buildQuality(Infinity, 255, 0);
+      return this.buildQuality(Infinity, 255, 0, completeness);
     } finally {
       gray?.delete?.();
       work?.delete?.();
@@ -789,13 +804,125 @@ export class DocumentDetectionService {
     }
   }
 
-  /** Turn the three raw metrics into the booleans, verdict, and human-readable summary line. */
-  private buildQuality(laplacianVar: number, meanLuminance: number, clippedFraction: number): CaptureQuality {
+  /**
+   * Completeness check for the Review-screen quality verdict — detects whether the whole document was
+   * visible when the shot was taken, catching an occlusion (finger/hand over the card) or a badly
+   * placed card that the sharpness/exposure/glare checks alone can't see (they're happy to call a
+   * well-lit photo of half a card "good").
+   *
+   * Runs on the FULL pre-crop camera frame, never on the saved capture. The v1 of this check analyzed
+   * the captured output and flagged every good capture: warp mode maps the card's corners exactly onto
+   * the output canvas, so the saved image has no card edges left inside it for Canny to find (they ARE
+   * the image boundary), and the manual guide crop is nearly as tight. Only the pre-crop frame still
+   * shows the card boundary against background.
+   *
+   * Detection is bounded to the guide box + `completenessMarginFraction` (so an oversized contour
+   * elsewhere in the frame can't be picked, mirroring `warpWithinGuide`'s crop-first reasoning, but with
+   * a larger margin so the card's edges + surrounding background are inside the crop). Verdict:
+   *  - no quad found        → incomplete ('not-found'): occlusion breaks the contour — but also fires
+   *                           if the detector simply fails, hence the softer UI copy for this reason.
+   *                           NOT loosened for manual: detection doesn't require an axis-aligned
+   *                           rectangle (a tilted card still produces a detectable quad), so "nothing
+   *                           found at all" stays a meaningful signal regardless of source;
+   *  - quad touches the region border → incomplete ('clipped'): card runs outside where it should be;
+   *  - ratio or coverage off → incomplete ('geometry'): wrong shape, or too small vs the guide box.
+   * Ratio tolerance, coverage floor, and the clip boundary are all SOURCE-DEPENDENT (see
+   * `capture-tuning.ts` manual* constants): an auto-capture only fires after the live loop confirms
+   * several consecutive well-aligned frames, so its frame is trustworthy at the tighter defaults; a
+   * manual shutter tap hands this one arbitrary, ungated, often hand-held-at-an-angle frame, which is
+   * genuinely foreshortened in the image (real perspective, not measurement noise) and needs real
+   * tolerance. The clip boundary specifically: manual's actual saved output (`cropToGuide`) is just the
+   * guide box, no margin, so a corner near the padded region's edge can still be safely inside what
+   * manual actually saves — checked against the guide box itself, not the padded region, for manual.
+   * If the guide element isn't available (can't measure at all), degrades to complete — matching the
+   * other checks' "couldn't run → don't block" posture.
+   */
+  private analyzeCompletenessOnFrame(
+    full: HTMLCanvasElement,
+    targetRatio: number,
+    source: CaptureSource,
+  ): CompletenessResult {
+    const region = this.guideRegionInFullPixels(
+      full.width,
+      full.height,
+      this.tuning.completenessMarginFraction,
+    );
+    const guide = this.guideRectInSourcePixels();
+    if (!region || !guide || !full.width || !full.height) {
+      return { complete: true, cornersFound: false, coverageFraction: 0, ratio: 0, reason: null };
+    }
+
+    const regionCanvas = this.cropCanvas(full, region);
+    const cornersAnalysis = this.detectCornersOnFrame(regionCanvas);
+    const corners = cornersAnalysis
+      ? this.scaleCornersToFull(cornersAnalysis, regionCanvas.width)
+      : null;
+    if (!corners) {
+      return { complete: false, cornersFound: false, coverageFraction: 0, ratio: 0, reason: 'not-found' };
+    }
+
+    const isManual = source === 'manual';
+    const ratioTolerance = isManual
+      ? this.tuning.manualCompletenessRatioTolerance
+      : this.tuning.completenessRatioTolerance;
+    const minCoverage = isManual
+      ? this.tuning.manualMinCaptureCoverageFraction
+      : this.tuning.minCaptureCoverageFraction;
+
+    const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+    const quadW = (dist(corners.topLeftCorner, corners.topRightCorner) + dist(corners.bottomLeftCorner, corners.bottomRightCorner)) / 2;
+    const quadH = (dist(corners.topLeftCorner, corners.bottomLeftCorner) + dist(corners.topRightCorner, corners.bottomRightCorner)) / 2;
+
+    const ratio = quadH > 0 ? quadW / quadH : 0;
+    const ratioOk = quadH > 0 && Math.abs(ratio - targetRatio) <= ratioTolerance * targetRatio;
+
+    // Coverage vs the UNPADDED guide box: a well-placed card fills most of the brackets the user framed
+    // it in, regardless of how much context margin the detection crop added.
+    const coverageFraction = (quadW * quadH) / (guide.sw * guide.sh);
+    const coverageOk = coverageFraction >= minCoverage;
+
+    // Clip boundary: for auto, the padded analysis region (matches warpWithinGuide's own crop-first
+    // reasoning). For manual, the guide box itself — that's the actual saved output (cropToGuide), so
+    // that's the boundary that matters. 2% epsilon (of the boundary's own size) absorbs detection jitter.
+    const clipBounds = isManual
+      ? { x: guide.sx - region.x, y: guide.sy - region.y, w: guide.sw, h: guide.sh }
+      : { x: 0, y: 0, w: region.w, h: region.h };
+    const eps = 0.02 * Math.max(clipBounds.w, clipBounds.h);
+    const pts = [corners.topLeftCorner, corners.topRightCorner, corners.bottomLeftCorner, corners.bottomRightCorner];
+    const clipped = pts.some(
+      (p) =>
+        p.x <= clipBounds.x - eps ||
+        p.y <= clipBounds.y - eps ||
+        p.x >= clipBounds.x + clipBounds.w + eps ||
+        p.y >= clipBounds.y + clipBounds.h + eps,
+    );
+
+    const complete = ratioOk && coverageOk && !clipped;
+    const reason: CompletenessResult['reason'] = complete ? null : clipped ? 'clipped' : 'geometry';
+    return { complete, cornersFound: true, coverageFraction, ratio, reason };
+  }
+
+  /** Turn the raw metrics into the booleans, verdict, and human-readable summary line. */
+  private buildQuality(
+    laplacianVar: number,
+    meanLuminance: number,
+    clippedFraction: number,
+    completeness: CompletenessResult,
+  ): CaptureQuality {
     const sharp = laplacianVar >= this.tuning.minSharpnessVar;
     const wellLit = meanLuminance >= this.tuning.minMeanLuminance;
     const glareFree = clippedFraction <= this.tuning.maxClippedFraction;
-    const verdict = sharp && wellLit && glareFree ? 'good' : 'recheck';
+    const complete = completeness.complete;
+    const verdict = sharp && wellLit && glareFree && complete ? 'good' : 'recheck';
+    // Completeness first — a covered/cut-off field is unreadable outright, a more actionable problem
+    // than blur/exposure, which might still leave the document legible. 'not-found' gets softer copy:
+    // it's ambiguous between real occlusion and the detector failing on a hard background.
+    const incompleteMsg =
+      completeness.reason === 'not-found'
+        ? 'check that the whole document is visible'
+        : 'part of the document may be out of frame';
     const issues = [
+      !complete ? incompleteMsg : null,
       !sharp ? 'could be sharper' : null,
       !wellLit ? 'too dark' : null,
       !glareFree ? 'glare detected' : null,
@@ -806,9 +933,18 @@ export class DocumentDetectionService {
       sharp,
       wellLit,
       glareFree,
+      complete,
       verdict,
       summary,
-      metrics: { laplacianVar, meanLuminance, clippedFraction },
+      metrics: {
+        laplacianVar,
+        meanLuminance,
+        clippedFraction,
+        cornersFound: completeness.cornersFound,
+        coverageFraction: completeness.coverageFraction,
+        ratio: completeness.ratio,
+        completenessReason: completeness.reason,
+      },
     };
   }
 
@@ -864,6 +1000,12 @@ export class DocumentDetectionService {
     full.height = video.videoHeight;
     full.getContext('2d')?.drawImage(video, 0, 0);
 
+    // Completeness must be measured on the full frame BEFORE crop/warp — the cropped/warped output
+    // contains no card edges to detect (warp maps them exactly onto the canvas boundary), which is why
+    // the earlier post-crop version of this check flagged every good capture. Runs for both auto and
+    // manual captures (user decision: auto's live gate isn't trusted as a substitute).
+    const completeness = this.analyzeCompletenessOnFrame(full, this.opts.targetRatio, source);
+
     // A MANUAL tap always crops the guide box: the user expects the saved image to match exactly what
     // they framed in the preview (WYSIWYG), and edge-detection can't be trusted on a single ungated
     // frame. AUTO capture follows the type's captureMode — 'warp' perspective-flattens the detected
@@ -876,7 +1018,7 @@ export class DocumentDetectionService {
 
     // Quality is computed here, on the path EVERY capture flows through (auto + manual shutter), so the
     // manual override — which skips the live alignment/lighting gates — can't store an unvalidated image.
-    const quality = this.analyzeCaptureQuality(captured, (window as Window).cv);
+    const quality = this.analyzeCaptureQuality(captured, (window as Window).cv, completeness);
 
     this.setStatus('captured');
     this.zone.run(() => this.opts?.onCapture(captured, quality, source));
@@ -1085,19 +1227,22 @@ export class DocumentDetectionService {
   }
 
   /**
-   * The guide box expanded by `guideRegionMarginFraction`, in full-res source-pixel coordinates and
-   * clamped to the frame — the crop `warpWithinGuide` detects within, so an oversized object outside
-   * the brackets can't be picked as the document. Returns null if the guide rect isn't available.
+   * The guide box expanded by a margin, in full-res source-pixel coordinates and clamped to the frame —
+   * the crop `warpWithinGuide` detects within (default `guideRegionMarginFraction`, kept small so an
+   * oversized object outside the brackets can't be picked as the document) and the completeness check
+   * detects within (`completenessMarginFraction`, larger so the card's edges + background context are
+   * inside the crop). Returns null if the guide rect isn't available.
    */
   private guideRegionInFullPixels(
     fullWidth: number,
     fullHeight: number,
+    marginFraction?: number,
   ): { x: number; y: number; w: number; h: number } | null {
     const rect = this.guideRectInSourcePixels();
     if (!rect) {
       return null;
     }
-    const margin = this.tuning.guideRegionMarginFraction;
+    const margin = marginFraction ?? this.tuning.guideRegionMarginFraction;
     const mx = rect.sw * margin;
     const my = rect.sh * margin;
     const x = Math.max(0, rect.sx - mx);

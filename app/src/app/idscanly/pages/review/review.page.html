@@ -15,6 +15,12 @@
         <!-- Plain instructional line, matching the Scan screen's .scan-message style -->
         <p class="review-message">{{ documentType()?.label }} — {{ captureSummary() }}</p>
 
+        <!-- Dev/QA toggle for the raw completeness metrics behind each verdict — mirrors the Scan
+             screen's debug overlay, for tuning capture-tuning.ts thresholds against real footage. -->
+        <button class="debug-toggle" type="button" (click)="toggleDebug()">
+          {{ showDebug() ? 'Hide' : 'Show' }} debug
+        </button>
+
         <!-- Per-side capture cards -->
         <div class="review-cards">
           @for (image of images(); track image.side) {
@@ -76,9 +82,22 @@
                 </div>
                 <div class="side-card__status-text">
                   <span class="side-card__status-line">{{ image.quality.summary }}</span>
-                  <span class="side-card__status-sub detail-label">
-                    {{ image.quality.verdict === 'good' ? 'Ready to submit' : 'Could be clearer' }}
-                  </span>
+                  @if (image.quality.verdict === 'good') {
+                    <span class="side-card__status-sub detail-label">Ready to submit</span>
+                  }
+                  @if (showDebug()) {
+                    <span class="side-card__debug">
+                      found {{ image.quality.metrics.cornersFound ? 'Y' : 'N' }} ·
+                      cov {{ image.quality.metrics.coverageFraction | number: '1.2-2' }} ·
+                      ratio {{ image.quality.metrics.ratio | number: '1.2-2' }} ·
+                      lum {{ image.quality.metrics.meanLuminance | number: '1.0-0' }} ·
+                      clip {{ image.quality.metrics.clippedFraction | number: '1.2-2' }} ·
+                      lap {{ image.quality.metrics.laplacianVar | number: '1.0-0' }}
+                      @if (image.quality.metrics.completenessReason; as reason) {
+                        · why {{ reason }}
+                      }
+                    </span>
+                  }
                 </div>
                 <button class="retake-btn tappable tap-anim" type="button" (click)="retake(image.side)">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -90,27 +109,6 @@
                 </button>
               </div>
             </div>
-          }
-        </div>
-
-        <!-- Footer note + submit -->
-        <div class="review-footer">
-          <p class="review-footer__note" [class.note-warn]="!allGood()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              @if (allGood()) {
-                <polyline points="20 6 9 17 4 12"/>
-              } @else {
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              }
-            </svg>
-            {{ footerNote() }}
-          </p>
-
-          @if (submitError()) {
-            <p class="review-error">{{ submitError() }}</p>
           }
         </div>
       } @else {
@@ -141,16 +139,47 @@
       <span class="lightbox__caption">{{ image.label }} — tap image to {{ zoomed() ? 'fit' : 'zoom' }}</span>
     </div>
   }
+
+  <!-- Submit-progress overlay — idrecognition is a single opaque fetch that can take several seconds
+       up to ~30s (see docs/idrecognition-handoff.md), so this replaces the tiny button spinner with
+       staged, active feedback instead of leaving the screen looking frozen. -->
+  @if (submitting()) {
+    <div class="submit-overlay">
+      <div class="submit-overlay__dots">
+        @for (i of dotIndices; track i) {
+          <span class="submit-overlay__dot"></span>
+        }
+      </div>
+      <p class="submit-overlay__message">{{ submitStageMessage() }}</p>
+      <p class="submit-overlay__privacy">The photos of your document are not stored after processing.</p>
+    </div>
+  }
 </ion-content>
 
-<!-- Sticky submit button fixed outside ion-content so it never scrolls or overlaps content -->
+<!-- Sticky submit button fixed outside ion-content so it never scrolls or overlaps content. The
+     quality warning / submit error live here too — inside .review-scroll they could sit below the
+     fold, letting the user tap Submit without ever seeing them. -->
 @if (images().length) {
   <div class="sticky-btn-bar">
+    @if (!allGood() && !submitAttempted()) {
+      <p class="review-footer__note note-warn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ footerNote() }}
+      </p>
+    }
+    @if (submitError()) {
+      <p class="review-error">{{ submitError() }}</p>
+    }
     <button class="btn" type="button" [disabled]="submitting()" (click)="submit()">
       @if (submitting()) {
         <span class="spin"></span>
       } @else {
-        {{ submitLabel() }}
+        Submit
       }
     </button>
   </div>

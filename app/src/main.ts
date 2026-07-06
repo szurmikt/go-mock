@@ -13,6 +13,15 @@ Sentry.init({
   integrations: [
     Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
   ],
+  // consoleLoggingIntegration captures every console.warn/error app-wide — during local `ng serve`/
+  // `ionic serve` testing that includes webpack-dev-server's own live-reload client (compile warnings,
+  // WebSocket reconnect errors), which is dev-server noise, not app or scan diagnostics. Drop it here
+  // rather than disabling console logging altogether, so real logs (e.g. the idscanly response) still
+  // get through.
+  beforeSendLog(log) {
+    const message = typeof log.message === 'string' ? log.message : String(log.message);
+    return message.includes('[webpack-dev-server]') ? null : log;
+  },
 });
 
 // Mixpanel product analytics. localStorage persistence is reliable inside the

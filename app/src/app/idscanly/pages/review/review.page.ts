@@ -1,11 +1,13 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { Location } from '@angular/common';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { DecimalPipe, Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
+import * as Sentry from '@sentry/angular';
 import { getDocumentType, Side } from '../../models/document-type';
 import { CaptureSessionService, CapturedSide } from '../../services/capture-session.service';
 import { IdRecognitionService } from '../../services/idrecognition.service';
 import { IdscanlyDocuscanService } from '../../services/idscanly-docuscan.service';
+import { PropertyConfigService } from '../../../services/property-config.service';
 import { CaptureQuality } from '../../models/capture-quality';
 
 interface ReviewImage {
@@ -19,15 +21,16 @@ interface ReviewImage {
   selector: 'app-idscanly-review',
   templateUrl: 'review.page.html',
   styleUrls: ['review.page.scss'],
-  imports: [IonContent],
+  imports: [IonContent, DecimalPipe],
 })
-export class IdscanReviewPage implements OnInit {
+export class IdscanReviewPage implements OnInit, OnDestroy {
   private readonly session = inject(CaptureSessionService);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly route = inject(ActivatedRoute);
   private readonly idRecognition = inject(IdRecognitionService);
   private readonly idscanlyDocuscan = inject(IdscanlyDocuscanService);
+  private readonly propertyConfig = inject(PropertyConfigService);
 
   /** Set when the page was opened via ?preview= — see ngOnInit / seedPreview. */
   private readonly preview = signal(false);
@@ -47,8 +50,6 @@ export class IdscanReviewPage implements OnInit {
       .filter((image): image is ReviewImage => image !== null);
   });
 
-  readonly isTwoSided = computed(() => (this.documentType()?.sides.length ?? 0) > 1);
-
   readonly captureSummary = computed(() => {
     const n = this.images().length;
     return `${n} ${n === 1 ? 'side' : 'sides'} captured · check before submitting`;
@@ -57,18 +58,60 @@ export class IdscanReviewPage implements OnInit {
   readonly allGood = computed(() => this.images().every((i) => i.quality.verdict === 'good'));
 
   readonly footerNote = computed(() =>
-    this.allGood()
-      ? 'All clear — ready to submit.'
-      : 'One side could be clearer — you can still submit or retake it.',
+    this.allGood() ? '' : 'One side could be clearer — you can still submit or retake it.',
   );
 
-  readonly submitLabel = computed(() => (this.isTwoSided() ? 'Submit both sides' : 'Submit'));
+  /** Fixed-length slot list for the dot-chase loader — see submit-overlay in the template. */
+  readonly dotIndices = Array.from({ length: 10 }, (_, i) => i);
 
   readonly lightbox = signal<ReviewImage | null>(null);
   readonly zoomed = signal(false);
 
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
+  /** Once the user has tapped Submit, the pre-submit quality nag stops competing with submitError. */
+  readonly submitAttempted = signal(false);
+
+  /** Dev/QA toggle for the per-side metrics readout — mirrors the Scan page's debug overlay. */
+  readonly showDebug = signal(false);
+
+  /**
+   * `idrecognition` (see IdRecognitionService.submit) is a single opaque fetch — the edge function
+   * polls the vendor internally, every 2s, up to 30s, before replying once. There's no real progress
+   * fraction to report, so these stages are TIMED, not event-driven: a well-understood, honest way to
+   * keep the wait from reading as frozen. The third stage exists because the up-to-30s tail is real
+   * (per docs/idrecognition-handoff.md) — without it the UI would sit on "Running recognition…" for the
+   * whole tail.
+   */
+  readonly submitStage = signal<'images' | 'recognition' | 'longwait'>('images');
+  private stageTimers: ReturnType<typeof setTimeout>[] = [];
+
+  readonly submitStageMessage = computed(() => {
+    switch (this.submitStage()) {
+      case 'images':
+        return 'Processing images…';
+      case 'recognition':
+        return 'Running recognition…';
+      case 'longwait':
+        return 'Still working — almost there…';
+    }
+  });
+
+  private startStageTimers(): void {
+    this.clearStageTimers();
+    this.submitStage.set('images');
+    this.stageTimers.push(setTimeout(() => this.submitStage.set('recognition'), 2500));
+    this.stageTimers.push(setTimeout(() => this.submitStage.set('longwait'), 10000));
+  }
+
+  private clearStageTimers(): void {
+    this.stageTimers.forEach((t) => clearTimeout(t));
+    this.stageTimers = [];
+  }
+
+  ngOnDestroy(): void {
+    this.clearStageTimers();
+  }
 
   ngOnInit(): void {
     // Dev-only: seed mock captures so the Review UI can be exercised in the browser,
@@ -80,10 +123,18 @@ export class IdscanReviewPage implements OnInit {
 
   private seedPreview(mode: string): void {
     this.preview.set(true);
-    if (mode === 'good' || mode === 'recheck') {
+    if (mode === 'good' || mode === 'recheck' || mode === 'partial') {
       const type = getDocumentType('driving-licence'); // single-sided
       this.session.start(type);
       this.session.setSide(this.mockCapture('front', mode));
+    } else if (mode === 'submitting') {
+      // Demos the submit-progress overlay without hitting the Edge Function — submit() itself
+      // early-returns in preview mode, so drive the same signals/timers it would.
+      const type = getDocumentType('driving-licence');
+      this.session.start(type);
+      this.session.setSide(this.mockCapture('front', 'good'));
+      this.submitting.set(true);
+      this.startStageTimers();
     } else {
       // 'idcard' (and any unknown value): two-sided ID, front good + back recheck.
       const type = getDocumentType('id-card');
@@ -93,7 +144,7 @@ export class IdscanReviewPage implements OnInit {
     }
   }
 
-  private mockCapture(side: Side, verdict: 'good' | 'recheck'): CapturedSide {
+  private mockCapture(side: Side, verdict: 'good' | 'recheck' | 'partial'): CapturedSide {
     const url = this.placeholderImage(side);
     return {
       side,
@@ -105,17 +156,27 @@ export class IdscanReviewPage implements OnInit {
     };
   }
 
-  private mockQuality(verdict: 'good' | 'recheck'): CaptureQuality {
+  /** 'partial' demos the completeness check (see `DocumentDetectionService.analyzeCompleteness`) —
+   *  a sharp, well-lit, glare-free capture that's still missing part of the document. */
+  private mockQuality(verdict: 'good' | 'recheck' | 'partial'): CaptureQuality {
     const good = verdict === 'good';
+    const partial = verdict === 'partial';
     return {
-      sharp: good,
-      wellLit: good,
-      glareFree: good,
-      verdict,
-      summary: good ? 'Sharp, well-lit, glare-free' : 'Could be sharper · glare detected',
+      sharp: good || partial,
+      wellLit: good || partial,
+      glareFree: good || partial,
+      complete: good,
+      verdict: good ? 'good' : 'recheck',
+      summary: good
+        ? 'Sharp, well-lit, glare-free'
+        : partial
+          ? 'Part of the document may be out of frame'
+          : 'Could be sharper · glare detected',
       metrics: good
-        ? { laplacianVar: 420, meanLuminance: 138, clippedFraction: 0.01 }
-        : { laplacianVar: 55, meanLuminance: 96, clippedFraction: 0.14 },
+        ? { laplacianVar: 420, meanLuminance: 138, clippedFraction: 0.01, cornersFound: true, coverageFraction: 0.94, ratio: 1.58, completenessReason: null }
+        : partial
+          ? { laplacianVar: 380, meanLuminance: 130, clippedFraction: 0.02, cornersFound: true, coverageFraction: 0.52, ratio: 1.1, completenessReason: 'clipped' as const }
+          : { laplacianVar: 55, meanLuminance: 96, clippedFraction: 0.14, cornersFound: false, coverageFraction: 0, ratio: 0, completenessReason: 'not-found' as const },
     };
   }
 
@@ -158,12 +219,51 @@ export class IdscanReviewPage implements OnInit {
     void this.router.navigateByUrl('/idscanly/scan');
   }
 
+  toggleDebug(): void {
+    this.showDebug.update((v) => !v);
+  }
+
+  /**
+   * Full idrecognition response, console + Sentry Logs (mirrors Regula's logScanOutcome/
+   * buildScanDiagnostics pairing) — gated on the CURRENT property's `extended_logging` flag
+   * (property_settings table), never unconditional. The response contains guest PII (name, DOB,
+   * document number, mother's maiden name); logging it everywhere for everyone would leak that into
+   * Sentry via breadcrumbs on any unrelated error. Opt-in per property keeps it off by default.
+   */
+  private logIdscanlyResponse(response: unknown): void {
+    if (!this.propertyConfig.extendedLogging()) return;
+
+    console.log('[idscanly] idrecognition response:', response);
+
+    const json = JSON.stringify(response);
+    const cappedJson = json.length > 16000 ? `${json.slice(0, 16000)}…[truncated ${json.length} chars]` : json;
+    const r = response as {
+      sessionId?: string;
+      status?: string;
+      isProcessing?: boolean;
+      summary?: { isComplete?: boolean; imageCount?: number; successfulImageCount?: number; failedImageCount?: number };
+    };
+    Sentry.logger.info('idscanly response', {
+      session_id: String(r?.sessionId ?? ''),
+      status: String(r?.status ?? ''),
+      is_processing: !!r?.isProcessing,
+      is_complete: !!r?.summary?.isComplete,
+      image_count: Number(r?.summary?.imageCount ?? -1),
+      successful_image_count: Number(r?.summary?.successfulImageCount ?? -1),
+      failed_image_count: Number(r?.summary?.failedImageCount ?? -1),
+      response_json: cappedJson,
+    });
+  }
+
   async submit(): Promise<void> {
     if (this.submitting()) return;
+    // Set before the preview early-return so ?preview= can still demo the note disappearing.
+    this.submitAttempted.set(true);
     // Preview mode has no real captures/context — don't hit the Edge Function or navigate.
     if (this.preview()) return;
     this.submitting.set(true);
     this.submitError.set(null);
+    this.startStageTimers();
 
     try {
       const captures = Array.from(this.session.captures().values());
@@ -175,7 +275,9 @@ export class IdscanReviewPage implements OnInit {
       }
 
       const response = await this.idRecognition.submit(captures);
+      this.logIdscanlyResponse(response);
       const mapped = this.idscanlyDocuscan.mapToScanResult(response, docType);
+      this.clearStageTimers();
 
       this.session.scanResult.set(mapped);
 
@@ -186,6 +288,7 @@ export class IdscanReviewPage implements OnInit {
         { replaceUrl: true },
       );
     } catch (err) {
+      this.clearStageTimers();
       this.submitError.set(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       this.submitting.set(false);
     }

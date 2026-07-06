@@ -92,6 +92,55 @@ export const DETECTION_TUNING = {
   minSharpnessVar: 120,
 
   /**
+   * Completeness gate for the Review-screen quality verdict — the document quad detected on the FULL
+   * pre-crop camera frame must cover at least this fraction of the guide box. Measured pre-crop because
+   * the saved capture itself is useless for this: warp mode maps the card edge-to-edge onto the output
+   * (no card edges left inside the image to detect — the v1 post-crop check failed on every good
+   * capture because of exactly this), and the manual guide crop is nearly as tight. Below this, a
+   * finger/hand covering part of the card, or a badly placed card, reads as incomplete even if sharp.
+   * STARTING GUESS — tune against real device footage. Applies to AUTO captures only — see
+   * `manualMinCaptureCoverageFraction` for manual.
+   */
+  minCaptureCoverageFraction: 0.72,
+
+  /**
+   * Coverage floor for MANUAL captures specifically — much looser than the auto value above, for the
+   * same reason as `manualCompletenessRatioTolerance`: an approximately-framed hand-held card won't fill
+   * the on-screen guide brackets as precisely as a laid-flat, gate-confirmed auto-capture. Still
+   * requires roughly half the guide box's worth of card to be found, so a genuinely mostly-obstructed or
+   * way-out-of-frame shot still fails. STARTING GUESS.
+   */
+  manualMinCaptureCoverageFraction: 0.45,
+
+  /**
+   * Ratio tolerance for the completeness check specifically — deliberately looser than the live loop's
+   * `ratioTolerance` (0.3, below). The live gate is about frame-by-frame alignment precision; this one
+   * just answers "is this basically the right document shape." STARTING GUESS. Applies to AUTO captures
+   * only — see `manualCompletenessRatioTolerance` for manual.
+   */
+  completenessRatioTolerance: 0.45,
+
+  /**
+   * Ratio tolerance for MANUAL captures specifically — much looser than the auto value above. An auto
+   * capture only fires after the live loop confirms several consecutive well-aligned frames; a manual
+   * shutter tap hands the completeness check one arbitrary, ungated frame, typically hand-held at some
+   * angle. A tilted card is GENUINELY foreshortened in the 2D image — its measured ratio really does
+   * shrink from perspective, not detection error — so it needs real tolerance, not a tighter one. In the
+   * same neighborhood as PASSPORT_TUNING.ratioTolerance (0.8, below), tuned for the same "hard to frame
+   * precisely" reason. STARTING GUESS.
+   */
+  manualCompletenessRatioTolerance: 0.75,
+
+  /**
+   * Margin (fraction of guide-box size) around the guide box for the completeness check's detection
+   * crop. Much larger than `guideRegionMarginFraction` (0.06, above) on purpose: the warp-bias crop
+   * wants to EXCLUDE outside objects, the completeness crop must INCLUDE the card's edges plus enough
+   * surrounding background for Canny to close the card contour even when the card sits right on the
+   * bracket line.
+   */
+  completenessMarginFraction: 0.2,
+
+  /**
    * Consecutive not-aligned ticks required to confirm a just-captured document has actually left frame
    * before the next side becomes capture-eligible. Without this, a slow flip (the card still sitting in
    * the same spot right after capturing the front) re-aligns within one tick and gets auto-captured
