@@ -3,7 +3,7 @@ import { environment } from '../../environments/environment';
 
 export type ScanVendor = 'regula' | 'idscanly';
 
-// Matches the scan_doc_type enum in Supabase property_settings table
+// Matches the scan_doc_type enum in Supabase property_config table
 type DbDocType = 'id_card' | 'passport' | 'driving_license' | 'address_card';
 
 // Maps DB enum values to IDScanly DocumentTypeId strings
@@ -24,7 +24,7 @@ export class PropertyConfigService {
   async load(propertyId: number): Promise<void> {
     try {
       const url =
-        `${environment.supabaseUrl}/rest/v1/property_settings` +
+        `${environment.supabaseUrl}/rest/v1/property_config` +
         `?property_id=eq.${propertyId}&select=scan_vendor,scan_doc_types,extended_logging&limit=1`;
 
       const res = await fetch(url, {

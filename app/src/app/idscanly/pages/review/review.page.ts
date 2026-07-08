@@ -226,7 +226,7 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
   /**
    * Full idrecognition response, console + Sentry Logs (mirrors Regula's logScanOutcome/
    * buildScanDiagnostics pairing) — gated on the CURRENT property's `extended_logging` flag
-   * (property_settings table), never unconditional. The response contains guest PII (name, DOB,
+   * (property_config table), never unconditional. The response contains guest PII (name, DOB,
    * document number, mother's maiden name); logging it everywhere for everyone would leak that into
    * Sentry via breadcrumbs on any unrelated error. Opt-in per property keeps it off by default.
    */

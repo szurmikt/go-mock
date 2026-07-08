@@ -1,11 +1,13 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { Device } from '@capacitor/device';
+import { Capacitor } from '@capacitor/core';
 
 import { ApiService } from './api';
 import { StorageService } from './storage';
 import { ApiResponse } from '../models/auth.interfaces';
 import { TRANSLATIONS, TranslationMap } from './translations';
+import { environment } from '../../environments/environment';
 
 export interface Language {
   code: string;
@@ -20,6 +22,7 @@ interface LanguagesResponse {
 const STORAGE_KEY_LANG = 'language';
 const STORAGE_KEY_TRANSLATIONS = 'translations';
 const STORAGE_KEY_LANGUAGES = 'languages';
+const STORAGE_KEY_ENABLED_LANGS = 'enabledLanguages';
 
 @Injectable({ providedIn: 'root' })
 export class LanguageService {
@@ -29,11 +32,16 @@ export class LanguageService {
   readonly currentLanguage = signal<string>('En');
   readonly translations = signal<TranslationMap>(TRANSLATIONS);
   readonly availableLanguages = signal<Language[]>([]);
+  /** Codes enabled remotely via Supabase app_config.languages. null = no restriction (fail-open). */
+  readonly enabledLanguages = signal<string[] | null>(null);
 
   readonly displayLanguages = computed<Language[]>(() => {
     const langs = this.availableLanguages();
-    if (langs.length > 0) return langs;
-    return [{ code: 'En', name: 'English' }];
+    const list = langs.length > 0 ? langs : [{ code: 'En', name: 'English' }];
+    const enabled = this.enabledLanguages();
+    if (!enabled) return list;
+    const filtered = list.filter(l => enabled.includes(l.code));
+    return filtered.length > 0 ? filtered : list;
   });
 
   async init(): Promise<void> {
@@ -51,8 +59,15 @@ export class LanguageService {
     );
     if (cachedLangs) this.availableLanguages.set(cachedLangs);
 
-    // Fire-and-forget: update translations in the background without blocking app start
+    const cachedEnabled = await this.storage.get<string[]>(
+      STORAGE_KEY_ENABLED_LANGS,
+    );
+    if (cachedEnabled) this.enabledLanguages.set(cachedEnabled);
+
+    // Fire-and-forget: update translations + enabled-languages restriction in the
+    // background without blocking app start
     this.fetchLanguages().catch(() => {});
+    this.fetchEnabledLanguages().catch(() => {});
   }
 
   /**
@@ -104,6 +119,34 @@ export class LanguageService {
       await this.storage.set(STORAGE_KEY_LANGUAGES, response.data.languages);
     } catch {
       // Network error: keep current translations (cached or fallback English)
+    }
+  }
+
+  /**
+   * Restricted-languages gate, driven by Supabase app_config.languages (per platform row).
+   * Mirrors PropertyConfigService's raw-fetch pattern — no @supabase/supabase-js in this app.
+   */
+  async fetchEnabledLanguages(): Promise<void> {
+    try {
+      const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : 'android';
+      const url =
+        `${environment.supabaseUrl}/rest/v1/app_config` +
+        `?platform=eq.${platform}&select=languages&limit=1`;
+
+      const res = await fetch(url, {
+        headers: {
+          apikey: environment.supabaseAnonKey,
+          Authorization: `Bearer ${environment.supabaseAnonKey}`,
+        },
+      });
+      if (!res.ok) return;
+
+      const rows: { languages: string[] }[] = await res.json();
+      const codes = (rows[0]?.languages ?? []).map(c => this.normalize(c));
+      this.enabledLanguages.set(codes.length ? codes : null);
+      await this.storage.set(STORAGE_KEY_ENABLED_LANGS, this.enabledLanguages());
+    } catch {
+      // Network error: keep whatever was cache-hydrated (or the null fail-open default)
     }
   }
 

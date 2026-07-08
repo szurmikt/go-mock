@@ -36,7 +36,10 @@ export class SettingsPage {
   async openLangPicker() {
     this.langOpen.set(true);
     this.loadingLangs.set(true);
-    await this.lang.fetchLanguages().catch(() => {});
+    await Promise.all([
+      this.lang.fetchLanguages().catch(() => {}),
+      this.lang.fetchEnabledLanguages().catch(() => {}),
+    ]);
     this.loadingLangs.set(false);
   }
 

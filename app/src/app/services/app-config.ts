@@ -14,7 +14,7 @@ const CONFIG_FN_URL = `${environment.supabaseUrl}/functions/v1/config`;
 
 @Injectable({ providedIn: 'root' })
 export class AppConfigService {
-  private async fetchConfig(params: Record<string, string>): Promise<{ app_config: { minimum_version: string } | null; property_settings: unknown } | null> {
+  private async fetchConfig(params: Record<string, string>): Promise<{ app_config: { minimum_version: string } | null; property_config: unknown } | null> {
     const timeout = new Promise<null>(resolve =>
       setTimeout(() => resolve(null), CONFIG_TIMEOUT_MS),
     );
