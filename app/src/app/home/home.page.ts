@@ -1,6 +1,5 @@
 import { Component, OnDestroy, inject, signal, computed, ElementRef, QueryList, ViewChildren, AfterViewInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { LowerCasePipe } from '@angular/common';
 import { ViewWillEnter } from '@ionic/angular';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
 import { ApiEnvironmentService } from '../services/api-environment';
@@ -12,7 +11,6 @@ import { PropertyInterface } from '../models/property.interface';
 import { ReservationInterface } from '../models/reservation.interface';
 import { LocalizedDatePipe } from '../pipes/localized-date.pipe';
 import { TranslatePipe } from '../pipes/translate.pipe';
-import { LanguageService } from '../services/language.service';
 import { FeedbackSheetComponent } from '../components/feedback-sheet/feedback-sheet.component';
 // THROWAWAY MOCK — single-property morning-briefing widget. Remove with pages/briefing.
 import { BRIEFING_PROPERTY_ID } from '../pages/briefing/briefing.const';
@@ -33,7 +31,7 @@ function localDateStr(offset: number): string {
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
   standalone: true,
-  imports: [IonContent, IonRefresher, IonRefresherContent, LowerCasePipe, LocalizedDatePipe, TranslatePipe, FeedbackSheetComponent],
+  imports: [IonContent, IonRefresher, IonRefresherContent, LocalizedDatePipe, TranslatePipe, FeedbackSheetComponent],
 })
 export class HomePage implements ViewWillEnter, AfterViewInit, OnDestroy {
   @ViewChildren('segBtn') segBtns!: QueryList<ElementRef<HTMLButtonElement>>;
@@ -97,10 +95,6 @@ export class HomePage implements ViewWillEnter, AfterViewInit, OnDestroy {
   private options = inject(OptionsService);
   apiEnv = inject(ApiEnvironmentService);
   private mixpanel = inject(MixpanelService);
-  private lang = inject(LanguageService);
-
-  /** Translated label for the active day tab (Yesterday/Today/Tomorrow). */
-  readonly dayLabel = computed(() => this.lang.t('home.' + this.tab().toLowerCase()));
 
   constructor(
     public auth: AuthService,
