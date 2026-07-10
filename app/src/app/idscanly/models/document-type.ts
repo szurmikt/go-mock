@@ -21,6 +21,7 @@ export type Side = 'front' | 'back';
 
 export interface DocumentTypeConfig {
   id: DocumentTypeId;
+  /** Translation KEY (e.g. `idscanly.docTypeIdCard`), not display text — resolve via `LanguageService.t()` / the `tr` pipe before showing it. */
   label: string;
   /** Tabler icon name (without the `ti-` prefix). Matches the UI mockup. */
   icon: string;
@@ -49,7 +50,7 @@ export interface DocumentTypeConfig {
   /**
    * Overrides the default "Scanning the Nth page" live instruction on Scan. For a single-sided type
    * where "page" is misleading (e.g. a passport's bio page isn't "page 1" of anything being counted
-   * here), set a more specific instruction instead.
+   * here), set a more specific instruction instead. Translation KEY, like `label` above.
    */
   scanningMessage?: string;
 }
@@ -70,7 +71,7 @@ const PASSPORT_H = 1500;
 export const DOCUMENT_TYPES: DocumentTypeConfig[] = [
   {
     id: 'id-card',
-    label: 'ID card',
+    label: 'idscanly.docTypeIdCard',
     icon: 'credit-card',
     sides: ['front', 'back'],
     guideRatio: ID1_RATIO,
@@ -84,7 +85,7 @@ export const DOCUMENT_TYPES: DocumentTypeConfig[] = [
   },
   {
     id: 'passport',
-    label: 'Passport',
+    label: 'idscanly.docTypePassport',
     icon: 'e-passport',
     sides: ['front'],
     guideRatio: PASSPORT_RATIO,
@@ -93,12 +94,12 @@ export const DOCUMENT_TYPES: DocumentTypeConfig[] = [
     // A booklet can't be reliably edge-detected + warped (it curves, and the largest contour is
     // ambiguous), so capture the framed crop instead and lean on the manual shutter + relaxed gates.
     captureMode: 'frame',
-    scanningMessage: "Scan the passport's details page",
+    scanningMessage: 'idscanly.scanPassportMessage',
     tuning: PASSPORT_TUNING,
   },
   {
     id: 'driving-licence',
-    label: 'Driving licence',
+    label: 'idscanly.docTypeDrivingLicence',
     icon: 'car',
     sides: ['front'],
     guideRatio: ID1_RATIO,
@@ -109,7 +110,7 @@ export const DOCUMENT_TYPES: DocumentTypeConfig[] = [
   },
   {
     id: 'address-card',
-    label: 'Address card',
+    label: 'idscanly.docTypeAddressCard',
     icon: 'home',
     sides: ['front'],
     guideRatio: ID1_RATIO,

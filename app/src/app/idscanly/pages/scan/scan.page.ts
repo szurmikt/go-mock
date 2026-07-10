@@ -17,21 +17,24 @@ import { CaptureSource, DocumentDetectionService } from '../../services/document
 import { DETECTION_TUNING } from '../../capture-tuning';
 import { makeThumbnail, toDataUrl } from '../../utils/canvas.util';
 import { isManualCaptureNagDue, markManualCaptureNagShown } from '../../utils/manual-capture-nag.util';
+import { LanguageService } from '../../../services/language.service';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 
-const ORDINALS = ['1st', '2nd', '3rd', '4th'];
+const ORDINAL_KEYS = ['idscanly.ordinal1', 'idscanly.ordinal2', 'idscanly.ordinal3', 'idscanly.ordinal4'];
 const FLIP_PROMPT_MIN_MS = 3000;
 
 @Component({
   selector: 'app-idscanly-scan',
   templateUrl: 'scan.page.html',
   styleUrls: ['scan.page.scss'],
-  imports: [IonContent],
+  imports: [IonContent, TranslatePipe],
 })
 export class IdscanScanPage implements OnDestroy {
   private readonly session = inject(CaptureSessionService);
   private readonly detection = inject(DocumentDetectionService);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
+  private readonly lang = inject(LanguageService);
 
   readonly selectedType = signal<DocumentTypeConfig | null>(null);
   readonly currentSideIndex = signal(0);
@@ -66,19 +69,30 @@ export class IdscanScanPage implements OnDestroy {
   readonly pageTitle = computed(() => {
     const type = this.selectedType();
     if (!type) return '';
-    if (type.sides.length <= 1) return type.label;
-    return `${type.label}: ${this.ordinal(this.currentSideIndex() + 1)} Page`;
+    const label = this.lang.t(type.label);
+    if (type.sides.length <= 1) return label;
+    return this.lang.t('idscanly.pageTitleMultiPage', {
+      type: label,
+      ordinal: this.ordinal(this.currentSideIndex() + 1),
+    });
+  });
+
+  readonly flipCardLabel = computed(() => {
+    const type = this.selectedType();
+    return type ? this.lang.t('idscanly.flipCard', { type: this.lang.t(type.label) }) : '';
   });
 
   readonly message = computed(() => {
     if (this.status() === 'bad-light') {
       return this.lightingIssue() === 'glare'
-        ? 'Glare detected — tilt the card'
-        : 'Too dark — move to better light';
+        ? this.lang.t('idscanly.glareDetected')
+        : this.lang.t('idscanly.tooDark');
     }
-    if (this.showFlipPrompt()) return 'Turn your card';
+    if (this.showFlipPrompt()) return this.lang.t('idscanly.turnCard');
     const scanningMessage = this.selectedType()?.scanningMessage;
-    return scanningMessage ?? `Scanning the ${this.ordinal(this.currentSideIndex() + 1)} page`;
+    return scanningMessage
+      ? this.lang.t(scanningMessage)
+      : this.lang.t('idscanly.scanningPage', { ordinal: this.ordinal(this.currentSideIndex() + 1) });
   });
 
   readonly bracketActive = computed(
@@ -149,7 +163,8 @@ export class IdscanScanPage implements OnDestroy {
   }
 
   private ordinal(n: number): string {
-    return ORDINALS[n - 1] ?? `${n}th`;
+    const key = ORDINAL_KEYS[n - 1];
+    return key ? this.lang.t(key) : `${n}th`;
   }
 
   private startDetection(): void {
@@ -168,7 +183,7 @@ export class IdscanScanPage implements OnDestroy {
       onCapture: (full, quality, source) => this.onCaptured(full, quality, source),
       onError: (error) =>
         this.errorMessage.set(
-          typeof error === 'string' ? error : 'Camera unavailable — check permissions and reload.',
+          typeof error === 'string' ? error : this.lang.t('idscanly.cameraUnavailable'),
         ),
     });
   }

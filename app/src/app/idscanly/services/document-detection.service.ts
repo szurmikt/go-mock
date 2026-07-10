@@ -3,6 +3,7 @@ import type { CornerPoints } from 'jscanify/client';
 import { DETECTION_TUNING, DetectionTuning } from '../capture-tuning';
 import { CaptureQuality } from '../models/capture-quality';
 import { OpenCvLoaderService } from './opencv-loader.service';
+import { LanguageService } from '../../services/language.service';
 
 export type DetectionStatus = 'idle' | 'searching' | 'aligned' | 'bad-light' | 'captured';
 
@@ -119,6 +120,7 @@ export class DocumentDetectionService {
   constructor(
     private readonly cvLoader: OpenCvLoaderService,
     private readonly zone: NgZone,
+    private readonly lang: LanguageService,
   ) {
     // Surface otherwise-silent async failures to the on-screen log during debugging.
     if (typeof window !== 'undefined') {
@@ -207,7 +209,7 @@ export class DocumentDetectionService {
   /** Try the rear camera; if the device can't satisfy that constraint, retry with any camera. */
   private async requestCamera(): Promise<MediaStream> {
     if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error('getUserMedia is not available in this browser');
+      throw new Error(this.lang.t('idscanly.errNoGetUserMedia'));
     }
     try {
       return await navigator.mediaDevices.getUserMedia({
@@ -234,18 +236,18 @@ export class DocumentDetectionService {
     const name = (error as { name?: string })?.name ?? '';
     const message = (error as { message?: string })?.message ?? String(error);
     if (phase === 'opencv') {
-      return `Couldn't load the scanner engine (OpenCV). ${message}`;
+      return `${this.lang.t('idscanly.errOpenCvLoad')} ${message}`;
     }
     switch (name) {
       case 'NotAllowedError':
       case 'SecurityError':
-        return 'Camera permission denied. Allow camera access for this site, then reload.';
+        return this.lang.t('idscanly.errCameraPermission');
       case 'NotFoundError':
-        return 'No camera found on this device.';
+        return this.lang.t('idscanly.errNoCamera');
       case 'NotReadableError':
-        return 'Camera is in use by another app. Close it and reload.';
+        return this.lang.t('idscanly.errCameraInUse');
       default:
-        return `Camera error${name ? ` (${name})` : ''}: ${message}`;
+        return `${this.lang.t('idscanly.errCameraGeneric')}${name ? ` (${name})` : ''}: ${message}`;
     }
   }
 
@@ -919,16 +921,16 @@ export class DocumentDetectionService {
     // it's ambiguous between real occlusion and the detector failing on a hard background.
     const incompleteMsg =
       completeness.reason === 'not-found'
-        ? 'check that the whole document is visible'
-        : 'part of the document may be out of frame';
+        ? this.lang.t('idscanly.qualityIncompleteNotFound')
+        : this.lang.t('idscanly.qualityIncompleteClipped');
     const issues = [
       !complete ? incompleteMsg : null,
-      !sharp ? 'could be sharper' : null,
-      !wellLit ? 'too dark' : null,
-      !glareFree ? 'glare detected' : null,
+      !sharp ? this.lang.t('idscanly.qualityBlurry') : null,
+      !wellLit ? this.lang.t('idscanly.qualityDark') : null,
+      !glareFree ? this.lang.t('idscanly.qualityGlare') : null,
     ].filter((s): s is string => s !== null);
     const summary =
-      verdict === 'good' ? 'Sharp, well-lit, glare-free' : this.capitalize(issues.join(' · '));
+      verdict === 'good' ? this.lang.t('idscanly.qualityGood') : this.capitalize(issues.join(' · '));
     return {
       sharp,
       wellLit,

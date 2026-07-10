@@ -1,19 +1,19 @@
 <ion-content class="review-content">
   <div class="page" style="display: flex; flex-direction: column">
     <div class="sub-header">
-      <button class="back" (click)="goBack()" aria-label="Back">
+      <button class="back" (click)="goBack()" [attr.aria-label]="'common.back' | tr">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
           stroke-linecap="round" stroke-linejoin="round">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
       </button>
-      <span class="title">Review Captures</span>
+      <span class="title">{{ 'idscanly.reviewTitle' | tr }}</span>
     </div>
 
     <div class="app-scroll review-scroll">
       @if (images().length) {
         <!-- Plain instructional line, matching the Scan screen's .scan-message style -->
-        <p class="review-message">{{ documentType()?.label }} — {{ captureSummary() }}</p>
+        <p class="review-message">{{ (documentType()?.label ?? '') | tr }} — {{ captureSummary() }}</p>
 
         <!-- Dev/QA toggle for the raw completeness metrics behind each verdict — mirrors the Scan
              screen's debug overlay, for tuning capture-tuning.ts thresholds against real footage. -->
@@ -31,7 +31,7 @@
                   class="side-card__img-btn tappable"
                   type="button"
                   (click)="openLightbox(image)"
-                  [attr.aria-label]="'Zoom ' + image.label"
+                  [attr.aria-label]="'idscanly.ariaZoom' | tr:{ label: image.label }"
                 >
                   <img [src]="image.src" [alt]="image.label" />
                 </button>
@@ -47,7 +47,7 @@
                       stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
-                    Good quality
+                    {{ 'idscanly.goodQuality' | tr }}
                   } @else {
                     <!-- warning icon -->
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -55,7 +55,7 @@
                       <path d="M12 9v4M12 17h.01"/>
                       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                     </svg>
-                    Recheck
+                    {{ 'idscanly.recheck' | tr }}
                   }
                 </span>
               </div>
@@ -83,7 +83,7 @@
                 <div class="side-card__status-text">
                   <span class="side-card__status-line">{{ image.quality.summary }}</span>
                   @if (image.quality.verdict === 'good') {
-                    <span class="side-card__status-sub detail-label">Ready to submit</span>
+                    <span class="side-card__status-sub detail-label">{{ 'idscanly.readyToSubmit' | tr }}</span>
                   }
                   @if (showDebug()) {
                     <span class="side-card__debug">
@@ -105,14 +105,14 @@
                     <polyline points="1 4 1 10 7 10"/>
                     <path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
                   </svg>
-                  Retake
+                  {{ 'idscanly.retake' | tr }}
                 </button>
               </div>
             </div>
           }
         </div>
       } @else {
-        <p class="empty-state">No capture found. Start a new scan.</p>
+        <p class="empty-state">{{ 'idscanly.noCaptures' | tr }}</p>
       }
     </div>
   </div>
@@ -120,7 +120,7 @@
   <!-- Fullscreen zoom lightbox -->
   @if (lightbox(); as image) {
     <div class="lightbox" (click)="closeLightbox()">
-      <button class="lightbox__close" type="button" (click)="closeLightbox()" aria-label="Close">
+      <button class="lightbox__close" type="button" (click)="closeLightbox()" [attr.aria-label]="'idscanly.ariaClose' | tr">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"/>
@@ -136,7 +136,7 @@
           (click)="toggleZoom($event)"
         />
       </div>
-      <span class="lightbox__caption">{{ image.label }} — tap image to {{ zoomed() ? 'fit' : 'zoom' }}</span>
+      <span class="lightbox__caption">{{ lightboxCaption() }}</span>
     </div>
   }
 
@@ -151,7 +151,7 @@
         }
       </div>
       <p class="submit-overlay__message">{{ submitStageMessage() }}</p>
-      <p class="submit-overlay__privacy">The photos of your document are not stored after processing.</p>
+      <p class="submit-overlay__privacy">{{ 'idscanly.privacyNote' | tr }}</p>
     </div>
   }
 </ion-content>
@@ -179,7 +179,7 @@
       @if (submitting()) {
         <span class="spin"></span>
       } @else {
-        Submit
+        {{ 'common.submit' | tr }}
       }
     </button>
   </div>
