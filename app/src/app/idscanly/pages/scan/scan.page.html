@@ -1,7 +1,7 @@
 <ion-content [fullscreen]="true" class="scan-content">
   <div class="scan">
     <header class="scan-header">
-      <button class="scan-header__back" (click)="goBack()" aria-label="Back">
+      <button class="scan-header__back" (click)="goBack()" [attr.aria-label]="'common.back' | tr">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
           stroke-linecap="round" stroke-linejoin="round">
           <path d="M15 18l-6-6 6-6"/>
@@ -39,7 +39,7 @@
                 <rect x="2" y="5" width="20" height="14" rx="2"/>
                 <path d="M2 10h20"/>
               </svg>
-              <span class="turn-card__label">Flip the {{ type.label }}.</span>
+              <span class="turn-card__label">{{ flipCardLabel() }}</span>
             </div>
           }
         }
@@ -51,7 +51,7 @@
         @if (showLoader()) {
           <div class="scanner-loader">
             <div class="scanner-loader__spinner"></div>
-            <span>Starting scanner…</span>
+            <span>{{ 'idscanly.startingScanner' | tr }}</span>
           </div>
         }
 
@@ -105,7 +105,7 @@
         [class.control-bar__torch--on]="torchOn()"
         [disabled]="!torchSupported()"
         (click)="toggleTorch()"
-        aria-label="Toggle flashlight"
+        [attr.aria-label]="'idscanly.ariaToggleFlash' | tr"
       >
         <!-- bolt/lightning bolt -->
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
@@ -114,19 +114,19 @@
       </button>
 
       <div class="control-bar__capture">
-        <button class="control-bar__shutter" (click)="captureManualNow()" aria-label="Capture now">
+        <button class="control-bar__shutter" (click)="captureManualNow()" [attr.aria-label]="'idscanly.ariaCaptureNow' | tr">
           <span class="control-bar__shutter-ring"></span>
         </button>
-        <span class="control-bar__caption">Tap to capture</span>
+        <span class="control-bar__caption">{{ 'idscanly.tapToCapture' | tr }}</span>
       </div>
 
       <button
         class="control-bar__auto"
         [class.control-bar__auto--on]="autoCaptureOn()"
         (click)="toggleAutoCapture()"
-        aria-label="Toggle auto capture"
+        [attr.aria-label]="'idscanly.ariaToggleAuto' | tr"
       >
-        AUTO
+        {{ 'idscanly.auto' | tr }}
       </button>
     </div>
   }
@@ -135,8 +135,7 @@
     <div class="nag-dialog">
       <div class="nag-dialog__card">
         <p class="nag-dialog__message">
-          Auto capture is on. Hold the document steady inside the focus area — auto capture waits
-          for a sharp, glare-free shot before it fires.
+          {{ 'idscanly.nagMessage' | tr }}
         </p>
         <div class="nag-dialog__actions">
           <button
@@ -144,14 +143,14 @@
             type="button"
             (click)="retakeWithAutoCapture()"
           >
-            Retake with auto capture
+            {{ 'idscanly.nagRetake' | tr }}
           </button>
           <button
             class="nag-dialog__btn nag-dialog__btn--primary"
             type="button"
             (click)="useTakenPhoto()"
           >
-            Use taken photo
+            {{ 'idscanly.nagUseTaken' | tr }}
           </button>
         </div>
       </div>

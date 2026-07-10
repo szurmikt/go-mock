@@ -9,6 +9,8 @@ import { IdRecognitionService } from '../../services/idrecognition.service';
 import { IdscanlyDocuscanService } from '../../services/idscanly-docuscan.service';
 import { PropertyConfigService } from '../../../services/property-config.service';
 import { CaptureQuality } from '../../models/capture-quality';
+import { LanguageService } from '../../../services/language.service';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 interface ReviewImage {
   side: Side;
@@ -21,7 +23,7 @@ interface ReviewImage {
   selector: 'app-idscanly-review',
   templateUrl: 'review.page.html',
   styleUrls: ['review.page.scss'],
-  imports: [IonContent, DecimalPipe],
+  imports: [IonContent, DecimalPipe, TranslatePipe],
 })
 export class IdscanReviewPage implements OnInit, OnDestroy {
   private readonly session = inject(CaptureSessionService);
@@ -31,6 +33,7 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
   private readonly idRecognition = inject(IdRecognitionService);
   private readonly idscanlyDocuscan = inject(IdscanlyDocuscanService);
   private readonly propertyConfig = inject(PropertyConfigService);
+  private readonly lang = inject(LanguageService);
 
   /** Set when the page was opened via ?preview= — see ngOnInit / seedPreview. */
   private readonly preview = signal(false);
@@ -44,7 +47,12 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       .map((side) => {
         const capture = this.session.getSide(side);
         return capture
-          ? { side, label: side === 'front' ? 'Front side' : 'Back side', src: capture.fullDataUrl, quality: capture.quality }
+          ? {
+              side,
+              label: this.lang.t(side === 'front' ? 'idscanly.frontSide' : 'idscanly.backSide'),
+              src: capture.fullDataUrl,
+              quality: capture.quality,
+            }
           : null;
       })
       .filter((image): image is ReviewImage => image !== null);
@@ -52,13 +60,15 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
 
   readonly captureSummary = computed(() => {
     const n = this.images().length;
-    return `${n} ${n === 1 ? 'side' : 'sides'} captured · check before submitting`;
+    return n === 1
+      ? this.lang.t('idscanly.captureSummarySingle')
+      : this.lang.t('idscanly.captureSummaryMultiple', { n });
   });
 
   readonly allGood = computed(() => this.images().every((i) => i.quality.verdict === 'good'));
 
   readonly footerNote = computed(() =>
-    this.allGood() ? '' : 'One side could be clearer — you can still submit or retake it.',
+    this.allGood() ? '' : this.lang.t('idscanly.footerNote'),
   );
 
   /** Fixed-length slot list for the dot-chase loader — see submit-overlay in the template. */
@@ -66,6 +76,15 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
 
   readonly lightbox = signal<ReviewImage | null>(null);
   readonly zoomed = signal(false);
+
+  readonly lightboxCaption = computed(() => {
+    const image = this.lightbox();
+    if (!image) return '';
+    return this.lang.t(
+      this.zoomed() ? 'idscanly.lightboxCaptionFit' : 'idscanly.lightboxCaptionZoom',
+      { label: image.label },
+    );
+  });
 
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
@@ -89,11 +108,11 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
   readonly submitStageMessage = computed(() => {
     switch (this.submitStage()) {
       case 'images':
-        return 'Processing images…';
+        return this.lang.t('idscanly.submitProcessing');
       case 'recognition':
-        return 'Running recognition…';
+        return this.lang.t('idscanly.submitRecognition');
       case 'longwait':
-        return 'Still working — almost there…';
+        return this.lang.t('idscanly.submitLongwait');
     }
   });
 
@@ -271,7 +290,7 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       const ctx = this.session.context();
 
       if (!docType || !ctx) {
-        throw new Error('Session context missing — please start over.');
+        throw new Error(this.lang.t('idscanly.sessionMissing'));
       }
 
       const response = await this.idRecognition.submit(captures);
@@ -289,7 +308,7 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       );
     } catch (err) {
       this.clearStageTimers();
-      this.submitError.set(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      this.submitError.set(err instanceof Error ? err.message : this.lang.t('errors.generic'));
       this.submitting.set(false);
     }
   }

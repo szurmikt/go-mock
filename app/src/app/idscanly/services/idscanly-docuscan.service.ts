@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import {
   ScannedGuestDataInterface,
   ScanResultInterface,
@@ -6,6 +6,7 @@ import {
 import { DocumentData } from '../../models/statistics-interface';
 import { DocumentTypeConfig, DocumentTypeId } from '../models/document-type';
 import { IdRecognitionFields, IdRecognitionResponse } from './idrecognition.service';
+import { LanguageService } from '../../services/language.service';
 
 /**
  * Maps the app's own DocumentTypeId (the type the user explicitly picked before scanning)
@@ -57,6 +58,8 @@ function computeAge(iso: string | null | undefined): string | null {
 
 @Injectable({ providedIn: 'root' })
 export class IdscanlyDocuscanService {
+  private readonly lang = inject(LanguageService);
+
   mapToScanResult(
     response: IdRecognitionResponse,
     documentType: DocumentTypeConfig,
@@ -98,7 +101,9 @@ export class IdscanlyDocuscanService {
 
     const documentData: DocumentData = {
       scan_type: 'idscanly',
-      document_type: f.documentType ?? documentType.label,
+      // documentType.label is a translation KEY (see document-type.ts) — resolve it before use,
+      // this is a display-only fallback for docTypeName(), not the API's document_type enum.
+      document_type: f.documentType ?? this.lang.t(documentType.label),
       date_of_issue: issueDate,
       message: '',
       is_identity_document: documentType.id !== 'address-card',
