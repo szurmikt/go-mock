@@ -1,4 +1,5 @@
 import { Injectable, NgZone, signal } from '@angular/core';
+import * as Sentry from '@sentry/angular';
 import type { CornerPoints } from 'jscanify/client';
 import { DETECTION_TUNING, DetectionTuning } from '../capture-tuning';
 import { CaptureQuality } from '../models/capture-quality';
@@ -147,8 +148,17 @@ export class DocumentDetectionService {
     try {
       this.stream = await this.requestCamera();
     } catch (error) {
-      this.pushLog(`camera FAILED: ${this.describeError(error, 'camera')}`);
-      this.zone.run(() => opts.onError?.(this.describeError(error, 'camera')));
+      const description = this.describeError(error, 'camera');
+      this.pushLog(`camera FAILED: ${description}`);
+      // No prior Sentry visibility into IDScanly camera-start failures — this is exactly
+      // the class of issue the WKWebView/getUserMedia reliability risk would surface as.
+      Sentry.captureException(error, {
+        tags: {
+          context: 'idscanly_camera_start',
+          error_name: (error as { name?: string })?.name ?? 'unknown',
+        },
+      });
+      this.zone.run(() => opts.onError?.(description));
       return;
     }
     const track = this.stream.getVideoTracks()[0];
@@ -171,8 +181,15 @@ export class DocumentDetectionService {
     try {
       this.scanner = await this.cvLoader.getScanner((step) => this.pushLog(`cv: ${step}`));
     } catch (error) {
-      this.pushLog(`OpenCV FAILED: ${this.describeError(error, 'opencv')}`);
-      this.zone.run(() => opts.onError?.(this.describeError(error, 'opencv')));
+      const description = this.describeError(error, 'opencv');
+      this.pushLog(`OpenCV FAILED: ${description}`);
+      Sentry.captureException(error, {
+        tags: {
+          context: 'idscanly_opencv_load',
+          error_name: (error as { name?: string })?.name ?? 'unknown',
+        },
+      });
+      this.zone.run(() => opts.onError?.(description));
       return;
     }
     this.pushLog(`getScanner returned (type=${typeof this.scanner})`);

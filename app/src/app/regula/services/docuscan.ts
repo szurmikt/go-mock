@@ -150,8 +150,6 @@ export class DocuscanService {
   }
 
   public set lastScanResult(data: ScanResultInterface | null) {
-    console.log('lastScanResult setter data', data);
-
     this._lastScanResult = data;
   }
 

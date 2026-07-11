@@ -117,11 +117,6 @@ export class IdScanPage implements OnInit, OnDestroy {
 
     this.reservationCode = this.route.snapshot.paramMap.get('code')!;
     this.guestId = this.route.snapshot.paramMap.get('guestId')!;
-    console.log(
-      'IdScanPage ngOnInit this.reservationCode',
-      this.reservationCode,
-    );
-    console.log('IdScanPage ngOnInit this.guestId', this.guestId);
 
     const guests = await this.reservationService.fetchGuests(
       this.reservationCode,
@@ -159,9 +154,7 @@ export class IdScanPage implements OnInit, OnDestroy {
     this.timeouts.forEach(clearTimeout);
   }
 
-  async IonViewWillEnter(): Promise<void> {
-    console.log('IonViewWillEnter');
-  }
+  async IonViewWillEnter(): Promise<void> {}
 
   scan(): void {
     this.documentReader.scan();
@@ -174,23 +167,16 @@ export class IdScanPage implements OnInit, OnDestroy {
   processDocument(action: string) {
     const _scanResult: ScanResultInterface = this.scanResult();
     this.docuscanService.lastScanResult = _scanResult;
-    console.log(
-      'this.docuscanService.lastScanResult',
-      this.docuscanService.lastScanResult,
-    );
     if (action == 'save') {
       const guest = this.guest();
-      console.log('processDocument guest', guest);
       if (_scanResult.scannedData) {
         guest!.scanned_data =
           this.docuscanService.scannedDataToGuestScannedData(
             _scanResult.scannedData,
           );
       }
-      console.log('processDocument guest scanned', guest);
 
       this.docuscanService.fillGuestDataFromScannedData(guest!);
-      console.log('processDocument guest filled', guest);
 
       this.guest.set(guest!);
 
@@ -204,7 +190,6 @@ export class IdScanPage implements OnInit, OnDestroy {
       this.reservationService
         .updateGuest(this.reservationCode!, this.guest()!)
         .then(() => {
-          console.log('GuestPage openScanModal guest updated successfully');
           this.docuscanService.lastScanResult = null;
           this.back();
         });

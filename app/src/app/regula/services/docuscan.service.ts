@@ -103,9 +103,6 @@ export class DocuscanService {
     scannedGuestData: ScannedGuestDataInterface,
     guest: GuestInterface,
   ) {
-    console.log('postFieldInit scannedGuestData', scannedGuestData);
-    console.log('postFieldInit guest', guest);
-
     scannedGuestData['guest_id'] = {
       value: guest.guest_id,
       formatted_value: guest.guest_id,
@@ -130,7 +127,6 @@ export class DocuscanService {
       modified: false,
       error: false,
     };
-    console.log('postFieldInit scannedGuestData', scannedGuestData);
     return scannedGuestData;
   }
 
@@ -139,8 +135,6 @@ export class DocuscanService {
   }
 
   public set lastScanResult(data: ScanResultInterface | null) {
-    console.log('lastScanResult setter data', data);
-
     this._lastScanResult = data;
   }
   // public get lastScannedData(): ScannedDataInterface | null {
@@ -166,7 +160,6 @@ export class DocuscanService {
   ) {
     let scannedData: ScannedDataInterface = {} as any;
     for (let key in scannedGuestData) {
-      console.log('key:', key, 'value:', scannedGuestData[key].value);
       if (
         key === 'document_type' ||
         key === 'document_number' ||
