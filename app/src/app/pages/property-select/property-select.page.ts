@@ -4,6 +4,7 @@ import { IonContent, AlertController } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth';
 import { OptionsService } from '../../services/options.service';
 import { LanguageService } from '../../services/language.service';
+import { PropertyGatingService } from '../../services/property-gating.service';
 import { PropertyInterface } from '../../models/property.interface';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 
@@ -25,6 +26,7 @@ export class PropertySelectPage implements OnInit {
     private alertCtrl: AlertController,
     private options: OptionsService,
     private lang: LanguageService,
+    private propertyGating: PropertyGatingService,
   ) {}
 
   get filteredProperties(): PropertyInterface[] {
@@ -48,7 +50,20 @@ export class PropertySelectPage implements OnInit {
   async loadProperties() {
     this.loading = true;
     try {
-      this.properties = await this.auth.loadProperties();
+      const properties = await this.auth.loadProperties();
+      const allowed = await this.propertyGating.resolveEnabledPropertyIds(
+        properties.map(p => p.property_id),
+      );
+      if (allowed === null) {
+        await this.router.navigate(['/service-unavailable'], { replaceUrl: true });
+        return;
+      }
+      if (allowed.size === 0) {
+        await this.router.navigate(['/go-unavailable'], { replaceUrl: true });
+        return;
+      }
+      this.auth.setGoEnabledPropertyIds(allowed);
+      this.properties = properties.filter(p => allowed.has(p.property_id));
     } catch {
       const alert = await this.alertCtrl.create({
         header: this.lang.t('errors.loadPropertiesTitle'),

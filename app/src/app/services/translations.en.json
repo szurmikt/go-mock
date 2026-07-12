@@ -241,6 +241,12 @@
     "title": "Update required",
     "message": "A new version of SabeeApp Go is required. Please update the app to continue."
   },
+  "goGating": {
+    "unavailableTitle": "SabeeApp Go isn't available for you yet",
+    "unavailableMessage": "Please contact SabeeApp support to get access.",
+    "serviceErrorTitle": "Unable to verify access",
+    "serviceErrorMessage": "Please check your connection and try again."
+  },
   "lock": {
     "appName": "SabeeApp Go",
     "subtitle": "Verify your identity to continue",

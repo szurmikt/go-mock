@@ -46,7 +46,11 @@ export class HomePage implements ViewWillEnter, AfterViewInit, OnDestroy {
 
   readonly filteredProperties = computed(() => {
     const q = this.propertyQuery().trim().toLowerCase();
-    const all = this.auth.properties();
+    // Switcher reuses the allowlist resolved at login/session-restore (see
+    // PropertyGatingService) rather than re-checking Supabase on every open.
+    // A missing allowlist (shouldn't happen once home is reachable) fails closed.
+    const allowed = this.auth.goEnabledPropertyIds();
+    const all = this.auth.properties().filter(p => allowed?.has(p.property_id) ?? false);
     if (!q) return all;
     return all.filter(p =>
       (p.property_name ?? '').toLowerCase().includes(q) ||

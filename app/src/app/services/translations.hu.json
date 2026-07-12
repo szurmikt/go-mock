@@ -241,6 +241,12 @@
     "title": "Frissítés szükséges",
     "message": "A SabeeApp Go új verziója szükséges. A folytatáshoz frissítsd az alkalmazást."
   },
+  "goGating": {
+    "unavailableTitle": "A SabeeApp Go még nem érhető el számodra",
+    "unavailableMessage": "A hozzáférésért kérjük, vedd fel a kapcsolatot a SabeeApp ügyfélszolgálatával.",
+    "serviceErrorTitle": "A hozzáférés nem ellenőrizhető",
+    "serviceErrorMessage": "Kérjük, ellenőrizd az internetkapcsolatot, és próbáld újra."
+  },
   "lock": {
     "appName": "SabeeApp Go",
     "subtitle": "A folytatáshoz igazold a személyazonosságodat",
