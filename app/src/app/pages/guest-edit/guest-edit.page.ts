@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { ReservationService } from '../../services/reservation';
 import { GuestInterface } from '../../models/guest.interface';
@@ -58,7 +58,6 @@ export class GuestEditPage implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
-    private router: Router,
     private res: ReservationService,
     public options: OptionsService,
     private mixpanel: MixpanelService,
@@ -193,10 +192,11 @@ export class GuestEditPage implements OnInit {
         from_scan: this.fromScan,
         fields_changed: fieldsChanged,
       });
-      this.router.navigate(['..'], {
-        relativeTo: this.route,
-        replaceUrl: true,
-      });
+      // Pop the edit entry to return to the EXISTING guest-detail history entry.
+      // navigate('..', { replaceUrl }) turned gd→edit into gd→gd, so the first
+      // back-press on guest-detail appeared to do nothing. Guest-detail re-fetches
+      // in ionViewWillEnter, so the saved data shows regardless.
+      this.back();
     } catch (e: any) {
       this.saveError.set(e.message ?? this.lang.t('errors.failedSave'));
     } finally {

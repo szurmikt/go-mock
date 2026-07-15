@@ -38,6 +38,8 @@ export class AuthService {
   private _selectedProperty = signal<PropertyInterface | null>(null);
   private _properties = signal<PropertyInterface[]>([]);
   private _deviceId = signal<string>('');
+  /** Rollout allowlist resolved once at login/session-restore (see PropertyGatingService) — reused by the in-app switcher, not re-fetched per switch. */
+  private _goEnabledPropertyIds = signal<Set<number> | null>(null);
 
   readonly isAuthenticated = computed(() => !!this._auth()?.accessToken);
   readonly accessToken = computed(() => this._auth()?.accessToken ?? null);
@@ -49,6 +51,7 @@ export class AuthService {
   readonly selectedProperty = computed(() => this._selectedProperty());
   readonly properties = computed(() => this._properties());
   readonly deviceId = computed(() => this._deviceId());
+  readonly goEnabledPropertyIds = computed(() => this._goEnabledPropertyIds());
 
   constructor(
     private http: HttpClient,
@@ -219,6 +222,17 @@ export class AuthService {
     return sorted;
   }
 
+  /** Set by the property-gating check at login / boot session-restore — see PropertyGatingService. */
+  setGoEnabledPropertyIds(ids: Set<number>): void {
+    this._goEnabledPropertyIds.set(ids);
+  }
+
+  /** Evicts just the active property, keeping the session authenticated — used when the boot-time property-gating check finds the restored property no longer allowed. */
+  async clearSelectedProperty(): Promise<void> {
+    this._selectedProperty.set(null);
+    await this.storage.remove(Config.STORAGE_PROPERTY_KEY);
+  }
+
   async selectProperty(property: PropertyInterface): Promise<void> {
     // Switching to a different property must not carry over the previous
     // property's reservations/guests (would otherwise survive the 60s fetch
@@ -239,6 +253,7 @@ export class AuthService {
     this._auth.set(null);
     this._selectedProperty.set(null);
     this._properties.set([]);
+    this._goEnabledPropertyIds.set(null);
     await this.storage.remove(Config.STORAGE_AUTH_KEY);
     await this.storage.remove(Config.STORAGE_PROPERTY_KEY);
     await this.storage.remove(Config.STORAGE_PROPERTIES_KEY);

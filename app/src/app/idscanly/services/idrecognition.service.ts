@@ -1,6 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { CapturedSide } from './capture-session.service';
+import { AuthService } from '../../services/auth';
+import { ApiEnvironmentService } from '../../services/api-environment';
 
 export interface IdRecognitionFields {
   documentType?: string;
@@ -51,14 +53,28 @@ function toBase64(dataUrl: string): string {
 
 @Injectable({ providedIn: 'root' })
 export class IdRecognitionService {
+  private auth = inject(AuthService);
+  private apiEnv = inject(ApiEnvironmentService);
+
   /**
    * Submit captured images to the Supabase Edge Function via raw fetch.
    * The edge function polls IdScanly internally (every 2s, up to 30s) before replying.
    * `isProcessing: true` in a successful response means the 30s budget ran out — not an error.
+   *
+   * `pid` + `sabeeToken` let the edge function validate the caller server-side
+   * (a live SabeeApp session for a property that actually has IDScanly enabled)
+   * instead of trusting the public Supabase anon key alone. `isTest` tells it
+   * which SabeeApp API host to validate the token against — the edge function
+   * picks from its own fixed live/test URLs, it never trusts a client-supplied URL.
    */
   async submit(captures: CapturedSide[]): Promise<IdRecognitionResponse> {
     const url = `${environment.supabaseUrl}/functions/v1/idrecognition`;
+    const property = this.auth.selectedProperty();
     const body = {
+      pid: property ? String(property.property_id) : null,
+      sabeeToken: this.auth.accessToken(),
+      deviceId: this.auth.deviceId(),
+      isTest: this.apiEnv.isTest(),
       images: captures.map((c) => ({
         side: c.side,
         base64: toBase64(c.fullDataUrl),

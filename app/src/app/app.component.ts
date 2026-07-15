@@ -11,6 +11,7 @@ import { AuthService } from './services/auth';
 import { BiometricService } from './services/biometric';
 import { MixpanelService } from './services/mixpanel';
 import { OptionsService } from './services/options.service';
+import { PropertyGatingService } from './services/property-gating.service';
 
 const SLIDE_DURATION = 280;
 const SLIDE_EASING = 'cubic-bezier(0.3, 0, 0, 1)';
@@ -57,6 +58,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private options = inject(OptionsService);
   private apiEnv = inject(ApiEnvironmentService);
   private appConfig = inject(AppConfigService);
+  private propertyGating = inject(PropertyGatingService);
   private mixpanel = inject(MixpanelService);
 
   constructor(
@@ -125,10 +127,26 @@ export class AppComponent implements OnInit, OnDestroy {
         url = '/login';
       } else if (!this.auth.selectedProperty()) {
         url = '/property-select';
-      } else if (initialUrl && !authlessRoutes.includes(initialUrl.split('?')[0])) {
-        url = initialUrl;
       } else {
-        url = '/home';
+        // A restored session with an active property is the boot-time equivalent of
+        // login — re-verify the property is still Go-enabled before letting it
+        // straight through to /home (see PropertyGatingService; fail-closed by design).
+        const selected = this.auth.selectedProperty()!;
+        const allowed = await this.propertyGating.resolveEnabledPropertyIds(
+          this.auth.properties().map(p => p.property_id),
+        );
+        if (allowed === null) {
+          url = '/service-unavailable';
+        } else if (allowed.size === 0) {
+          url = '/go-unavailable';
+        } else if (!allowed.has(selected.property_id)) {
+          await this.auth.clearSelectedProperty();
+          this.auth.setGoEnabledPropertyIds(allowed);
+          url = '/property-select';
+        } else {
+          this.auth.setGoEnabledPropertyIds(allowed);
+          url = initialUrl && !authlessRoutes.includes(initialUrl.split('?')[0]) ? initialUrl : '/home';
+        }
       }
 
       await this.router.navigateByUrl(url, { replaceUrl: true });

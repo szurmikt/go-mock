@@ -95,8 +95,11 @@ export class IdscanlyDocuscanService {
       document_type: box(CANONICAL_DOCUMENT_TYPE[documentType.id] ?? null),
       document_number: box(f.documentNumber),
       date_of_issue_of_the_document: box(issueDate),
-      // IDs set by Regula flow — IDScanly has no equivalent doc_reader_scanned_document_id
-      doc_reader_scanned_document_id: box('idscanly'),
+      // No IDScanly equivalent of Regula's document id — send null, exactly like a Regula
+      // first scan on a never-scanned guest. The API validates this field as an integer,
+      // so the previous 'idscanly' marker string made POST /guests reject EVERY save
+      // (ret_code 1003); the backend assigns the real id server-side.
+      doc_reader_scanned_document_id: box(null),
     };
 
     const documentData: DocumentData = {

@@ -206,8 +206,7 @@
     "ariaClose": "Bezárás",
     "lightboxCaptionFit": "{{label}} — koppints a kicsinyítéshez",
     "lightboxCaptionZoom": "{{label}} — koppints a nagyításhoz",
-    "submitProcessing": "Képek feldolgozása…",
-    "submitRecognition": "Felismerés folyamatban…",
+    "submitProcessing": "Dokumentumok feldolgozása…",
     "submitLongwait": "Még dolgozunk rajta — mindjárt kész…",
     "privacyNote": "Az okmányról készült fotókat nem tároljuk a feldolgozás után.",
     "footerNote": "Az egyik oldal nem elég éles — mentheted vagy újrafotózhatod.",
@@ -240,6 +239,12 @@
   "updateRequired": {
     "title": "Frissítés szükséges",
     "message": "A SabeeApp Go új verziója szükséges. A folytatáshoz frissítsd az alkalmazást."
+  },
+  "goGating": {
+    "unavailableTitle": "A SabeeApp Go még nem érhető el számodra",
+    "unavailableMessage": "A hozzáférésért kérjük, vedd fel a kapcsolatot a SabeeApp ügyfélszolgálatával.",
+    "serviceErrorTitle": "A hozzáférés nem ellenőrizhető",
+    "serviceErrorMessage": "Kérjük, ellenőrizd az internetkapcsolatot, és próbáld újra."
   },
   "lock": {
     "appName": "SabeeApp Go",

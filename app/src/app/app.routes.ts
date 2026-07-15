@@ -76,6 +76,16 @@ export const routes: Routes = [
       import('./pages/update-required/update-required.page').then(m => m.UpdateRequiredPage),
   },
   {
+    path: 'go-unavailable',
+    loadComponent: () =>
+      import('./pages/go-unavailable/go-unavailable.page').then(m => m.GoUnavailablePage),
+  },
+  {
+    path: 'service-unavailable',
+    loadComponent: () =>
+      import('./pages/service-unavailable/service-unavailable.page').then(m => m.ServiceUnavailablePage),
+  },
+  {
     path: '',
     redirectTo: 'login',
     pathMatch: 'full',

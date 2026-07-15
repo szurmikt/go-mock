@@ -283,7 +283,6 @@ export class DocumentReaderService {
       // result sheet still shows the document. (NFC fallback to optical.)
       this.isReadingRfid = false;
       this.logScanOutcome(action, results, error);
-      console.log('handleCompletion RFID failed → finalize optical', results);
       this.processResults(results).then(() =>
         this.logScanOutcome(action, results, error, this._scanResult()),
       );
@@ -329,7 +328,6 @@ export class DocumentReaderService {
         this.reader.startNewPage();
         this.launchScanner();
       } else {
-        console.log('handleCompletion processResults', results);
         this.processResults(results).then(() =>
           this.logScanOutcome(action, results, error, this._scanResult()),
         );
@@ -492,17 +490,20 @@ export class DocumentReaderService {
     })();
     const title = `Regula scan ${outcome}`;
 
-    // Full payload to the device console (Xcode / Console.app) during testing.
-    const consolePayload = { diagnostics, mapped, rawResult };
-    if (level === 'error') {
-      console.error(`[regula] ${title}`, consolePayload);
-    } else if (level === 'warning') {
-      console.warn(`[regula] ${title}`, consolePayload);
-    } else {
-      console.log(`[regula] ${title}`, consolePayload);
-    }
-
     if (Config.SCAN_DEBUG_LOGGING) {
+      // Full payload to the device console (Xcode / Console.app) during testing.
+      // Gated: `mapped`/`rawResult` carry guest PII (name, DOB, document number,
+      // MRZ), and an ungated console.* call would still feed Sentry's default
+      // breadcrumb capture regardless of this flag.
+      const consolePayload = { diagnostics, mapped, rawResult };
+      if (level === 'error') {
+        console.error(`[regula] ${title}`, consolePayload);
+      } else if (level === 'warning') {
+        console.warn(`[regula] ${title}`, consolePayload);
+      } else {
+        console.log(`[regula] ${title}`, consolePayload);
+      }
+
       const cappedRaw =
         rawResult && rawResult.length > 16000
           ? `${rawResult.slice(0, 16000)}…[truncated ${rawResult.length} chars]`
@@ -593,8 +594,6 @@ export class DocumentReaderService {
 
     if (!results) return;
 
-    console.log('processResults results', results);
-
     let issuingAuthority = await results.textFieldValueByType(1);
 
     this.documentData.document_type = results.documentType![0].name ?? '';
@@ -610,8 +609,6 @@ export class DocumentReaderService {
         results.documentType &&
         results.documentType.length > 0
       ) {
-        console.log(results.documentType[0].type);
-
         if (
           Config.DRIVING_LICENCES.includes(results.documentType[0].type ?? 0)
         ) {
@@ -780,10 +777,6 @@ export class DocumentReaderService {
     //   this.docuscanService.lastDocumentData,
     // );
 
-    console.log('processResults this.guestPostData', this.guestPostData);
-    console.log('processResults this.scannedGuestData', this.scannedGuestData);
-    console.log('processResults this.documentData', this.documentData);
-
     this._readerStatus.set(ReaderStatus.FINISHED);
     this._scanResult.set({
       documentData: this.documentData,
@@ -796,13 +789,10 @@ export class DocumentReaderService {
       this.scannedGuestData.hasOwnProperty('citizenship') &&
       this.scannedGuestData.hasOwnProperty('country_code')
     ) {
-      console.log('has citizenship && country_code');
-
       if (
         this.scannedGuestData['country_code'] != null &&
         this.scannedGuestData['country_code']['formatted_value'] != null
       ) {
-        console.log('has country_code && country_code formatted');
         let defaultPipe = new DefaultValuePipe();
         this.scannedGuestData['citizenship']['formatted_value'] =
           defaultPipe.transform(
@@ -836,8 +826,6 @@ export class DocumentReaderService {
       }
       this.scannedGuestData['citizenship']['value'] =
         this.scannedGuestData['country_code']['value'];
-    } else {
-      console.log('NOT has citizenship && country_code');
     }
   }
 

@@ -225,8 +225,7 @@ export const TRANSLATIONS: TranslationMap = {
     ariaClose: 'Close',
     lightboxCaptionFit: '{{label}} — tap image to fit',
     lightboxCaptionZoom: '{{label}} — tap image to zoom',
-    submitProcessing: 'Processing images…',
-    submitRecognition: 'Running recognition…',
+    submitProcessing: 'Processing your documents…',
     submitLongwait: 'Still working — almost there…',
     privacyNote: 'The photos of your document are not stored after processing.',
     footerNote: 'One side could be clearer — you can still submit or retake it.',
@@ -259,6 +258,12 @@ export const TRANSLATIONS: TranslationMap = {
   updateRequired: {
     title: 'Update required',
     message: 'A new version of SabeeApp Go is required. Please update the app to continue.',
+  },
+  goGating: {
+    unavailableTitle: "SabeeApp Go isn't available for you yet",
+    unavailableMessage: 'Please contact SabeeApp support to get access.',
+    serviceErrorTitle: 'Unable to verify access',
+    serviceErrorMessage: 'Please check your connection and try again.',
   },
   lock: {
     appName: 'SabeeApp Go',

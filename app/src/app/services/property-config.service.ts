@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
+import { ApiEnvironmentService } from './api-environment';
 
 export type ScanVendor = 'regula' | 'idscanly';
 
@@ -21,11 +22,16 @@ export class PropertyConfigService {
   /** Per-property opt-in to send full scan responses to Sentry — see review.page.ts submit(). */
   extendedLogging = signal<boolean>(false);
 
+  constructor(private apiEnv: ApiEnvironmentService) {}
+
   async load(propertyId: number): Promise<void> {
     try {
+      // property_id can collide between the live and test SabeeApp systems — scope
+      // every property_config lookup to the API environment currently in use.
       const url =
         `${environment.supabaseUrl}/rest/v1/property_config` +
-        `?property_id=eq.${propertyId}&select=scan_vendor,scan_doc_types,extended_logging&limit=1`;
+        `?property_id=eq.${propertyId}&environment=eq.${this.apiEnv.mode()}` +
+        `&select=scan_vendor,scan_doc_types,extended_logging&limit=1`;
 
       const res = await fetch(url, {
         headers: {
