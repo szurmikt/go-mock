@@ -71,9 +71,6 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
     this.allGood() ? '' : this.lang.t('idscanly.footerNote'),
   );
 
-  /** Fixed-length slot list for the dot-chase loader — see submit-overlay in the template. */
-  readonly dotIndices = Array.from({ length: 10 }, (_, i) => i);
-
   readonly lightbox = signal<ReviewImage | null>(null);
   readonly zoomed = signal(false);
 
@@ -97,29 +94,23 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
   /**
    * `idrecognition` (see IdRecognitionService.submit) is a single opaque fetch — the edge function
    * polls the vendor internally, every 2s, up to 30s, before replying once. There's no real progress
-   * fraction to report, so these stages are TIMED, not event-driven: a well-understood, honest way to
-   * keep the wait from reading as frozen. The third stage exists because the up-to-30s tail is real
-   * (per docs/idrecognition-handoff.md) — without it the UI would sit on "Running recognition…" for the
-   * whole tail.
+   * fraction to report, so the stages are TIMED, not event-driven. 10s is the overlay's tick ring
+   * duration (avg recognition ≈ 9.2s; the ring's CSS animation in review.page.scss must match it);
+   * 'longwait' exists because the up-to-30s tail is real (per docs/idrecognition-handoff.md) —
+   * without it the UI would sit on a full, silent ring for the whole tail.
    */
-  readonly submitStage = signal<'images' | 'recognition' | 'longwait'>('images');
+  readonly submitStage = signal<'processing' | 'longwait'>('processing');
   private stageTimers: ReturnType<typeof setTimeout>[] = [];
 
-  readonly submitStageMessage = computed(() => {
-    switch (this.submitStage()) {
-      case 'images':
-        return this.lang.t('idscanly.submitProcessing');
-      case 'recognition':
-        return this.lang.t('idscanly.submitRecognition');
-      case 'longwait':
-        return this.lang.t('idscanly.submitLongwait');
-    }
-  });
+  readonly submitStageMessage = computed(() =>
+    this.lang.t(
+      this.submitStage() === 'longwait' ? 'idscanly.submitLongwait' : 'idscanly.submitProcessing',
+    ),
+  );
 
   private startStageTimers(): void {
     this.clearStageTimers();
-    this.submitStage.set('images');
-    this.stageTimers.push(setTimeout(() => this.submitStage.set('recognition'), 2500));
+    this.submitStage.set('processing');
     this.stageTimers.push(setTimeout(() => this.submitStage.set('longwait'), 10000));
   }
 
@@ -235,7 +226,9 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
 
   retake(side: Side): void {
     this.session.clearSide(side);
-    void this.router.navigateByUrl('/idscanly/scan');
+    // replaceUrl: keeps the whole scan flow at one history entry (see scan.page.ts) —
+    // each retake round used to push two more entries onto the back stack.
+    void this.router.navigateByUrl('/idscanly/scan', { replaceUrl: true });
   }
 
   toggleDebug(): void {
@@ -300,12 +293,12 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
 
       this.session.scanResult.set(mapped);
 
-      // Navigate back to guest-detail, replacing the review+scan entries in the stack so
-      // the user can't back-navigate into the completed scan flow.
-      await this.router.navigate(
-        ['/guest', ctx.reservationCode, ctx.guestId],
-        { replaceUrl: true },
-      );
+      // Pop the scan flow's single history entry (scan→review navigations use replaceUrl)
+      // to land on the ORIGINAL guest-detail entry — its ionViewWillEnter consumes
+      // session.scanResult and opens the result sheet. The previous
+      // navigate(..., { replaceUrl }) only replaced the review entry, leaving every
+      // scan/review page reachable via the back button after the scan completed.
+      this.location.back();
     } catch (err) {
       this.clearStageTimers();
       this.submitError.set(err instanceof Error ? err.message : this.lang.t('errors.generic'));

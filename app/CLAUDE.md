@@ -635,7 +635,7 @@ ExportOptions.plist (create in `/tmp` — not committed):
 
 ### Build number
 
-`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **18**.
+`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **90**.
 
 ### App Store requirements
 
@@ -688,6 +688,30 @@ async ionViewWillEnter() {
 ---
 
 ## 19. Changelog
+
+### 2026-07-15 — iPhone-only device family (drop iPad support to satisfy App Store Connect screenshot requirement)
+
+> **Shipped build: iOS 90 (TestFlight).**
+
+App Store Connect blocked "Add for Review" with "You must upload a screenshot for 13-inch iPad displays" — the app has never supported iPad, but the Xcode project's `TARGETED_DEVICE_FAMILY` was `"1,2"` (iPhone + iPad / "Universal"), so App Store Connect required iPad-size screenshots for a device class the app was never built or tested for.
+
+- **[project.pbxproj](app/ios/App/App.xcodeproj/project.pbxproj):** `TARGETED_DEVICE_FAMILY` changed from `"1,2"` to `1` (iPhone only) in both the Debug and Release build configurations (lines 363, 384) — the file-level equivalent of setting Xcode's Deployment Info → Devices dropdown to "iPhone" instead of "Universal". No other project settings touched.
+- Once App Store Connect processes a build declaring iPhone-only support, the iPad screenshot requirement for this version should no longer apply — it only asks for screenshots on device classes the binary declares support for.
+
+**Verification:** not yet confirmed in App Store Connect (requires the new build to finish processing, then re-attempt "Add for Review").
+
+### 2026-07-15 — IDScanly submit overlay: 10-second tick-ring progress animation
+
+> No build/version bump, no TestFlight upload (local verification only — `npm run build` clean; animation mechanics verified via headless-Chrome screenshots of a standalone reproduction, see below).
+
+Average IDScanly recognition time is ~9.2s, but the Review page's submit overlay showed an indeterminate 10-dot chase — no sense that the wait is almost over. Replaced it with a determinate-feeling circular "watch tick" ring that fills clockwise over **10 seconds**, under a single message "Processing your documents…". An early result dismisses the overlay exactly as before (`submitting()` flips off, animation unmounts). Past 10s (backend can legitimately take up to ~30s) the full ring pulses gently and the existing "Still working — almost there…" message takes over.
+
+- **[review.page.html](src/app/idscanly/pages/review/review.page.html):** `.submit-overlay__dots` replaced with an SVG tick ring — track + fill are the **same dashed circle** (50 ticks via `pathLength="100"` + `stroke-dasharray: 0.8 1.2`), the fill revealed by a `<mask>` whose solid stroke animates `stroke-dashoffset` 100→0. `--overtime` modifier bound to `submitStage() === 'longwait'`.
+- **[review.page.scss](src/app/idscanly/pages/review/review.page.scss):** dot styles + `submit-dot-chase` keyframe deleted; new ring styles. Sweep uses `animation: submit-ring-sweep 10s steps(50) forwards` — `steps(50)` lights ticks one-by-one (~200ms each, watch-like) instead of partially revealing them; `rotate(-90deg)` starts at 12 o'clock. Overtime = `submit-ring-pulse` opacity pulse on the full ring. **The 10s duration must stay in sync with the `longwait` timer in review.page.ts** (commented on both sides).
+- **[review.page.ts](src/app/idscanly/pages/review/review.page.ts):** stages collapsed `'images' | 'recognition' | 'longwait'` → `'processing' | 'longwait'` — the 2.5s "Running recognition…" split is gone (one message covers 0–10s); `startStageTimers()` keeps only the 10 000ms timer. `dotIndices` removed. `submit()`/teardown untouched; the `?preview=submitting` dev hook still drives the same signals.
+- **Translations** ([translations.ts](src/app/services/translations.ts) + en/hu JSON): `idscanly.submitProcessing` → "Processing your documents…" (HU: "Dokumentumok feldolgozása…"); `idscanly.submitRecognition` deleted from all three files. Key parity re-verified: 240 = 240 = 240 across ts/en/hu.
+
+**Verification:** `npm run build` clean (only the three known pre-existing warnings). `/idscanly/review` is behind `authGuard` (+ the new fail-closed property gating at boot), so no browser session could reach the real page here; instead the exact markup + compiled CSS were reproduced in a standalone HTML page and screenshotted with headless Chrome at virtual times 2.5s / 6s / 9.5s / 12s — confirmed: ticks light clockwise from 12 o'clock (~25% / ~60% / ~95%), full ring + "Still working" message + pulse after 10s. **Not yet verified in the real app:** an `ionic serve` pass over `?preview=submitting` with a logged-in session, and WKWebView rendering of the animated `<mask>` on device (Blink renders it fine; if WKWebView ever doesn't, the documented fallback is 50 individual tick spans with staggered `animation-delay`, like the old `dotIndices` pattern).
 
 ### 2026-07-13 — Property gating: first Go rollout wave restricted to allowlisted properties, per environment
 

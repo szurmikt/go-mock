@@ -61,6 +61,8 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
 
   scanSheetOpen = signal(false);
   scanSheetMode = signal<ScanSheetMode>('loading');
+  scanSaving = signal(false);
+  scanSaveError = signal<string | null>(null);
   failedStatus = signal<ReaderStatus | null>(null);
   docTypeSheetOpen = signal(false);
   private awaitingScanResult = signal(false);
@@ -179,6 +181,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     if (idResult) {
       this._idscanlyResult.set(idResult);
       this.captureSession.clearScanResult();
+      this.scanSaveError.set(null);
       this.scanSheetMode.set('result');
       this.scanSheetOpen.set(true);
     }
@@ -233,6 +236,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     this._previewScanResult.set(null);
     this._previewFailed.set(false);
     this.failedStatus.set(null);
+    this.scanSaveError.set(null);
     this.scanSheetOpen.set(true);
     try {
       await this.documentReader.init();
@@ -255,9 +259,10 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
   }
 
   cancelScanSheet() {
-    if (this.awaitingScanResult()) return;
+    if (this.awaitingScanResult() || this.scanSaving()) return;
     this.scanSheetOpen.set(false);
     this.scanSheetMode.set('loading');
+    this.scanSaveError.set(null);
     this._previewScanResult.set(null);
     this._previewFailed.set(false);
     this.failedStatus.set(null);
@@ -342,16 +347,25 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     }
     this.guest.set(guest);
 
-    this.res.updateGuest(this.reservationCode, guest).then(() => {
-      this.mixpanel.trackScanResultSaved({
-        document_type: result?.documentData?.document_type ?? undefined,
-      });
-      this.docuscan.lastScanResult = null;
-      this._idscanlyResult.set(null);
-      this.scanSheetOpen.set(false);
-      this.scanSheetMode.set('loading');
-      this.loadGuest();
-    });
+    // Without the catch, a rejected save left the sheet open forever with no feedback
+    // (and the API's rejection surfaced nowhere) — the error must land in the sheet.
+    this.scanSaving.set(true);
+    this.scanSaveError.set(null);
+    this.res.updateGuest(this.reservationCode, guest)
+      .then(() => {
+        this.mixpanel.trackScanResultSaved({
+          document_type: result?.documentData?.document_type ?? undefined,
+        });
+        this.docuscan.lastScanResult = null;
+        this._idscanlyResult.set(null);
+        this.scanSheetOpen.set(false);
+        this.scanSheetMode.set('loading');
+        this.loadGuest();
+      })
+      .catch((e: any) => {
+        this.scanSaveError.set(e?.message ?? this.lang.t('errors.failedSave'));
+      })
+      .finally(() => this.scanSaving.set(false));
   }
 
   guestName(g: GuestInterface): string {

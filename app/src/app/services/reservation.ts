@@ -1,7 +1,9 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import * as Sentry from '@sentry/angular';
 import { ApiService } from './api';
 import { LanguageService } from './language.service';
+import { PropertyConfigService } from './property-config.service';
 import { ApiResponse } from '../models/auth.interfaces';
 import { ReservationInterface } from '../models/reservation.interface';
 import { GuestInterface } from '../models/guest.interface';
@@ -45,6 +47,7 @@ export function pillLabel(apiStatus: string): string {
 export class ReservationService {
   private api = inject(ApiService);
   private lang = inject(LanguageService);
+  private propertyConfig = inject(PropertyConfigService);
 
   private static readonly STALE_MS = 60_000;
   private static readonly GUEST_STALE_MS = 60_000;
@@ -129,10 +132,21 @@ export class ReservationService {
 
   async updateGuest(reservationCode: string, guest: GuestInterface): Promise<void> {
     const payload = { reservation_code: reservationCode, guest: nullifyEmpty(guest) };
-    const resp = await firstValueFrom(
-      this.api.post<ApiResponse<unknown>>('guests', payload),
-    );
-    if (!resp.success) throw new Error('Failed to save guest');
+    let resp: ApiResponse<unknown>;
+    try {
+      resp = await firstValueFrom(
+        this.api.post<ApiResponse<unknown>>('guests', payload),
+      );
+    } catch (e) {
+      this.reportGuestSaveFailure(reservationCode, guest, payload, null, e);
+      throw e;
+    }
+    if (!resp.success) {
+      this.reportGuestSaveFailure(reservationCode, guest, payload, resp.errors, null);
+      const err = new Error('Failed to save guest') as Error & { apiErrors?: unknown };
+      err.apiErrors = resp.errors;
+      throw err;
+    }
     this._guestCache.delete(reservationCode);
     this._guestFetchedAt.delete(reservationCode);
     this._reservations.update(list =>
@@ -145,6 +159,59 @@ export class ReservationService {
         };
       }),
     );
+  }
+
+  /**
+   * A failed guest save used to throw a bare generic Error — the API's `errors` payload
+   * (the only thing that says WHY validation rejected the save) was discarded and nothing
+   * reached Sentry. Capture the rejection with its API errors so scan-save failures are
+   * diagnosable. The full request payload carries guest PII, so it goes to Sentry Logs
+   * only for properties with `extended_logging` (same gate as logIdscanlyResponse).
+   */
+  private reportGuestSaveFailure(
+    reservationCode: string,
+    guest: GuestInterface,
+    payload: unknown,
+    apiErrors: unknown,
+    exception: unknown,
+  ): void {
+    try {
+      const errorsJson = safeJson(apiErrors).slice(0, 4000);
+      const scanMarker = (guest.scanned_data as any)?.doc_reader_scanned_document_id;
+      const captureContext = {
+        tags: {
+          context: 'guest_save',
+          failure_kind: exception != null ? 'http_error' : 'api_rejected',
+          // 'idscanly' marks an IDScanly-scanned save; Regula sets its own document id.
+          scan_marker: scanMarker != null ? String(scanMarker) : 'none',
+        },
+        contexts: {
+          guest_save: {
+            reservation_code: reservationCode,
+            guest_id: guest.guest_id,
+            has_scanned_data: guest.scanned_data != null,
+            document_type: guest.document?.document_type ?? null,
+            api_errors: errorsJson,
+          },
+        },
+      };
+      if (exception != null) {
+        Sentry.captureException(exception, captureContext);
+      } else {
+        Sentry.captureMessage('guest save rejected by API', { level: 'error', ...captureContext });
+      }
+      if (this.propertyConfig.extendedLogging()) {
+        const json = safeJson(payload);
+        Sentry.logger.error('guest save failed', {
+          reservation_code: reservationCode,
+          api_errors: errorsJson,
+          payload_json: json.length > 16000 ? `${json.slice(0, 16000)}…[truncated ${json.length} chars]` : json,
+        });
+        console.error('[guest_save] failed', { apiErrors, exception, payload });
+      }
+    } catch {
+      // Reporting must never mask or replace the original failure.
+    }
   }
 
   // Synchronous cache peek so screens can paint instantly before an SWR refresh lands.
@@ -251,6 +318,15 @@ export class ReservationService {
       number_of_guests: r.number_of_guests ?? 0,
       nights,
     };
+  }
+}
+
+// Best-effort JSON for Sentry diagnostics — must never throw.
+function safeJson(x: unknown): string {
+  try {
+    return JSON.stringify(x) ?? String(x);
+  } catch {
+    return String(x);
   }
 }
 

@@ -333,9 +333,20 @@
           }
         </div>
 
+        @if (scanSaveError()) {
+          <p style="color: var(--warn); font-size: var(--font-sm); font-weight: 700; margin: 10px 0 0; text-align: center">
+            {{ scanSaveError() }}
+          </p>
+        }
         <div class="actions">
-          <button class="btn secondary" (click)="processScanResult('edit')">{{ 'common.edit' | tr }}</button>
-          <button class="btn" (click)="processScanResult('save')">{{ 'common.save' | tr }}</button>
+          <button class="btn secondary" (click)="processScanResult('edit')" [disabled]="scanSaving()">{{ 'common.edit' | tr }}</button>
+          <button class="btn" (click)="processScanResult('save')" [disabled]="scanSaving()">
+            @if (scanSaving()) {
+              <span class="spin" style="width: 18px; height: 18px; border-width: 2.5px"></span>
+            } @else {
+              {{ 'common.save' | tr }}
+            }
+          </button>
         </div>
       } @else if (scanSheetMode() === 'failed') {
         <div class="actions">

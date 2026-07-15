@@ -223,7 +223,10 @@ export class IdscanScanPage implements OnDestroy {
       setTimeout(() => this.flipPromptHold.set(false), FLIP_PROMPT_MIN_MS);
     } else {
       this.detection.stop();
-      void this.router.navigateByUrl('/idscanly/review');
+      // replaceUrl: the scan flow must occupy a single history entry — pushing here
+      // (and on every retake) left scan/review pages reachable via the back button
+      // long after the scan finished.
+      void this.router.navigateByUrl('/idscanly/review', { replaceUrl: true });
     }
   }
 }
