@@ -91,6 +91,11 @@ export class DocumentDetectionService {
   /** Persistent append-only event log for on-device debugging. */
   readonly logs = signal<string[]>([]);
   private loggedFirstTick = false;
+  /** Throttles the periodic metrics log line (see tick()) to ~1/sec — real per-tick metrics
+   *  otherwise never surface anywhere readable (the on-screen badges are 9px and unreadable in
+   *  a phone screenshot); temporary diagnostic aid for tuning capture-tuning.ts against real
+   *  footage, same spirit as the existing tick#1 gate log. */
+  private lastMetricsLogAt = 0;
 
   private stream?: MediaStream;
   private timer?: ReturnType<typeof setInterval>;
@@ -401,7 +406,8 @@ export class DocumentDetectionService {
     let mat: any;
     try {
       mat = cv.imread(this.analysis);
-      const rawCorners = this.detectCorners(mat, cv);
+      const biasRegion = this.guideRectInAnalysisPixels(width) ?? undefined;
+      const rawCorners = this.detectCorners(mat, cv, biasRegion);
       const corners =
         rawCorners && this.cornersComplete(rawCorners) ? rawCorners : null;
 
@@ -414,6 +420,20 @@ export class DocumentDetectionService {
       const light = aligned && corners && !this.awaitingExit() ? this.analyzeLighting(mat, cv) : null;
 
       this.publishDebug(corners, metrics, stable, light, width, height);
+
+      const now = performance.now();
+      if (now - this.lastMetricsLogAt > 800) {
+        this.lastMetricsLogAt = now;
+        const r = metrics ? `${metrics.ratio.toFixed(2)}${metrics.ratioOk ? '(ok)' : ''}` : '-';
+        const a = metrics ? `${metrics.areaFraction.toFixed(2)}${metrics.areaOk ? '(ok)' : ''}` : '-';
+        const c = metrics ? (metrics.centreOk ? 'Y' : 'N') : '-';
+        const lum = light ? light.mean.toFixed(0) : '-';
+        const clip = light ? light.clipped.toFixed(2) : '-';
+        this.pushLog(
+          `m: found=${!!corners} ratio=${r} area=${a} centre=${c} stable=${stable ? 'Y' : 'N'} ` +
+            `lum=${lum} clip=${clip} status=${this.status()}`,
+        );
+      }
 
       if (!aligned || !corners) {
         this.resetAlignment();
@@ -490,7 +510,11 @@ export class DocumentDetectionService {
    * Emscripten build whose exact symbol set we can't introspect statically, so we degrade
    * CLAHE → equalizeHist → plain grayscale → raw frame rather than risk a hard throw on-device.
    */
-  private detectCorners(mat: any, cv: any): CornerPoints | null {
+  private detectCorners(
+    mat: any,
+    cv: any,
+    biasRegion?: { x: number; y: number; w: number; h: number },
+  ): CornerPoints | null {
     const edges = new cv.Mat();
     const blur = new cv.Mat();
     const thresh = new cv.Mat();
@@ -523,10 +547,32 @@ export class DocumentDetectionService {
       cv.threshold(blur, thresh, 0, 255, cv.THRESH_OTSU);
       cv.findContours(thresh, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
 
+      // Expand the bias region by the tuning margin once, outside the loop.
+      const region = biasRegion
+        ? {
+            x: biasRegion.x - biasRegion.w * this.tuning.liveDetectionMarginFraction,
+            y: biasRegion.y - biasRegion.h * this.tuning.liveDetectionMarginFraction,
+            w: biasRegion.w * (1 + 2 * this.tuning.liveDetectionMarginFraction),
+            h: biasRegion.h * (1 + 2 * this.tuning.liveDetectionMarginFraction),
+          }
+        : null;
+
       let maxArea = 0;
       let maxIndex = -1;
       for (let i = 0; i < contours.size(); i++) {
-        const area = cv.contourArea(contours.get(i));
+        const contour = contours.get(i);
+        // Ignore contours whose centre falls outside the guide box + margin — see
+        // liveDetectionMarginFraction. Only applies when a bias region was supplied (the live
+        // tick() loop); detectCornersOnFrame's capture-time calls omit it and are unaffected.
+        if (region) {
+          const rect = cv.boundingRect(contour);
+          const cx = rect.x + rect.width / 2;
+          const cy = rect.y + rect.height / 2;
+          if (cx < region.x || cx > region.x + region.w || cy < region.y || cy > region.y + region.h) {
+            continue;
+          }
+        }
+        const area = cv.contourArea(contour);
         if (area > maxArea) {
           maxArea = area;
           maxIndex = i;
@@ -1224,6 +1270,25 @@ export class DocumentDetectionService {
       return null;
     }
     return { sx, sy, sw, sh };
+  }
+
+  /**
+   * Maps the on-screen guide box into ANALYSIS-frame pixel coordinates — the same downscaled,
+   * uncropped frame the live tick() loop runs detection on (`this.analysis`, populated by a plain
+   * `drawImage(video, 0, 0, width, height)`, i.e. a uniform scale of the full video frame with no
+   * offset). Used to bias contour selection toward "near the guide box" — see detectCorners() and
+   * liveDetectionMarginFraction. Returns null under the same conditions as guideRectInSourcePixels().
+   */
+  private guideRectInAnalysisPixels(
+    analysisWidth: number,
+  ): { x: number; y: number; w: number; h: number } | null {
+    const video = this.opts?.video;
+    const rect = this.guideRectInSourcePixels();
+    if (!video || !rect || !video.videoWidth) {
+      return null;
+    }
+    const scale = analysisWidth / video.videoWidth;
+    return { x: rect.sx * scale, y: rect.sy * scale, w: rect.sw * scale, h: rect.sh * scale };
   }
 
   /**
