@@ -19,6 +19,8 @@ import { makeThumbnail, toDataUrl } from '../../utils/canvas.util';
 import { isManualCaptureNagDue, markManualCaptureNagShown } from '../../utils/manual-capture-nag.util';
 import { LanguageService } from '../../../services/language.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { AuthService } from '../../../services/auth';
+import { IDSCANLY_DEBUG_PROPERTY_ID } from '../../idscanly-debug.const';
 
 const ORDINAL_KEYS = ['idscanly.ordinal1', 'idscanly.ordinal2', 'idscanly.ordinal3', 'idscanly.ordinal4'];
 const FLIP_PROMPT_MIN_MS = 3000;
@@ -35,6 +37,7 @@ export class IdscanScanPage implements OnDestroy {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly lang = inject(LanguageService);
+  private readonly auth = inject(AuthService);
 
   readonly selectedType = signal<DocumentTypeConfig | null>(null);
   readonly currentSideIndex = signal(0);
@@ -105,6 +108,11 @@ export class IdscanScanPage implements OnDestroy {
     () => this.selectedType() !== null && this.status() === 'idle' && !this.errorMessage(),
   );
 
+  /** Dev/QA "Show debug" tooling — see idscanly-debug.const.ts. */
+  readonly debugToolsEnabled = computed(
+    () => String(this.auth.selectedProperty()?.property_id) === IDSCANLY_DEBUG_PROPERTY_ID,
+  );
+
   ionViewWillEnter(): void {
     const type = this.session.documentType();
     if (!type) {
@@ -119,8 +127,11 @@ export class IdscanScanPage implements OnDestroy {
     this.startDetection();
   }
 
-  goBack(): void {
+  /** Terminates the scan: releases the camera, wipes the in-progress capture session, and
+   *  pops the whole IDScanly flow off history in one shot (see plan notes on replaceUrl). */
+  close(): void {
     this.detection.stop();
+    this.session.reset();
     this.location.back();
   }
 

@@ -1,13 +1,14 @@
 <ion-content class="review-content">
   <div class="page" style="display: flex; flex-direction: column">
     <div class="sub-header">
-      <button class="back" (click)="goBack()" [attr.aria-label]="'common.back' | tr">
+      <span class="title">{{ 'idscanly.reviewTitle' | tr }}</span>
+      <button class="close" (click)="close()" [attr.aria-label]="'idscanly.ariaClose' | tr">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
           stroke-linecap="round" stroke-linejoin="round">
-          <path d="M15 18l-6-6 6-6"/>
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
       </button>
-      <span class="title">{{ 'idscanly.reviewTitle' | tr }}</span>
     </div>
 
     <div class="app-scroll review-scroll">
@@ -17,9 +18,11 @@
 
         <!-- Dev/QA toggle for the raw completeness metrics behind each verdict — mirrors the Scan
              screen's debug overlay, for tuning capture-tuning.ts thresholds against real footage. -->
-        <button class="debug-toggle" type="button" (click)="toggleDebug()">
-          {{ showDebug() ? 'Hide' : 'Show' }} debug
-        </button>
+        @if (debugToolsEnabled()) {
+          <button class="debug-toggle" type="button" (click)="toggleDebug()">
+            {{ showDebug() ? 'Hide' : 'Show' }} debug
+          </button>
+        }
 
         <!-- Per-side capture cards -->
         <div class="review-cards">
@@ -159,6 +162,32 @@
       </div>
       <p class="submit-overlay__message">{{ submitStageMessage() }}</p>
       <p class="submit-overlay__privacy">{{ 'idscanly.privacyNote' | tr }}</p>
+    </div>
+  }
+
+  <!-- Discard confirmation — X on this screen would throw away real captured photos, unlike
+       the Scan screen where X exits immediately since nothing has been produced yet. -->
+  @if (confirmDiscardOpen()) {
+    <div class="discard-dialog">
+      <div class="discard-dialog__card">
+        <p class="discard-dialog__message">{{ 'idscanly.discardMessage' | tr }}</p>
+        <div class="discard-dialog__actions">
+          <button
+            class="discard-dialog__btn discard-dialog__btn--secondary"
+            type="button"
+            (click)="cancelDiscard()"
+          >
+            {{ 'idscanly.discardCancel' | tr }}
+          </button>
+          <button
+            class="discard-dialog__btn discard-dialog__btn--primary"
+            type="button"
+            (click)="confirmDiscard()"
+          >
+            {{ 'idscanly.discardConfirm' | tr }}
+          </button>
+        </div>
+      </div>
     </div>
   }
 </ion-content>

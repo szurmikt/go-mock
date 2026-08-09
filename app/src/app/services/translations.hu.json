@@ -210,7 +210,10 @@
     "submitLongwait": "Még dolgozunk rajta — mindjárt kész…",
     "privacyNote": "Az okmányról készült fotókat nem tároljuk a feldolgozás után.",
     "footerNote": "Az egyik oldal nem elég éles — mentheted vagy újrafotózhatod.",
-    "sessionMissing": "Hiányzó munkamenet-kontextus — kezdd újra."
+    "sessionMissing": "Hiányzó munkamenet-kontextus — kezdd újra.",
+    "discardMessage": "Eldobod ezt a szkennelést? A rögzített fotók elvesznek.",
+    "discardCancel": "Folytatom az ellenőrzést",
+    "discardConfirm": "Eldobás"
   },
   "search": {
     "title": "Keresés",
