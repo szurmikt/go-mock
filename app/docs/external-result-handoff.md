@@ -4,7 +4,9 @@
 
 A Supabase Edge Function (`external-result`) that proxies the app's **scan feedback loop** to IdScanly. After a guest's scanned data is saved in SabeeApp Go, the app posts the final, user-confirmed field values back to the IdScanly session that produced them. IdScanly stores this alongside (never merged into) its own OCR result and uses it to measure and improve extraction accuracy.
 
-**This function does not exist yet — it is the one remaining piece to build/deploy.** The client half is already implemented and shipping-ready ([external-result.service.ts](../src/app/idscanly/services/external-result.service.ts)); until the function is deployed, every call simply fails and is swallowed (see "Failure behaviour" below), so the app is safe to ship in the meantime.
+**Status: deployed and live** — slug `external-result`, version 1, ACTIVE, `verify_jwt: true`, deployed 2026-08-18 via the Supabase Management API to project `qiwhynwwgicpyeszecuj`. The client half is [external-result.service.ts](../src/app/idscanly/services/external-result.service.ts).
+
+The deployed source is not vendored in this repo (same convention as `idrecognition`, `config`, `feedback`) — retrieve it with the Supabase MCP's `get_edge_function` tool, slug `external-result`, or from the dashboard. **It needed no new secret:** it reads the same `IDSCANLY_API_KEY` env secret `idrecognition` already uses.
 
 ## Why a proxy at all
 
@@ -42,12 +44,28 @@ IdScanly's contract:
 
 Auth to the function itself is the Supabase anon/publishable key (`Authorization: Bearer <anon>`), same as `idrecognition`.
 
-## Required server-side hardening
+## Server-side hardening (as implemented)
 
-Mirror `idrecognition` exactly — the anon key alone is not sufficient, since it is extractable from any installed build. Before spending an IdScanly call, **fail closed** unless both hold:
+Mirrors `idrecognition` exactly — the anon key alone is not sufficient, since it is extractable from any installed build. Before spending an IdScanly call, the function **fails closed** unless both hold:
 
 1. **Live SabeeApp session** — call SabeeApp's own `/users/me` with the supplied `sabeeToken` **and** `Device-Id: deviceId` (the API ties token validation to the issuing device — this was a real bug on `idrecognition`'s first deploy, which used a placeholder device id and rejected every valid session). Pick the host from the function's own hardcoded live/test URLs based on `isTest`; **never** trust a client-supplied URL.
 2. **Property actually has IdScanly enabled** — `property_config.scan_vendor = 'idscanly'` for the claimed `pid`.
+
+Both run in parallel with their own timeouts (8s / 5s) and treat any error, timeout, or non-success response as failure. The function adds one guard `idrecognition` doesn't need: a non-object `result` is rejected with 400 locally, mirroring IdScanly's own `INVALID_EXTERNAL_RESULT` rule, so a malformed payload costs no upstream call.
+
+### Verified against the live function
+
+Direct curl, 2026-08-18 — every rejection occurs *before* the IdScanly call, so none incurred vendor usage:
+
+| Case | Expected | Actual |
+|---|---|---|
+| Missing `sessionId` | 400 | `400 {"error":"Missing sessionId"}` |
+| Primitive `result` | 400 | ``400 {"error":"`result` must be a JSON object or array"}`` |
+| Bogus `sabeeToken` | 401 | `401 {"error":"Invalid or expired SabeeApp session"}` |
+| `GET` instead of `POST` | 405 | `405 {"error":"Method not allowed"}` |
+| No Supabase JWT | 401 | `401 UNAUTHORIZED_NO_AUTH_HEADER` (gateway) |
+
+**Not yet verified: the happy path.** No real IdScanly session has reached the function. Testing is **browser-only, no TestFlight build needed** — IdScanly is browser-based (`getUserMedia`/OpenCV) unlike Regula: `ionic serve --ssl --external`, property 6250, scan → Save, then confirm `POST /functions/v1/external-result` returns 200 with `idscanly.imageCount >= 1`. **`imageCount: 0` is the failure mode to watch for** — IdScanly matched the session but no images, meaning the threaded `sessionId` is wrong; it would otherwise look like success.
 
 ## What the app sends as `result`
 
