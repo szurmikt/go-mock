@@ -1,6 +1,22 @@
 export const Config = {
+  // Api-Version / Ci-Version headers (api.interceptor.ts) — the backend API contract
+  // version, not the app release. Intentionally static; bump by hand only when the API
+  // contract itself changes. Confirmed with the user 2026-08-18: unlike APP_VERSION below,
+  // these are not a staleness bug — single consumer (the interceptor), no cross-system
+  // drift risk, so hand-maintained is fine here.
   API_VERSION: '1.0',
+  // Hardcoded and known-stale relative to the real shipped app version (native
+  // MARKETING_VERSION/versionName, correctly read at runtime via App.getInfo() — see
+  // SettingsPage). Still read directly for the App-Version header, feedback submissions,
+  // and the force-update version gate (app-config.ts) — all of which can silently drift
+  // from what's actually installed, the same bug the fixing-tracking-appversion branch
+  // fixed for Mixpanel: app.component.ts now resolves the real version via App.getInfo()
+  // at boot and only falls back to this constant on platforms without the native App
+  // plugin (web/ionic serve). TODO: apply the same App.getInfo() fix to the other three
+  // consumers, or thread a single resolved version through app boot instead of each
+  // reading this constant independently.
   APP_VERSION: '1.1.0',
+  // See API_VERSION comment above — same "static backend contract, not app version" story.
   CI_VERSION: '4',
   // After the backend dropped client_id encryption, both TEST and PROD accept the
   // same plain integer. (Previously PROD validated an encrypted hex token and TEST

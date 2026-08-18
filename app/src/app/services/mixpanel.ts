@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import mixpanel from 'mixpanel-browser';
 import { environment } from '../../environments/environment';
-import { Config } from '../config/config';
 import type { ApiEnvMode } from './api-environment';
 
 /** A foreground gap longer than this starts a new analytics session. */
@@ -34,11 +33,16 @@ export class MixpanelService {
   private started = false;
   private foreground = false;
 
-  /** Super properties attached to every event. Call once after apiEnv.init(). */
-  registerSuperProps(apiMode: ApiEnvMode): void {
+  /**
+   * Super properties attached to every event. Call once after apiEnv.init().
+   * appVersion should be the real installed version (from App.getInfo()) — this service
+   * has no opinion on the fallback for platforms without the native App plugin (web/dev);
+   * that's the caller's call.
+   */
+  registerSuperProps(apiMode: ApiEnvMode, appVersion: string): void {
     this.safe(() =>
       mixpanel.register({
-        app_version: Config.APP_VERSION,
+        app_version: appVersion,
         platform: Capacitor.getPlatform(),
         environment: environment.production ? 'production' : 'development',
         api_mode: apiMode,

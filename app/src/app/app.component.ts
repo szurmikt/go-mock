@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { Keyboard } from '@capacitor/keyboard';
 import { IonApp, IonRouterOutlet, createAnimation, Animation } from '@ionic/angular/standalone';
 import { LockOverlayComponent } from './components/lock-overlay/lock-overlay.component';
+import { Config } from './config/config';
 import { ApiEnvironmentService } from './services/api-environment';
 import { AppConfigService } from './services/app-config';
 import { AuthService } from './services/auth';
@@ -84,7 +85,19 @@ export class AppComponent implements OnInit, OnDestroy {
     // first session_started of a cold boot fires without property_id/property_name. This
     // self-heals: setActiveProperty() below (once loadStoredAuth resolves) persists the
     // super property via localStorage, so it's present for every session from then on.
-    this.mixpanel.registerSuperProps(this.apiEnv.mode());
+    //
+    // app_version comes from App.getInfo() — the real installed version (MARKETING_VERSION
+    // on iOS / versionName on Android), read directly off the native binary, same source
+    // SettingsPage already uses to show the user their version. Falls back to
+    // Config.APP_VERSION only on platforms without the native App plugin (web/ionic serve),
+    // where there's no real app-store version to report anyway.
+    let appVersion: string = Config.APP_VERSION;
+    try {
+      appVersion = (await App.getInfo()).version;
+    } catch {
+      /* web/dev — no native App plugin; keep the Config fallback */
+    }
+    this.mixpanel.registerSuperProps(this.apiEnv.mode(), appVersion);
     this.mixpanel.handleAppActive();
 
     // Register the resume listener first so it runs even if the user is gated
