@@ -28,6 +28,15 @@ export interface IdRecognitionFields {
   dateOfExpiry?: string;
   visibleDates?: string[];
   address?: string;
+  // Address-card fields (documentType: 'address_card'). streetAddress is the
+  // vendor's pre-combined "<street> <type> <house number>" string; streetName/
+  // streetType/houseNumber are kept as a fallback if streetAddress is absent.
+  city?: string;
+  postalCode?: string;
+  streetAddress?: string;
+  streetName?: string;
+  streetType?: string;
+  houseNumber?: string;
   [key: string]: unknown;
 }
 

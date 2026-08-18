@@ -67,6 +67,15 @@ export class IdscanlyDocuscanService {
   ): ScanResultInterface {
     const f: IdRecognitionFields = response.summary?.fields ?? {};
 
+    // An address card is not an identity document — capture ONLY the address and
+    // stop here, mirroring Regula's captureAddressFields()+stripToAddressFields()
+    // (document-reader.service.ts): no identity box (name/DOB/etc.) is ever
+    // produced for this type, so the shared fillGuestDataFromScannedData() merge
+    // has nothing identity-shaped to write onto the guest.
+    if (documentType.id === 'address-card') {
+      return this.mapAddressCard(f, documentType);
+    }
+
     // The live response splits the name as `givenNames`/`surname`; keep the
     // `firstName`/`lastName` variants as fallbacks in case the API changes.
     // IDScanly's OCR returns names/places in ALL CAPS — toNaturalCase() title-cases
@@ -112,7 +121,43 @@ export class IdscanlyDocuscanService {
       document_type: f.documentType ?? this.lang.t(documentType.label),
       date_of_issue: issueDate,
       message: '',
-      is_identity_document: documentType.id !== 'address-card',
+      // Always true here — address-card returns early via mapAddressCard() above,
+      // so every documentType reaching this point is an identity document.
+      is_identity_document: true,
+    };
+
+    return { documentData, scannedData };
+  }
+
+  /**
+   * Address card (lakcímkártya): capture ONLY the residence address, matching Regula's
+   * address-card path. `streetAddress` is the vendor's pre-combined "<street> <type> <house
+   * number>" string (already includes the house number); streetName/streetType/houseNumber
+   * are a fallback if streetAddress is missing. country_code stays whatever code the vendor
+   * returns (e.g. "HUN") — a 3-letter code against CountryOption's 2-letter values is a known,
+   * accepted best-effort limitation, same as Regula's address-card path.
+   */
+  private mapAddressCard(
+    f: IdRecognitionFields,
+    documentType: DocumentTypeConfig,
+  ): ScanResultInterface {
+    const addressLine =
+      f.streetAddress ??
+      ([f.streetName, f.streetType, f.houseNumber].filter(Boolean).join(' ') || undefined);
+
+    const scannedData: ScannedGuestDataInterface = {
+      address_country_code: box(f.documentCountry ?? f.issuingCountry),
+      address_zip: box(f.postalCode),
+      address_city: box(toNaturalCase(f.city)),
+      address_line: box(toNaturalCase(addressLine)),
+    };
+
+    const documentData: DocumentData = {
+      scan_type: 'idscanly',
+      document_type: f.documentType ?? this.lang.t(documentType.label),
+      date_of_issue: null,
+      message: '',
+      is_identity_document: false,
     };
 
     return { documentData, scannedData };
