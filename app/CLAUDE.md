@@ -635,7 +635,7 @@ ExportOptions.plist (create in `/tmp` — not committed):
 
 ### Build number
 
-`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **93**. `MARKETING_VERSION` (both Debug and Release configs) is NOT auto-bumped by `scripts/publish-ios.sh` — bump by hand when Apple closes the current version train (see 2026-08-12 changelog entry). Current: **1.0.1**.
+`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **95**. `MARKETING_VERSION` (both Debug and Release configs) is NOT auto-bumped by `scripts/publish-ios.sh` — bump by hand when Apple closes the current version train (see 2026-08-12 and 2026-08-18 changelog entries). Current: **1.0.2**.
 
 ### App Store requirements
 
@@ -688,6 +688,16 @@ async ionViewWillEnter() {
 ---
 
 ## 19. Changelog
+
+### 2026-08-18 — Shipment: build 95 (iOS) / versionCode 24 (Android) — app-version centralization, Mixpanel fix, IDScanly address-card
+
+> Branch `implement-address-card-scan`, fast-forward merged into `main` (local only — not pushed to `origin`). **Shipped builds: iOS 95 (TestFlight, uploaded successfully — processing), Android versionCode 24 (signed AAB `sabeeapp-go-v24.aab`, built — manual Play Console drag-drop, not auto-uploaded).**
+
+Ships the three commits that had accumulated on `main` since build 93 without a release, all previously verified only via `npx ng build` / local reasoning, none previously device-tested: the Mixpanel `app_version` stale-constant fix, the `AppVersionService` centralization + force-update-gate fix (both 2026-08-13, see entries below), and today's IDScanly Hungarian address-card fix (see entry directly below this one).
+
+**Same App Store Connect blocker as 2026-08-12, recurred:** the first upload attempt (consuming build number 94) was rejected — `MARKETING_VERSION` was still `1.0.1` in `project.pbxproj`, and that version train was already closed (a `1.0.1` release had been approved on the App Store since the last shipment). `scripts/publish-ios.sh` only auto-bumps `CURRENT_PROJECT_VERSION` (the build number), never `MARKETING_VERSION` — has to be bumped by hand every time the currently-approved version catches up to it. Fixed by bumping `MARKETING_VERSION` to `1.0.2` in both pbxproj configs, and Android's `versionName` (`android/app/build.gradle`) to `1.0.2` to match, then retrying — build 94 was burned with no result (the publish script bumps the build number before any build/archive step), 95 is the one that shipped.
+
+**Verification:** `npx ng build` clean going into the build (already confirmed by each individual commit's own entry). iOS 95 exported and uploaded successfully (`EXPORT SUCCEEDED` / `Upload succeeded`), now processing in TestFlight. Android AAB built successfully via `gradlew bundleRelease`, not yet uploaded to Play Console (manual step, per established pattern). **Not yet device-verified** — once builds finish processing/are installed: confirm Mixpanel's `app_version` reports `1.0.2` (not a stale value), confirm the force-update gate still passes correctly on both platforms, and confirm a real IDScanly Hungarian address-card scan fills only the guest's address (see the entry below for exactly what to check).
 
 ### 2026-08-18 — IDScanly: Hungarian address-card scan fills address only (parity with Regula's address-card path)
 
