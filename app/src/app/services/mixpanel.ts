@@ -66,6 +66,19 @@ export class MixpanelService {
     this.safe(() => mixpanel.reset());
   }
 
+  /**
+   * Attach the active property to every subsequent event (a Mixpanel super property,
+   * distinct from identify()'s People-profile update). Call on session start and on every
+   * property switch — mixpanel.register() overwrites the previous value, so a switch
+   * correctly updates it. No-op until a property is known. Persisted via localStorage
+   * (see main.ts), so it survives into the next cold-start session until overwritten
+   * again or cleared by reset() on logout.
+   */
+  setActiveProperty(propertyId?: number, propertyName?: string): void {
+    if (propertyId == null) return;
+    this.safe(() => mixpanel.register({ property_id: propertyId, property_name: propertyName }));
+  }
+
   // ---- session lifecycle (driven by Capacitor App.appStateChange) ----
 
   handleAppActive(): void {
@@ -130,19 +143,67 @@ export class MixpanelService {
     this.track('scan_result_saved', { ...p });
   }
 
-  trackScanSucceeded(p: {
-    attempts: number;
+  trackScanStarted(p: { vendor: 'regula' | 'idscanly'; document_type: string }): void {
+    this.track('scan_started', { ...p });
+  }
+
+  /**
+   * One event per captured side (fires again on a retake's recapture — no separate retake
+   * event needed, the second capture_completed for the same side carries its own quality
+   * score). IDScanly-only today — Regula has no per-side capture exposed at the app layer.
+   */
+  trackScanCaptureCompleted(p: {
+    vendor: 'idscanly';
     document_type: string;
-    document_type_id: number;
-    scan_type: 'optical' | 'rfid';
+    side: string;
+    source: 'auto' | 'manual';
+    quality_verdict: 'good' | 'recheck';
+    sharp: boolean;
+    well_lit: boolean;
+    glare_free: boolean;
+    complete: boolean;
+  }): void {
+    this.track('scan_capture_completed', { ...p });
+  }
+
+  trackScanDiscarded(p: {
+    vendor: 'regula' | 'idscanly';
+    document_type: string;
+    stage: 'capture' | 'review';
+    sides_captured: number;
+  }): void {
+    this.track('scan_discarded', { ...p });
+  }
+
+  trackScanSucceeded(p: {
+    vendor: 'regula' | 'idscanly';
+    document_type: string;
+    attempts: number;
+    document_type_id?: number;
+    scan_type?: 'optical' | 'rfid';
+    is_complete?: boolean;
+    is_processing?: boolean;
+    image_count?: number;
+    successful_image_count?: number;
+    failed_image_count?: number;
   }): void {
     this.track('scan_succeeded', { ...p });
   }
 
   trackScanFailed(p: {
-    reason: 'timed_out' | 'cancelled' | 'interrupted' | 'error';
+    vendor: 'regula' | 'idscanly';
+    document_type?: string;
+    reason:
+      | 'timed_out'
+      | 'cancelled'
+      | 'interrupted'
+      | 'error'
+      | 'network_error'
+      | 'http_error'
+      | 'empty_response'
+      | 'camera_unavailable';
     attempt_number: number;
-    scan_type: 'optical' | 'rfid';
+    scan_type?: 'optical' | 'rfid';
   }): void {
     this.track('scan_failed', { ...p });
   }

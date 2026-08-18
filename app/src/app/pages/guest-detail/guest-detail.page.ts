@@ -283,6 +283,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     this.docTypeSheetOpen.set(false);
     this.captureSession.start(type);
     this.captureSession.context.set({ reservationCode: this.reservationCode, guestId: this.guestId });
+    this.mixpanel.trackScanStarted({ vendor: 'idscanly', document_type: type.id });
     void this.router.navigate(['/idscanly/scan']);
   }
 

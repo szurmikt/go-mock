@@ -560,6 +560,7 @@ export class DocumentReaderService {
     const scanType: 'optical' | 'rfid' = diagnostics['doRfid'] ? 'rfid' : 'optical';
     if (outcome === 'finished') {
       this.mixpanel.trackScanSucceeded({
+        vendor: 'regula',
         attempts: this._scanAttempts,
         document_type: String(mpDocType?.name ?? 'unknown'),
         document_type_id: Number(mpDocType?.type ?? -1),
@@ -579,6 +580,8 @@ export class DocumentReaderService {
       const reason = reasonMap[outcome];
       if (reason) {
         this.mixpanel.trackScanFailed({
+          vendor: 'regula',
+          document_type: String(mpDocType?.name ?? 'unknown'),
           reason,
           attempt_number: this._scanAttempts,
           scan_type: scanType,

@@ -51,6 +51,13 @@ function toBase64(dataUrl: string): string {
   return dataUrl.slice(dataUrl.indexOf(',') + 1);
 }
 
+/** Discriminates submit() failures for Mixpanel's scan_failed `reason` — see review.page.ts submit(). */
+export type IdRecognitionErrorKind = 'network_error' | 'http_error' | 'empty_response';
+
+function taggedError(message: string, kind: IdRecognitionErrorKind): Error & { kind: IdRecognitionErrorKind } {
+  return Object.assign(new Error(message), { kind });
+}
+
 @Injectable({ providedIn: 'root' })
 export class IdRecognitionService {
   private auth = inject(AuthService);
@@ -93,7 +100,10 @@ export class IdRecognitionService {
         body: JSON.stringify(body),
       });
     } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Network error calling idrecognition');
+      throw taggedError(
+        err instanceof Error ? err.message : 'Network error calling idrecognition',
+        'network_error',
+      );
     }
 
     if (!response.ok) {
@@ -104,12 +114,12 @@ export class IdRecognitionService {
       } catch {
         detail = `HTTP ${response.status}`;
       }
-      throw new Error(`idrecognition failed: ${detail}`);
+      throw taggedError(`idrecognition failed: ${detail}`, 'http_error');
     }
 
     const data: IdRecognitionResponse = await response.json();
     if (!data) {
-      throw new Error('Empty response from idrecognition');
+      throw taggedError('Empty response from idrecognition', 'empty_response');
     }
     return data;
   }

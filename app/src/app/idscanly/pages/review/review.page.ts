@@ -10,6 +10,7 @@ import { IdscanlyDocuscanService } from '../../services/idscanly-docuscan.servic
 import { DocumentDetectionService } from '../../services/document-detection.service';
 import { PropertyConfigService } from '../../../services/property-config.service';
 import { AuthService } from '../../../services/auth';
+import { MixpanelService } from '../../../services/mixpanel';
 import { CaptureQuality } from '../../models/capture-quality';
 import { LanguageService } from '../../../services/language.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
@@ -38,6 +39,7 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
   private readonly detection = inject(DocumentDetectionService);
   private readonly propertyConfig = inject(PropertyConfigService);
   private readonly auth = inject(AuthService);
+  private readonly mixpanel = inject(MixpanelService);
   private readonly lang = inject(LanguageService);
 
   /** Set when the page was opened via ?preview= — see ngOnInit / seedPreview. */
@@ -114,6 +116,8 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
    */
   readonly submitStage = signal<'processing' | 'longwait'>('processing');
   private stageTimers: ReturnType<typeof setTimeout>[] = [];
+  /** Submit is retryable via the same button after a failure — mirrors Regula's _scanAttempts. */
+  private submitAttempts = 0;
 
   readonly submitStageMessage = computed(() =>
     this.lang.t(
@@ -246,6 +250,15 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
   /** Terminates the scan: wipes the in-progress capture session and pops the whole IDScanly
    *  flow off history in one shot (see plan notes on replaceUrl). */
   confirmDiscard(): void {
+    const type = this.documentType();
+    if (type) {
+      this.mixpanel.trackScanDiscarded({
+        vendor: 'idscanly',
+        document_type: type.id,
+        stage: 'review',
+        sides_captured: this.session.captures().size,
+      });
+    }
     this.session.reset();
     this.location.back();
   }
@@ -330,7 +343,10 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
     if (this.preview()) return;
     this.submitting.set(true);
     this.submitError.set(null);
+    this.submitAttempts += 1;
     this.startStageTimers();
+
+    const docTypeForTracking = this.session.documentType();
 
     try {
       const captures = Array.from(this.session.captures().values());
@@ -348,6 +364,17 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
 
       this.session.scanResult.set(mapped);
 
+      this.mixpanel.trackScanSucceeded({
+        vendor: 'idscanly',
+        document_type: docType.id,
+        attempts: this.submitAttempts,
+        is_complete: response.summary.isComplete,
+        is_processing: response.isProcessing,
+        image_count: response.summary.imageCount,
+        successful_image_count: response.summary.successfulImageCount,
+        failed_image_count: response.summary.failedImageCount,
+      });
+
       // Pop the scan flow's single history entry (scan→review navigations use replaceUrl)
       // to land on the ORIGINAL guest-detail entry — its ionViewWillEnter consumes
       // session.scanResult and opens the result sheet. The previous
@@ -358,6 +385,12 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       this.clearStageTimers();
       this.submitError.set(err instanceof Error ? err.message : this.lang.t('errors.generic'));
       this.submitting.set(false);
+      this.mixpanel.trackScanFailed({
+        vendor: 'idscanly',
+        document_type: docTypeForTracking?.id ?? 'unknown',
+        reason: (err as { kind?: 'network_error' | 'http_error' | 'empty_response' })?.kind ?? 'error',
+        attempt_number: this.submitAttempts,
+      });
     }
   }
 }
