@@ -7,10 +7,14 @@ import { getDocumentType, Side } from '../../models/document-type';
 import { CaptureSessionService, CapturedSide } from '../../services/capture-session.service';
 import { IdRecognitionService } from '../../services/idrecognition.service';
 import { IdscanlyDocuscanService } from '../../services/idscanly-docuscan.service';
+import { DocumentDetectionService } from '../../services/document-detection.service';
 import { PropertyConfigService } from '../../../services/property-config.service';
+import { AuthService } from '../../../services/auth';
+import { MixpanelService } from '../../../services/mixpanel';
 import { CaptureQuality } from '../../models/capture-quality';
 import { LanguageService } from '../../../services/language.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { IDSCANLY_DEBUG_PROPERTY_ID } from '../../idscanly-debug.const';
 
 interface ReviewImage {
   side: Side;
@@ -32,7 +36,10 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly idRecognition = inject(IdRecognitionService);
   private readonly idscanlyDocuscan = inject(IdscanlyDocuscanService);
+  private readonly detection = inject(DocumentDetectionService);
   private readonly propertyConfig = inject(PropertyConfigService);
+  private readonly auth = inject(AuthService);
+  private readonly mixpanel = inject(MixpanelService);
   private readonly lang = inject(LanguageService);
 
   /** Set when the page was opened via ?preview= — see ngOnInit / seedPreview. */
@@ -91,6 +98,14 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
   /** Dev/QA toggle for the per-side metrics readout — mirrors the Scan page's debug overlay. */
   readonly showDebug = signal(false);
 
+  /** Dev/QA "Show debug" tooling — see idscanly-debug.const.ts. */
+  readonly debugToolsEnabled = computed(
+    () => String(this.auth.selectedProperty()?.property_id) === IDSCANLY_DEBUG_PROPERTY_ID,
+  );
+
+  /** Discard-confirmation dialog — opened by the header X, since real captures exist here. */
+  readonly confirmDiscardOpen = signal(false);
+
   /**
    * `idrecognition` (see IdRecognitionService.submit) is a single opaque fetch — the edge function
    * polls the vendor internally, every 2s, up to 30s, before replying once. There's no real progress
@@ -101,6 +116,8 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
    */
   readonly submitStage = signal<'processing' | 'longwait'>('processing');
   private stageTimers: ReturnType<typeof setTimeout>[] = [];
+  /** Submit is retryable via the same button after a failure — mirrors Regula's _scanAttempts. */
+  private submitAttempts = 0;
 
   readonly submitStageMessage = computed(() =>
     this.lang.t(
@@ -220,7 +237,29 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
     this.zoomed.update((z) => !z);
   }
 
-  goBack(): void {
+  /** Opens the discard-confirmation dialog — the header X never navigates directly on this
+   *  screen, since real captured photos would be thrown away. */
+  close(): void {
+    this.confirmDiscardOpen.set(true);
+  }
+
+  cancelDiscard(): void {
+    this.confirmDiscardOpen.set(false);
+  }
+
+  /** Terminates the scan: wipes the in-progress capture session and pops the whole IDScanly
+   *  flow off history in one shot (see plan notes on replaceUrl). */
+  confirmDiscard(): void {
+    const type = this.documentType();
+    if (type) {
+      this.mixpanel.trackScanDiscarded({
+        vendor: 'idscanly',
+        document_type: type.id,
+        stage: 'review',
+        sides_captured: this.session.captures().size,
+      });
+    }
+    this.session.reset();
     this.location.back();
   }
 
@@ -241,11 +280,38 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
    * (property_config table), never unconditional. The response contains guest PII (name, DOB,
    * document number, mother's maiden name); logging it everywhere for everyone would leak that into
    * Sentry via breadcrumbs on any unrelated error. Opt-in per property keeps it off by default.
+   *
+   * Also attaches the same diagnostic data the (now property-gated, see idscanly-debug.const.ts)
+   * "Show debug" UI shows — per-side CaptureQuality evaluation and the Scan screen's rolling live-
+   * detection log — so a real-world capture/scan issue stays diagnosable remotely via Sentry, not
+   * just live on a 6250 device.
    */
   private logIdscanlyResponse(response: unknown): void {
     if (!this.propertyConfig.extendedLogging()) return;
 
-    console.log('[idscanly] idrecognition response:', response);
+    const capturesSummary = Array.from(this.session.captures().entries()).map(([side, c]) => ({
+      side,
+      verdict: c.quality.verdict,
+      sharp: c.quality.sharp,
+      wellLit: c.quality.wellLit,
+      glareFree: c.quality.glareFree,
+      complete: c.quality.complete,
+      summary: c.quality.summary,
+      metrics: c.quality.metrics,
+    }));
+    // Rolling buffer from DocumentDetectionService — only the most recent ~12 lines (~10s at the
+    // current 800ms throttle) survive by the time Submit is reached; earlier-side history may
+    // already be evicted. Known limitation, not addressed here.
+    const detectionLog = this.detection.logs();
+
+    console.log(
+      '[idscanly] idrecognition response:',
+      response,
+      'captures:',
+      capturesSummary,
+      'detectionLog:',
+      detectionLog,
+    );
 
     const json = JSON.stringify(response);
     const cappedJson = json.length > 16000 ? `${json.slice(0, 16000)}…[truncated ${json.length} chars]` : json;
@@ -263,6 +329,8 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       image_count: Number(r?.summary?.imageCount ?? -1),
       successful_image_count: Number(r?.summary?.successfulImageCount ?? -1),
       failed_image_count: Number(r?.summary?.failedImageCount ?? -1),
+      captures_json: JSON.stringify(capturesSummary),
+      detection_log_json: JSON.stringify(detectionLog),
       response_json: cappedJson,
     });
   }
@@ -275,7 +343,10 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
     if (this.preview()) return;
     this.submitting.set(true);
     this.submitError.set(null);
+    this.submitAttempts += 1;
     this.startStageTimers();
+
+    const docTypeForTracking = this.session.documentType();
 
     try {
       const captures = Array.from(this.session.captures().values());
@@ -293,6 +364,17 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
 
       this.session.scanResult.set(mapped);
 
+      this.mixpanel.trackScanSucceeded({
+        vendor: 'idscanly',
+        document_type: docType.id,
+        attempts: this.submitAttempts,
+        is_complete: response.summary.isComplete,
+        is_processing: response.isProcessing,
+        image_count: response.summary.imageCount,
+        successful_image_count: response.summary.successfulImageCount,
+        failed_image_count: response.summary.failedImageCount,
+      });
+
       // Pop the scan flow's single history entry (scan→review navigations use replaceUrl)
       // to land on the ORIGINAL guest-detail entry — its ionViewWillEnter consumes
       // session.scanResult and opens the result sheet. The previous
@@ -303,6 +385,12 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       this.clearStageTimers();
       this.submitError.set(err instanceof Error ? err.message : this.lang.t('errors.generic'));
       this.submitting.set(false);
+      this.mixpanel.trackScanFailed({
+        vendor: 'idscanly',
+        document_type: docTypeForTracking?.id ?? 'unknown',
+        reason: (err as { kind?: 'network_error' | 'http_error' | 'empty_response' })?.kind ?? 'error',
+        attempt_number: this.submitAttempts,
+      });
     }
   }
 }

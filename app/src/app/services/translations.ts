@@ -230,6 +230,9 @@ export const TRANSLATIONS: TranslationMap = {
     privacyNote: 'The photos of your document are not stored after processing.',
     footerNote: 'One side could be clearer — you can still submit or retake it.',
     sessionMissing: 'Session context missing — please start over.',
+    discardMessage: 'Discard this scan? The captured photos will be lost.',
+    discardCancel: 'Keep reviewing',
+    discardConfirm: 'Discard',
   },
   search: {
     title: 'Search',

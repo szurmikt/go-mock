@@ -66,6 +66,20 @@ export const DETECTION_TUNING = {
   guideRegionMarginFraction: 0.06,
 
   /**
+   * Margin (fraction of guide-box size) around the guide box the LIVE tick() loop's contour search
+   * is biased toward — a candidate contour whose centre falls outside guide box + this margin is
+   * ignored, even if it's the largest one in the frame. Without this, "largest contour in the WHOLE
+   * frame" can latch onto an unrelated object elsewhere in a cluttered scene (a second card, a wallet
+   * edge, a strap) instead of the card the user is framing, flip-flopping between candidates tick to
+   * tick so the geometry never stabilises and auto-capture never fires — reproduced 2026-07-15 with a
+   * card held over a wallet containing a second card. Deliberately much more generous than
+   * `guideRegionMarginFraction` (which crops tightly at CAPTURE time once the user is already
+   * aligned): here the user is often still adjusting position, so the search area needs real slack.
+   * STARTING GUESS — tune against real device footage.
+   */
+  liveDetectionMarginFraction: 0.5,
+
+  /**
    * Lighting/exposure gate — checked on the same downscaled frame as the contour step (no extra
    * dependency, no native plugin). The green bracket state is gated on these passing as well as the
    * geometry checks; failing one shows the amber "bad light" state instead. STARTING GUESSES — tune

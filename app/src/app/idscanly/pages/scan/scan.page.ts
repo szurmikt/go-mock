@@ -19,6 +19,9 @@ import { makeThumbnail, toDataUrl } from '../../utils/canvas.util';
 import { isManualCaptureNagDue, markManualCaptureNagShown } from '../../utils/manual-capture-nag.util';
 import { LanguageService } from '../../../services/language.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { AuthService } from '../../../services/auth';
+import { MixpanelService } from '../../../services/mixpanel';
+import { IDSCANLY_DEBUG_PROPERTY_ID } from '../../idscanly-debug.const';
 
 const ORDINAL_KEYS = ['idscanly.ordinal1', 'idscanly.ordinal2', 'idscanly.ordinal3', 'idscanly.ordinal4'];
 const FLIP_PROMPT_MIN_MS = 3000;
@@ -35,6 +38,8 @@ export class IdscanScanPage implements OnDestroy {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly lang = inject(LanguageService);
+  private readonly auth = inject(AuthService);
+  private readonly mixpanel = inject(MixpanelService);
 
   readonly selectedType = signal<DocumentTypeConfig | null>(null);
   readonly currentSideIndex = signal(0);
@@ -105,6 +110,11 @@ export class IdscanScanPage implements OnDestroy {
     () => this.selectedType() !== null && this.status() === 'idle' && !this.errorMessage(),
   );
 
+  /** Dev/QA "Show debug" tooling — see idscanly-debug.const.ts. */
+  readonly debugToolsEnabled = computed(
+    () => String(this.auth.selectedProperty()?.property_id) === IDSCANLY_DEBUG_PROPERTY_ID,
+  );
+
   ionViewWillEnter(): void {
     const type = this.session.documentType();
     if (!type) {
@@ -119,8 +129,20 @@ export class IdscanScanPage implements OnDestroy {
     this.startDetection();
   }
 
-  goBack(): void {
+  /** Terminates the scan: releases the camera, wipes the in-progress capture session, and
+   *  pops the whole IDScanly flow off history in one shot (see plan notes on replaceUrl). */
+  close(): void {
+    const type = this.selectedType();
+    if (type) {
+      this.mixpanel.trackScanDiscarded({
+        vendor: 'idscanly',
+        document_type: type.id,
+        stage: 'capture',
+        sides_captured: this.captures().size,
+      });
+    }
     this.detection.stop();
+    this.session.reset();
     this.location.back();
   }
 
@@ -146,7 +168,7 @@ export class IdscanScanPage implements OnDestroy {
     const pending = this.pendingManualCapture();
     if (!pending) return;
     this.pendingManualCapture.set(null);
-    this.commitCapture(pending.full, pending.quality);
+    this.commitCapture(pending.full, pending.quality, 'manual');
   }
 
   retakeWithAutoCapture(): void {
@@ -181,10 +203,17 @@ export class IdscanScanPage implements OnDestroy {
       getGuideEl: () => this.guide()?.nativeElement ?? null,
       debugCanvas: this.debugCanvas()?.nativeElement,
       onCapture: (full, quality, source) => this.onCaptured(full, quality, source),
-      onError: (error) =>
+      onError: (error) => {
         this.errorMessage.set(
           typeof error === 'string' ? error : this.lang.t('idscanly.cameraUnavailable'),
-        ),
+        );
+        this.mixpanel.trackScanFailed({
+          vendor: 'idscanly',
+          document_type: this.selectedType()?.id ?? 'unknown',
+          reason: 'camera_unavailable',
+          attempt_number: 0,
+        });
+      },
     });
   }
 
@@ -195,10 +224,10 @@ export class IdscanScanPage implements OnDestroy {
       this.pendingManualCapture.set({ full, quality });
       return;
     }
-    this.commitCapture(full, quality);
+    this.commitCapture(full, quality, source);
   }
 
-  private commitCapture(full: HTMLCanvasElement, quality: CaptureQuality): void {
+  private commitCapture(full: HTMLCanvasElement, quality: CaptureQuality, source: CaptureSource): void {
     const type = this.selectedType();
     const side = this.currentSide();
     if (!type || !side) return;
@@ -212,6 +241,18 @@ export class IdscanScanPage implements OnDestroy {
       fullDataUrl: toDataUrl(full),
       thumbDataUrl: makeThumbnail(full),
       quality,
+    });
+
+    this.mixpanel.trackScanCaptureCompleted({
+      vendor: 'idscanly',
+      document_type: type.id,
+      side,
+      source,
+      quality_verdict: quality.verdict,
+      sharp: quality.sharp,
+      well_lit: quality.wellLit,
+      glare_free: quality.glareFree,
+      complete: quality.complete,
     });
 
     const captures = this.captures();

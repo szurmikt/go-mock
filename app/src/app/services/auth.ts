@@ -91,6 +91,7 @@ export class AuthService {
       propertyName: prop?.property_name ?? undefined,
       company: prop?.property_company_name ?? undefined,
     });
+    this.mixpanel.setActiveProperty(prop?.property_id, prop?.property_name);
   }
 
   /**

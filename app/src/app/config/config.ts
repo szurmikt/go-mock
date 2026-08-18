@@ -15,6 +15,10 @@ export const Config = {
   STORAGE_SEARCH_HISTORY_KEY: 'searchHistory',
   STORAGE_BACKGROUND_AT_KEY: 'backgroundAt',
   STORAGE_API_ENV_KEY: 'apiEnvironment',
+  // Apple/Google App Store reviewers can't complete MFA (no access to an authenticator
+  // app), so this one account skips the /mfa screen entirely and verifies with an empty
+  // code — per the backend team, /mfa/verify accepts code: '' for this account only.
+  APP_REVIEW_ACCOUNT_EMAIL: 'housekeeperappstore@gmail.com',
   // Hungarian address card (lakcímkártya) etc. — DocumentType.AddressCard = 183.
   // NOT an identity document: fills the address section only, never a scanned ID record.
   ADDRESS_CARDS: [183] as number[],

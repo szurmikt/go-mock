@@ -10,6 +10,7 @@ import { LanguageService } from '../../services/language.service';
 import { OptionsService } from '../../services/options.service';
 import { ReservationService } from '../../services/reservation';
 import { TranslatePipe } from '../../pipes/translate.pipe';
+import { Config } from '../../config/config';
 
 @Component({
   selector: 'app-login',
@@ -50,14 +51,18 @@ export class LoginPage implements OnDestroy {
 
     this.loading = true;
     try {
-      const { mfaToken } = await this.auth.login(
-        this.email.trim(),
-        this.password,
-      );
-      await this.router.navigate(['/mfa'], {
-        state: { mfaToken, email: this.email.trim() },
-        replaceUrl: true,
-      });
+      const email = this.email.trim();
+      const { mfaToken } = await this.auth.login(email, this.password);
+
+      if (email === Config.APP_REVIEW_ACCOUNT_EMAIL) {
+        await this.auth.verifyMfa(mfaToken, '', email);
+        await this.router.navigate(['/property-select'], { replaceUrl: true });
+      } else {
+        await this.router.navigate(['/mfa'], {
+          state: { mfaToken, email },
+          replaceUrl: true,
+        });
+      }
     } catch (err: unknown) {
       this.logLoginError(err);
       this.errorMessage = this.extractMessage(err);

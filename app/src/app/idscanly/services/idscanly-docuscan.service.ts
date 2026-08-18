@@ -7,6 +7,7 @@ import { DocumentData } from '../../models/statistics-interface';
 import { DocumentTypeConfig, DocumentTypeId } from '../models/document-type';
 import { IdRecognitionFields, IdRecognitionResponse } from './idrecognition.service';
 import { LanguageService } from '../../services/language.service';
+import { toNaturalCase } from '../../utils/natural-case';
 
 /**
  * Maps the app's own DocumentTypeId (the type the user explicitly picked before scanning)
@@ -68,10 +69,12 @@ export class IdscanlyDocuscanService {
 
     // The live response splits the name as `givenNames`/`surname`; keep the
     // `firstName`/`lastName` variants as fallbacks in case the API changes.
-    const firstName = (f.givenNames ?? f.firstName ?? '') as string;
-    const lastName = (f.surname ?? f.lastName ?? '') as string;
+    // IDScanly's OCR returns names/places in ALL CAPS — toNaturalCase() title-cases
+    // them for display, since (unlike Regula) this source has no casing cleanup at all.
+    const firstName = toNaturalCase((f.givenNames ?? f.firstName ?? '') as string) ?? '';
+    const lastName = toNaturalCase((f.surname ?? f.lastName ?? '') as string) ?? '';
     const fullName =
-      (f.fullName as string | undefined) ??
+      toNaturalCase(f.fullName as string | undefined) ??
       ([firstName, lastName].filter(Boolean).join(' ') || null);
 
     // No dedicated issue-date field; the live response surfaces it in visibleDates[0].
@@ -81,10 +84,10 @@ export class IdscanlyDocuscanService {
       first_name: box(firstName || null),
       last_name: box(lastName || null),
       full_name: box(fullName || null),
-      mother_name: box(f.motherMaidenName ?? f.motherName),
+      mother_name: box(toNaturalCase(f.motherMaidenName ?? f.motherName)),
       maiden_name: box(null),
       birth_date: box(f.dateOfBirth),
-      birth_place: box(f.placeOfBirth),
+      birth_place: box(toNaturalCase(f.placeOfBirth)),
       gender: box(normGender(f.sex ?? f.gender)),
       citizenship: box(f.citizenship ?? f.nationality),
       age: box(computeAge(f.dateOfBirth)),

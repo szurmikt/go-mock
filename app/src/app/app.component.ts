@@ -80,15 +80,26 @@ export class AppComponent implements OnInit, OnDestroy {
     await this.apiEnv.init();
 
     // Analytics: register super properties (incl. api_mode) and open the boot session.
+    // NOTE: property is not yet known here (loadStoredAuth() hasn't resolved), so the very
+    // first session_started of a cold boot fires without property_id/property_name. This
+    // self-heals: setActiveProperty() below (once loadStoredAuth resolves) persists the
+    // super property via localStorage, so it's present for every session from then on.
     this.mixpanel.registerSuperProps(this.apiEnv.mode());
     this.mixpanel.handleAppActive();
 
     // Register the resume listener first so it runs even if the user is gated
     // at boot. It re-checks the version gate on every foreground transition.
     App.addListener('appStateChange', async ({ isActive }) => {
-      // Session analytics — runs regardless of auth/gate state.
-      if (isActive) this.mixpanel.handleAppActive();
-      else this.mixpanel.handleAppBackground();
+      // Session analytics — runs regardless of auth/gate state. Refresh the active-property
+      // super property before handleAppActive() so it's already registered if this foreground
+      // starts a new session (session_started).
+      if (isActive) {
+        this.mixpanel.setActiveProperty(
+          this.auth.selectedProperty()?.property_id,
+          this.auth.selectedProperty()?.property_name,
+        );
+        this.mixpanel.handleAppActive();
+      } else this.mixpanel.handleAppBackground();
 
       if (isActive) {
         const gate = await this.appConfig.runVersionGate();
@@ -121,6 +132,11 @@ export class AppComponent implements OnInit, OnDestroy {
           await this.options.load().catch(() => {});
         }
       }
+
+      // Backfill the active-property super property as soon as it's known after a cold
+      // boot, so it's persisted (localStorage) in time for every session from here on.
+      const restoredProp = this.auth.selectedProperty();
+      this.mixpanel.setActiveProperty(restoredProp?.property_id, restoredProp?.property_name);
 
       let url: string;
       if (!this.auth.isAuthenticated()) {
