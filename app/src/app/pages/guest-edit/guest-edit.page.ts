@@ -6,6 +6,7 @@ import { ReservationService } from '../../services/reservation';
 import { GuestInterface } from '../../models/guest.interface';
 import { OptionsService } from '../../services/options.service';
 import { DocuscanService } from 'src/app/regula/services/docuscan';
+import { ExternalResultService } from '../../idscanly/services/external-result.service';
 import { MixpanelService } from '../../services/mixpanel';
 import { AuthService } from '../../services/auth';
 import { LanguageService } from '../../services/language.service';
@@ -21,6 +22,7 @@ import { toInputDate } from '../../utils/date';
 })
 export class GuestEditPage implements OnInit {
   private docuscanService = inject(DocuscanService);
+  private externalResult = inject(ExternalResultService);
 
   guest = signal<GuestInterface | null>(null);
   loading = signal(true);
@@ -55,6 +57,12 @@ export class GuestEditPage implements OnInit {
   // (possibly scan-prefilled) form so save() can count how many fields changed.
   private fromScan = false;
   private formSnapshot: Record<string, string> = {};
+
+  // IDScanly feedback loop: set only when this edit was prefilled by an IDScanly scan, so
+  // save() can post the corrected values back to that scan's session. Regula scans and
+  // plain manual edits leave these untouched, and the feedback call then no-ops.
+  private idscanlySessionId: string | undefined;
+  private scanWasIdentityDoc = true;
 
   constructor(
     private route: ActivatedRoute,
@@ -103,6 +111,8 @@ export class GuestEditPage implements OnInit {
       if (last != null && last.scannedData != null) {
         this.fromScan = true;
         const isIdentityDoc = last.documentData?.is_identity_document !== false;
+        this.idscanlySessionId = last.sessionId;
+        this.scanWasIdentityDoc = isIdentityDoc;
         const scanned = this.docuscanService.scannedDataToGuestScannedData(
           last.scannedData!,
         );
@@ -192,6 +202,13 @@ export class GuestEditPage implements OnInit {
         from_scan: this.fromScan,
         fields_changed: fieldsChanged,
       });
+      // Feedback loop: hand IDScanly the corrected values the user actually saved, so they
+      // can measure OCR accuracy. Fire-and-forget — never blocks or fails the save.
+      this.externalResult.submitInBackground(
+        this.idscanlySessionId,
+        updated,
+        this.scanWasIdentityDoc,
+      );
       // Pop the edit entry to return to the EXISTING guest-detail history entry.
       // navigate('..', { replaceUrl }) turned gd→edit into gd→gd, so the first
       // back-press on guest-detail appeared to do nothing. Guest-detail re-fetches

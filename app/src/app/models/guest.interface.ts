@@ -75,4 +75,12 @@ export interface GuestPostInterface {
 export interface ScanResultInterface {
   documentData: DocumentData | null;
   scannedData: ScannedGuestDataInterface | null;
+  /**
+   * IDScanly's own session id for the scan that produced this result. Set only by
+   * IdscanlyDocuscanService.mapToScanResult() — Regula has no equivalent and leaves it
+   * undefined. Carried to the two save sites (guest-detail's save-as-is and guest-edit's
+   * save-after-edit) so the final, user-confirmed values can be posted back to IDScanly's
+   * external-result endpoint; see ExternalResultService.
+   */
+  sessionId?: string;
 }

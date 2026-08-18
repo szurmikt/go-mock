@@ -74,6 +74,7 @@ Row shape:
 | `config` | Combined boot-time config fetch | `verify_jwt: false`, service-role key server-side | `app_config` (by `?platform=`) + `property_config` (by `?property_id=`, currently unused data) |
 | `feedback` | Feedback/feature-request insert | `verify_jwt: false` | `feedback` table |
 | `idrecognition` | IDScanly OCR proxy | `verify_jwt: true` (anon JWT satisfies it) | no direct table access — see [idrecognition-handoff.md](idrecognition-handoff.md) |
+| `external-result` | IDScanly scan-feedback proxy (final saved values posted back to the scan's session) — **not yet deployed**, client half is ready | anon key + server-side live-session/`scan_vendor` check, mirroring `idrecognition` | reads `property_config` for the vendor check — see [external-result-handoff.md](external-result-handoff.md) |
 
 ## Summary table
 

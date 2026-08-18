@@ -73,7 +73,7 @@ export class IdscanlyDocuscanService {
     // produced for this type, so the shared fillGuestDataFromScannedData() merge
     // has nothing identity-shaped to write onto the guest.
     if (documentType.id === 'address-card') {
-      return this.mapAddressCard(f, documentType);
+      return this.mapAddressCard(f, documentType, response.sessionId);
     }
 
     // The live response splits the name as `givenNames`/`surname`; keep the
@@ -126,7 +126,7 @@ export class IdscanlyDocuscanService {
       is_identity_document: true,
     };
 
-    return { documentData, scannedData };
+    return { documentData, scannedData, sessionId: response.sessionId };
   }
 
   /**
@@ -140,6 +140,7 @@ export class IdscanlyDocuscanService {
   private mapAddressCard(
     f: IdRecognitionFields,
     documentType: DocumentTypeConfig,
+    sessionId: string,
   ): ScanResultInterface {
     const addressLine =
       f.streetAddress ??
@@ -160,6 +161,6 @@ export class IdscanlyDocuscanService {
       is_identity_document: false,
     };
 
-    return { documentData, scannedData };
+    return { documentData, scannedData, sessionId };
   }
 }

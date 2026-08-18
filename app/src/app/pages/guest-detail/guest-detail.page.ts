@@ -10,6 +10,7 @@ import { DocuscanService } from '../../regula/services/docuscan';
 import { MixpanelService } from '../../services/mixpanel';
 import { PropertyConfigService } from '../../services/property-config.service';
 import { CaptureSessionService } from '../../idscanly/services/capture-session.service';
+import { ExternalResultService } from '../../idscanly/services/external-result.service';
 import { DOCUMENT_TYPES, DocumentTypeConfig } from '../../idscanly/models/document-type';
 import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
@@ -121,6 +122,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     private lang: LanguageService,
     public propertyConfig: PropertyConfigService,
     private captureSession: CaptureSessionService,
+    private externalResult: ExternalResultService,
   ) {
     effect(() => {
       if (!this.awaitingScanResult()) return;
@@ -357,6 +359,9 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
         this.mixpanel.trackScanResultSaved({
           document_type: result?.documentData?.document_type ?? undefined,
         });
+        // Feedback loop: hand IDScanly the values the user actually accepted, so they can
+        // measure OCR accuracy. Fire-and-forget — never blocks or fails the save.
+        this.externalResult.submitInBackground(result?.sessionId, guest, isIdentityDoc);
         this.docuscan.lastScanResult = null;
         this._idscanlyResult.set(null);
         this.scanSheetOpen.set(false);
