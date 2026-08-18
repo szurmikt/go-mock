@@ -53,7 +53,7 @@
 
         <!-- Copyright / version -->
         <div style="text-align: center; color: var(--ink-4); font-size: var(--font-xs); margin-top: 8px">
-          &copy; SabeeApp &ndash; thePass Ltd 2026{{ appVersion() ? ' | v' + appVersion() + ' (' + appBuild() + ')' : '' }}
+          &copy; SabeeApp &ndash; thePass Ltd 2026{{ appVersion() && appBuild() ? ' | v' + appVersion() + ' (' + appBuild() + ')' : '' }}
         </div>
 
       </div>

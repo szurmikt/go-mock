@@ -5,9 +5,9 @@ import { Capacitor } from '@capacitor/core';
 import { Keyboard } from '@capacitor/keyboard';
 import { IonApp, IonRouterOutlet, createAnimation, Animation } from '@ionic/angular/standalone';
 import { LockOverlayComponent } from './components/lock-overlay/lock-overlay.component';
-import { Config } from './config/config';
 import { ApiEnvironmentService } from './services/api-environment';
 import { AppConfigService } from './services/app-config';
+import { AppVersionService } from './services/app-version';
 import { AuthService } from './services/auth';
 import { BiometricService } from './services/biometric';
 import { MixpanelService } from './services/mixpanel';
@@ -61,6 +61,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private appConfig = inject(AppConfigService);
   private propertyGating = inject(PropertyGatingService);
   private mixpanel = inject(MixpanelService);
+  private appVersion = inject(AppVersionService);
 
   constructor(
     readonly auth: AuthService,
@@ -78,6 +79,11 @@ export class AppComponent implements OnInit, OnDestroy {
     const initialUrl = window.location.pathname + window.location.search;
     const authlessRoutes = ['/login', '/mfa', '/property-select', '/'];
 
+    // Resolve the real installed app version first (AppVersionService — via App.getInfo(),
+    // same source SettingsPage uses). Must be ready before apiEnv.init(), since the API
+    // interceptor's App-Version header and the force-update gate both read it on the very
+    // first request/check.
+    await this.appVersion.init();
     await this.apiEnv.init();
 
     // Analytics: register super properties (incl. api_mode) and open the boot session.
@@ -85,19 +91,7 @@ export class AppComponent implements OnInit, OnDestroy {
     // first session_started of a cold boot fires without property_id/property_name. This
     // self-heals: setActiveProperty() below (once loadStoredAuth resolves) persists the
     // super property via localStorage, so it's present for every session from then on.
-    //
-    // app_version comes from App.getInfo() — the real installed version (MARKETING_VERSION
-    // on iOS / versionName on Android), read directly off the native binary, same source
-    // SettingsPage already uses to show the user their version. Falls back to
-    // Config.APP_VERSION only on platforms without the native App plugin (web/ionic serve),
-    // where there's no real app-store version to report anyway.
-    let appVersion: string = Config.APP_VERSION;
-    try {
-      appVersion = (await App.getInfo()).version;
-    } catch {
-      /* web/dev — no native App plugin; keep the Config fallback */
-    }
-    this.mixpanel.registerSuperProps(this.apiEnv.mode(), appVersion);
+    this.mixpanel.registerSuperProps(this.apiEnv.mode(), this.appVersion.analyticsVersion());
     this.mixpanel.handleAppActive();
 
     // Register the resume listener first so it runs even if the user is gated

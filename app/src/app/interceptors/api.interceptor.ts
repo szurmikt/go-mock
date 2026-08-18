@@ -4,19 +4,21 @@ import { Router } from '@angular/router';
 import { BehaviorSubject, filter, take, from, switchMap, catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth';
 import { Config } from '../config/config';
+import { AppVersionService } from '../services/app-version';
 import { LanguageService } from '../services/language.service';
 
 const refreshing$ = new BehaviorSubject<boolean>(false);
 
 export const apiInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
+  const appVersion = inject(AppVersionService);
   const lang = inject(LanguageService);
   const router = inject(Router);
 
   const addHeaders = (request: HttpRequest<unknown>): HttpRequest<unknown> => {
     const headers: Record<string, string> = {
       'Api-Version': Config.API_VERSION,
-      'App-Version': Config.APP_VERSION,
+      'App-Version': appVersion.version(),
       'Ci-Version': Config.CI_VERSION,
       'Device-Id': auth.deviceId() || 'web-dev-device',
       'Lang': lang.currentLanguage(),

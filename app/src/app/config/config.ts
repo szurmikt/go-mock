@@ -5,17 +5,17 @@ export const Config = {
   // these are not a staleness bug — single consumer (the interceptor), no cross-system
   // drift risk, so hand-maintained is fine here.
   API_VERSION: '1.0',
-  // Hardcoded and known-stale relative to the real shipped app version (native
-  // MARKETING_VERSION/versionName, correctly read at runtime via App.getInfo() — see
-  // SettingsPage). Still read directly for the App-Version header, feedback submissions,
-  // and the force-update version gate (app-config.ts) — all of which can silently drift
-  // from what's actually installed, the same bug the fixing-tracking-appversion branch
-  // fixed for Mixpanel: app.component.ts now resolves the real version via App.getInfo()
-  // at boot and only falls back to this constant on platforms without the native App
-  // plugin (web/ionic serve). TODO: apply the same App.getInfo() fix to the other three
-  // consumers, or thread a single resolved version through app boot instead of each
-  // reading this constant independently.
-  APP_VERSION: '1.1.0',
+  // Fallback only — AppVersionService.version() (app-version.ts) initializes to this,
+  // then App.getInfo() overwrites it with the real MARKETING_VERSION/versionName at boot.
+  // The fallback is only ever actually used on platforms without the native App plugin
+  // (web/ionic serve — App.getInfo() throws unconditionally there, "Not implemented on
+  // web"). No consumer (API header, feedback, force-update gate, Mixpanel, Settings)
+  // reads this constant directly anymore as of the fixing-tracking-appversion branch —
+  // they all read AppVersionService.version(). Keep in sync with the real native version
+  // by hand when it's bumped, so the web/dev fallback doesn't drift far from reality —
+  // matched to 1.0.1 on 2026-08-13 (was stuck at 1.1.0 since before this constant even
+  // existed; see that branch's changelog entry for the full story).
+  APP_VERSION: '1.0.1',
   // See API_VERSION comment above — same "static backend contract, not app version" story.
   CI_VERSION: '4',
   // After the backend dropped client_id encryption, both TEST and PROD accept the

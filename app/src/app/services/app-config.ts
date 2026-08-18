@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import * as Sentry from '@sentry/angular';
-import { Config } from '../config/config';
+import { AppVersionService } from './app-version';
 import { isVersionBelow } from '../utils/version';
 import { environment } from '../../environments/environment';
 
@@ -14,6 +14,8 @@ const CONFIG_FN_URL = `${environment.supabaseUrl}/functions/v1/config`;
 
 @Injectable({ providedIn: 'root' })
 export class AppConfigService {
+  private appVersion = inject(AppVersionService);
+
   private async fetchConfig(params: Record<string, string>): Promise<{ app_config: { minimum_version: string } | null; property_config: unknown } | null> {
     const timeout = new Promise<null>(resolve =>
       setTimeout(() => resolve(null), CONFIG_TIMEOUT_MS),
@@ -44,7 +46,7 @@ export class AppConfigService {
       return { blocked: false };
     }
 
-    if (isVersionBelow(Config.APP_VERSION, result.app_config.minimum_version)) {
+    if (isVersionBelow(this.appVersion.version(), result.app_config.minimum_version)) {
       Sentry.captureMessage('app gated', { level: 'info', tags: { platform } });
       return { blocked: true };
     }

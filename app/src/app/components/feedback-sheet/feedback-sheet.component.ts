@@ -12,7 +12,7 @@ import { AuthService } from '../../services/auth';
 import { LanguageService } from '../../services/language.service';
 import { environment } from '../../../environments/environment';
 import { TranslatePipe } from '../../pipes/translate.pipe';
-import { Config } from '../../config/config';
+import { AppVersionService } from '../../services/app-version';
 
 type Segment = 'feature_request' | 'feedback';
 type Mode = 'form' | 'success';
@@ -28,6 +28,7 @@ export class FeedbackSheetComponent {
 
   private auth = inject(AuthService);
   private lang = inject(LanguageService);
+  private appVersion = inject(AppVersionService);
   private readonly feedbackFnUrl = `${environment.supabaseUrl}/functions/v1/feedback`;
 
   readonly segments: { key: Segment; labelKey: string }[] = [
@@ -102,7 +103,7 @@ export class FeedbackSheetComponent {
       user_email: this.auth.email(),
       property_id: String(property?.property_id ?? ''),
       property_name: property?.property_name ?? '',
-      app_version: Config.APP_VERSION,
+      app_version: this.appVersion.analyticsVersion(),
     };
 
     try {

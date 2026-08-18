@@ -689,6 +689,30 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-08-13 — Follow-up: AppVersionService centralizes real app version across all consumers, adds a distinct analytics sentinel
+
+> Branch `fixing-tracking-appversion` (same branch as the entry directly below). No build/version bump, no TestFlight upload (local verification only — `npx ng build` clean at every step).
+
+Completes the "follow-up, not done this session" item from the entry below: the other three `Config.APP_VERSION` consumers (the `App-Version` header, feedback submissions, and — most importantly — the force-update version gate) now resolve the real installed version too, instead of the stale hardcoded constant.
+
+**New [app-version.ts](src/app/services/app-version.ts) (`AppVersionService`)** — single source of truth, mirrors the existing `deviceId` resolve-once-at-boot pattern in `auth.ts`:
+- `version` signal: defaults to `Config.APP_VERSION`, overwritten with the real `App.getInfo()` result in `init()` (only ever fails — and keeps the fallback — on platforms without the native App plugin, i.e. web/`ionic serve`).
+- `build` signal: same idea, for the build number (previously only read by `SettingsPage`'s own separate call).
+- `analyticsVersion` computed: `'0.0.0'` on non-native platforms, real `version()` otherwise — see the sentinel note below.
+
+**Wired into every remaining consumer:**
+- [app.component.ts](src/app/app.component.ts): `appVersion.init()` is now called as the very first boot step (before `apiEnv.init()`), so it's resolved before the API interceptor or the force-update gate can fire; replaces the local `App.getInfo()` try/catch added in the prior commit on this branch.
+- [api.interceptor.ts](src/app/interceptors/api.interceptor.ts): `App-Version` header now reads `appVersion.version()`.
+- [app-config.ts](src/app/services/app-config.ts) `runVersionGate()`: `isVersionBelow()` now compares against `appVersion.version()` — the most important fix, since this gate had been silently comparing against a frozen fake number (`'1.1.0'`) since before it even existed.
+- [feedback-sheet.component.ts](src/app/components/feedback-sheet/feedback-sheet.component.ts): `app_version` in the Supabase feedback payload now reads `appVersion.analyticsVersion()`.
+- [settings.page.ts](src/app/pages/settings/settings.page.ts): no longer makes its own separate `App.getInfo()` call — reads the same already-resolved `version`/`build` signals from the service (one native call app-wide instead of two). Template guard in [settings.page.html](src/app/pages/settings/settings.page.html) updated to require both `appVersion()` and `appBuild()` before showing the version line, preserving the old "hide until both resolved" behavior now that `version` defaults to a truthy fallback instead of `''`.
+
+**`Config.APP_VERSION` updated `'1.1.0'` → `'1.0.1'`** to match the real current native `MARKETING_VERSION`/`versionName`, and is now read in exactly one place: as `AppVersionService.version()`'s initial/web-fallback value. No consumer reads the constant directly anymore.
+
+**Mixpanel/feedback get a distinct `'0.0.0'` sentinel instead of a real-looking fallback number — deliberate design split, decided with the user.** A live Mixpanel check (a screenshot from a `localhost:8100` browser session) showed `app_version: 1.1.0` and was initially mistaken for the fix not working — it was actually the documented, correct web fallback firing (`App.getInfo()` throws unconditionally on web — `"Not implemented on web."`, confirmed by reading the `@capacitor/app` web plugin source directly). To make this unambiguous going forward without needing to cross-reference the `platform` property on every event, `analyticsVersion` reports `'0.0.0'` on non-native platforms for Mixpanel and feedback specifically. **Deliberately not applied to `version()` itself** (the API header + the gate): `isVersionBelow('0.0.0', minimum_version)` would be `true` against virtually any real `minimum_version`, permanently force-blocking every web/dev session to `/update-required` — breaking the existing, documented QA workflow where `ionic serve` (platform `web`) intentionally reads the Android `minimum_version` row so someone can test both the blocked and pass-through states from a browser (see Session 14, 2026-05-31). `version()` keeps the real-or-`1.0.1`-fallback value for that reason.
+
+**Verification:** `npx ng build` clean throughout (only the three pre-existing known warnings — two IDScanly SCSS budget overages + the `jscanify` CommonJS bailout, none new). Browser-verified the fallback mechanism itself (confirmed `app_version: 1.1.0` in a live Mixpanel event, traced to the documented fallback path, then to the plugin source). **Not yet device-verified** — no build was shipped this session; next TestFlight/Play upload should confirm native sessions report the real `1.0.1` (or later) to Mixpanel/feedback/the API header, and that the force-update gate still behaves correctly on both platforms.
+
 ### 2026-08-13 — Fix: Mixpanel app_version was a stale hardcoded constant, never the real shipped version
 
 > Branch `fixing-tracking-appversion`. No build/version bump, no TestFlight upload (local verification only — `npx ng build` clean, `npm install --dry-run` clean). Follow-up to the previous session's live Mixpanel-MCP validation of the `improve-mixpanel-tracking` branch, which surfaced this while spot-checking `app_version` on real events.

@@ -1,8 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
-import { App } from '@capacitor/app';
 import { AuthService } from '../../services/auth';
+import { AppVersionService } from '../../services/app-version';
 import { LanguageService } from '../../services/language.service';
 import { FeedbackSheetComponent } from '../../components/feedback-sheet/feedback-sheet.component';
 import { TranslatePipe } from '../../pipes/translate.pipe';
@@ -18,18 +18,16 @@ export class SettingsPage {
   langOpen = signal(false);
   lang = inject(LanguageService);
 
-  appVersion = signal('');
-  appBuild = signal('');
+  private appVersionService = inject(AppVersionService);
+  // Same source AppComponent already resolved at boot (AppVersionService.init()) — read
+  // here rather than calling App.getInfo() a second time.
+  appVersion = this.appVersionService.version;
+  appBuild = this.appVersionService.build;
 
   constructor(
     public auth: AuthService,
     private router: Router,
-  ) {
-    App.getInfo().then(info => {
-      this.appVersion.set(info.version);
-      this.appBuild.set(info.build);
-    }).catch(() => {});
-  }
+  ) {}
 
   back() { window.history.back(); }
 
