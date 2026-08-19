@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
+import * as Sentry from '@sentry/angular';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth';
 import { ApiEnvironmentService } from '../../services/api-environment';
-import * as Sentry from '@sentry/angular';
+import { PropertyConfigService } from '../../services/property-config.service';
 import { GuestInterface } from '../../models/guest.interface';
 import { toIdscanlyFields } from '../utils/to-idscanly-fields';
 
@@ -16,10 +17,20 @@ function taggedError(
   return Object.assign(new Error(message), { kind });
 }
 
+/** Size-caps a JSON blob for a Sentry log attribute — same convention as
+ *  review.page.ts's logIdscanlyResponse(). */
+function capJson(value: unknown): string {
+  const json = JSON.stringify(value ?? null);
+  return json.length > 16000
+    ? `${json.slice(0, 16000)}…[truncated ${json.length} chars]`
+    : json;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ExternalResultService {
   private auth = inject(AuthService);
   private apiEnv = inject(ApiEnvironmentService);
+  private propertyConfig = inject(PropertyConfigService);
 
   /**
    * Fire-and-forget entry point used by the two save sites (guest-detail's save-as-is and
@@ -36,14 +47,18 @@ export class ExternalResultService {
     isIdentityDocument: boolean,
   ): void {
     if (!sessionId) return;
-    this.submit(sessionId, toIdscanlyFields(guest, isIdentityDocument)).catch(err => {
-      Sentry.captureException(err, {
-        tags: {
-          context: 'idscanly_external_result',
-          kind: (err as { kind?: string })?.kind ?? 'error',
-        },
+    const fields = toIdscanlyFields(guest, isIdentityDocument);
+    this.submit(sessionId, fields)
+      .then(response => this.logOutcome(sessionId, isIdentityDocument, fields, response, null))
+      .catch(err => {
+        this.logOutcome(sessionId, isIdentityDocument, fields, null, err);
+        Sentry.captureException(err, {
+          tags: {
+            context: 'idscanly_external_result',
+            kind: (err as { kind?: string })?.kind ?? 'error',
+          },
+        });
       });
-    });
   }
 
   /**
@@ -57,10 +72,11 @@ export class ExternalResultService {
    * function validate the caller server-side (a live SabeeApp session for a property that
    * actually has IDScanly enabled) instead of trusting the public Supabase anon key alone.
    *
-   * Throws on failure. Callers treat this as fire-and-forget and swallow the rejection —
-   * this is a background quality signal and must never disturb the guest-save flow.
+   * Resolves with the Edge Function's parsed response (which wraps IDScanly's own, incl.
+   * `imageCount`). Throws on failure — callers treat this as fire-and-forget and swallow
+   * the rejection, since this is a background quality signal.
    */
-  async submit(sessionId: string, result: Record<string, unknown>): Promise<void> {
+  async submit(sessionId: string, result: Record<string, unknown>): Promise<unknown> {
     const url = `${environment.supabaseUrl}/functions/v1/external-result`;
     const property = this.auth.selectedProperty();
     const body = {
@@ -99,5 +115,55 @@ export class ExternalResultService {
       }
       throw taggedError(`external-result failed: ${detail}`, 'http_error');
     }
+
+    return await response.json().catch(() => null);
+  }
+
+  /**
+   * Console + Sentry Logs dump of exactly what we sent and what came back — gated on the
+   * CURRENT property's `extended_logging` flag (property_config), never unconditional,
+   * mirroring review.page.ts's logIdscanlyResponse(). The sent payload is guest PII (name,
+   * DOB, document number), so logging it for every property would leak that into Sentry via
+   * breadcrumbs on any unrelated error; opt-in per property keeps it off by default.
+   *
+   * `image_count` is pulled out as its own attribute because it is the one value that
+   * distinguishes a real success from a silent one: a 200 with `imageCount: 0` means
+   * IDScanly matched the session but attached the result to nothing.
+   */
+  private logOutcome(
+    sessionId: string,
+    isIdentityDocument: boolean,
+    sent: Record<string, unknown>,
+    response: unknown,
+    error: unknown,
+  ): void {
+    if (!this.propertyConfig.extendedLogging()) return;
+
+    const idscanly = (response as { idscanly?: { imageCount?: number; success?: boolean } } | null)
+      ?.idscanly;
+
+    console.log(
+      '[idscanly] external-result:',
+      error ? 'FAILED' : 'ok',
+      'session:',
+      sessionId,
+      'sent:',
+      sent,
+      'response:',
+      response,
+      error ?? '',
+    );
+
+    Sentry.logger.info('idscanly external-result', {
+      session_id: sessionId,
+      ok: !error,
+      is_identity_document: isIdentityDocument,
+      image_count: Number(idscanly?.imageCount ?? -1),
+      idscanly_success: !!idscanly?.success,
+      error_kind: String((error as { kind?: string })?.kind ?? ''),
+      error_message: error instanceof Error ? error.message : '',
+      sent_json: capJson(sent),
+      response_json: capJson(response),
+    });
   }
 }

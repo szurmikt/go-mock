@@ -120,6 +120,25 @@ Only when the guest being saved was scanned **via IdScanly** in this session, an
 
 Both delegate to `ExternalResultService.submitInBackground()`, which no-ops when no `sessionId` is present. Regula scans never set one, so the Regula flow is unaffected with no vendor check needed.
 
+## Observability
+
+The Supabase edge logs capture headers and status only — never bodies — and `sessionId` is sent in the request body rather than the URL path, so **the logs alone cannot tell you what was sent or which session it attached to**. For that, the client emits a gated round-trip log.
+
+`ExternalResultService.logOutcome()` writes both directions to `console.log` and to Sentry Logs as `idscanly external-result`, **gated on the calling property's `property_config.extended_logging` flag** — the same switch that gates `review.page.ts`'s `idscanly response` dump, and off by default because the payload is guest PII. Attributes:
+
+| Attribute | Meaning |
+|---|---|
+| `session_id` | the IdScanly session the result attached to |
+| `ok` | whether the call succeeded |
+| `image_count` | **the value that matters** — `0` means IdScanly matched the session but attached the result to no images; `-1` means absent/failed |
+| `idscanly_success` | IdScanly's own `success` flag |
+| `sent_json` / `response_json` | full payloads, capped at 16 kB |
+| `error_kind` / `error_message` | populated only on failure |
+
+Failures additionally raise a Sentry **exception** (tag `context: idscanly_external_result`), which is *not* gated — a broken function must surface even on properties without extended logging.
+
+To find a specific call in Sentry: `message:"idscanly external-result"`, or pair it with the scan's own `message:"idscanly response"` entry, which carries the same `session_id` a few seconds earlier.
+
 ## Failure behaviour
 
 Fire-and-forget. The guest save has already completed before this fires; the call **never** blocks, delays, retries, or surfaces an error to the user. Failures are reported to Sentry (tag `context: idscanly_external_result`) so a broken function doesn't mean IdScanly silently receives nothing forever.
