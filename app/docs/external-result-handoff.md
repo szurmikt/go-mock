@@ -111,6 +111,25 @@ Blank/whitespace-only values are normalised to `null` so IdScanly sees "not pres
 
 > **Open question for IdScanly (non-blocking):** the SabeeApp PMS *web* interface posts a differently-shaped object (a `{"guest": {…}}` wrapper, PMS-internal key names, paired `X`/`X_formatted` values). If IdScanly has already tuned a parser to that shape, they may prefer it. This was weighed and rejected for the mobile app — see the design notes above — but it is worth confirming they parse both.
 
+## Known difference: names and places are title-cased before we send them
+
+**IdScanly should be told about this** — it is the first thing that will look wrong in their comparison.
+
+IdScanly's OCR returns names and places in ALL CAPS. The app runs them through `toNaturalCase()` ([natural-case.ts](../src/app/utils/natural-case.ts)) before display and before saving, which title-cases them and normalises parenthesis spacing. Since this payload carries *the values actually saved*, it carries the title-cased form:
+
+| Field | IdScanly OCR | What we send |
+|---|---|---|
+| `givenNames` | `JÁNOS` | `János` |
+| `surname` | `KOVÁCS` | `Kovács` |
+| `motherMaidenName` | `SZABÓ MÁRIA` | `Szabó Mária` |
+| `placeOfBirth` | `KECSKEMET(MAGYARORSZAG)` | `Kecskemet (Magyarorszag)` |
+
+*(Illustrative values, matching the fictional guest used in the payload examples above — the effect was confirmed against a real scan on 2026-08-19.)*
+
+**Consequence:** a naive diff marks every name and place field as "corrected" on *every* scan, even when the OCR was character-perfect and the user changed nothing — a systematic false positive in exactly the accuracy signal this endpoint exists to produce.
+
+**This is not something to fix on our side.** Sending raw OCR casing would misrepresent what was actually saved (the whole point of the payload), and the app deliberately does not track per-field "was this edited" (see the design notes above). The resolution is on the consuming end: **compare these fields case-insensitively**, and ignore whitespace around parentheses, or simply expect that constant delta. Document numbers, dates, and codes are passed through untouched and diff exactly.
+
 ## When the app calls it
 
 Only when the guest being saved was scanned **via IdScanly** in this session, and only **after** the SabeeApp guest save has already succeeded. Two call sites:
