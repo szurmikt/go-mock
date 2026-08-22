@@ -65,7 +65,19 @@ Direct curl, 2026-08-18 — every rejection occurs *before* the IdScanly call, s
 | `GET` instead of `POST` | 405 | `405 {"error":"Method not allowed"}` |
 | No Supabase JWT | 401 | `401 UNAUTHORIZED_NO_AUTH_HEADER` (gateway) |
 
-**Not yet verified: the happy path.** No real IdScanly session has reached the function. Testing is **browser-only, no TestFlight build needed** — IdScanly is browser-based (`getUserMedia`/OpenCV) unlike Regula: `ionic serve --ssl --external`, property 6250, scan → Save, then confirm `POST /functions/v1/external-result` returns 200 with `idscanly.imageCount >= 1`. **`imageCount: 0` is the failure mode to watch for** — IdScanly matched the session but no images, meaning the threaded `sessionId` is wrong; it would otherwise look like success.
+### Happy path — verified live 2026-08-19
+
+Real scan from a browser on a physical iPhone against `ionic serve`, property 6250, Hungarian ID card. Session `b3263387-932c-458a-9a71-e6df1bf6421c`:
+
+- `OPTIONS` → 200 immediately before `POST` → 200, confirming the CORS preflight passes despite `verify_jwt: true` (browsers omit `Authorization` on preflight — the one real risk with this setting).
+- Both server-side auth checks passed, and IdScanly returned `{"success": true, "imageCount": 2, "message": "External result saved for 2 images"}`.
+- All 11 identity fields populated, no nulls.
+
+**`imageCount` is the assertion that matters:** a 200 carrying `imageCount: 0` would mean IdScanly matched the session but attached the result to no images — the threaded `sessionId` being wrong — and is indistinguishable from real success by status code alone.
+
+**Still unverified:** the guest-edit (corrected-values) path — both live calls took guest-detail's accept-as-is branch; address-card payloads (the `mapAddressCard` branch); and whether an IdScanly session stays valid if the user spends several minutes editing before saving (a 404 would indicate it does not).
+
+**Testing needs no TestFlight build** — IdScanly is browser-based (`getUserMedia`/OpenCV) unlike Regula, so `ionic serve --ssl --external` on a phone exercises the whole flow.
 
 ## What the app sends as `result`
 
