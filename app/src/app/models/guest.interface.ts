@@ -83,4 +83,12 @@ export interface ScanResultInterface {
    * external-result endpoint; see ExternalResultService.
    */
   sessionId?: string;
+  /**
+   * Which IDScanly field the saved document_number corresponds to. 'identityNumber' only
+   * for Turkish ID cards (which carry both a card serial and a TC Kimlik No — see
+   * idscanly/utils/turkish-id.ts); 'documentNumber' otherwise, undefined on the Regula
+   * path. Carried alongside sessionId so the external-result payload can key the value the
+   * same way IDScanly does, instead of reporting an identity number as a document number.
+   */
+  documentNumberKey?: 'documentNumber' | 'identityNumber';
 }

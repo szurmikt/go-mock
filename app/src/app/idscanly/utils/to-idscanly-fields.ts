@@ -1,4 +1,6 @@
-import { GuestInterface } from '../../models/guest.interface';
+import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
+
+type DocumentNumberKey = NonNullable<ScanResultInterface['documentNumberKey']>;
 
 /**
  * Builds the payload posted back to IDScanly's external-result endpoint: the FINAL,
@@ -17,8 +19,9 @@ import { GuestInterface } from '../../models/guest.interface';
 export function toIdscanlyFields(
   guest: GuestInterface,
   isIdentityDocument: boolean,
+  documentNumberKey: DocumentNumberKey = 'documentNumber',
 ): Record<string, unknown> {
-  return isIdentityDocument ? identityFields(guest) : addressFields(guest);
+  return isIdentityDocument ? identityFields(guest, documentNumberKey) : addressFields(guest);
 }
 
 /** '' / whitespace-only → null, so IDScanly sees "not present" rather than an empty string. */
@@ -27,7 +30,10 @@ function clean(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-function identityFields(g: GuestInterface): Record<string, unknown> {
+function identityFields(
+  g: GuestInterface,
+  documentNumberKey: DocumentNumberKey,
+): Record<string, unknown> {
   const givenNames = clean(g.first_name);
   const surname = clean(g.last_name);
   return {
@@ -40,7 +46,11 @@ function identityFields(g: GuestInterface): Record<string, unknown> {
     sex: clean(g.gender),
     citizenship: clean(g.citizenship),
     documentType: clean(g.document?.document_type),
-    documentNumber: clean(g.document?.document_number),
+    // Exactly one of documentNumber / identityNumber, never both: for a Turkish ID card the
+    // saved value IS the identity number (see IdscanlyDocuscanService.mapToScanResult), so
+    // reporting it as a documentNumber would make IDScanly's field diff flag a mismatch on
+    // every Turkish scan.
+    [documentNumberKey]: clean(g.document?.document_number),
     dateOfIssue: clean(g.document?.date_of_issue_of_the_document),
   };
 }

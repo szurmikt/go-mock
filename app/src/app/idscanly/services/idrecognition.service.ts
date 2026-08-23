@@ -6,9 +6,18 @@ import { ApiEnvironmentService } from '../../services/api-environment';
 
 export interface IdRecognitionFields {
   documentType?: string;
+  // MRZ-style document code ('ID' for a national identity card, 'P' for a passport).
+  // Read together with documentCountry to identify a Turkish ID — see utils/turkish-id.ts.
+  documentCode?: string;
   documentCountry?: string;
   issuingCountry?: string;
   documentNumber?: string;
+  // A Turkish ID card carries TWO numbers: documentNumber is the card's serial (reissued
+  // with every replacement card) and identityNumber is the person's permanent TC Kimlik No,
+  // which is the one SabeeApp needs. IDScanly currently returns it as `personalNumber` and
+  // is renaming it to `identityNumber`; we deliberately read only the new name, so Turkish
+  // scans start working the moment they ship the rename, with no app change.
+  identityNumber?: string;
   fullName?: string;
   // The live idrecognition response uses `givenNames`/`surname`/`motherMaidenName`.
   // The `firstName`/`lastName`/`motherName` variants are kept as fallbacks.

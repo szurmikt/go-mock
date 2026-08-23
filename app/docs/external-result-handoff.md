@@ -114,6 +114,21 @@ Address cards (lakcímkártya) — only the address is ever captured or saved fo
 
 Blank/whitespace-only values are normalised to `null` so IdScanly sees "not present" rather than `""`.
 
+**Turkish ID cards send `identityNumber` instead of `documentNumber`.** A Turkish national ID carries two numbers — the card serial (`documentNumber`, reissued with every replacement card) and the holder's permanent TC Kimlik No (`identityNumber`) — and SabeeApp stores the latter. When IdScanly's response has `documentCode: "ID"` and `documentCountry: "TUR"`, the app saves `identityNumber` and reports it back under that same key, so the comparison stays field-for-field exact:
+
+```json
+{
+  "…": "…",
+  "documentType": "id",
+  "identityNumber": "82345678902",
+  "dateOfIssue": "2018-03-15"
+}
+```
+
+Exactly one of the two keys is ever present, never both. Every other document type and country is unaffected and still sends `documentNumber`.
+
+> **Depends on IdScanly's pending rename.** The app reads only `identityNumber`. The live response still calls this field `personalNumber`, so until that rename ships, a Turkish ID scan saves an empty document number rather than falling back to the card serial — deliberately, since storing the serial in a field the property reads as an identity number is worse than storing nothing. No app change is needed once the rename lands.
+
 ### Design notes (deliberate, not oversights)
 
 - **Only final values are sent** — no original/corrected pairing, no "what changed" flags. IdScanly already stores its own OCR output for the session and its admin UI does the comparison itself, so echoing their data back would be redundant. Their docs confirm no fields are required.

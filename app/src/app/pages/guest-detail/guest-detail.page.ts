@@ -361,7 +361,12 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
         });
         // Feedback loop: hand IDScanly the values the user actually accepted, so they can
         // measure OCR accuracy. Fire-and-forget — never blocks or fails the save.
-        this.externalResult.submitInBackground(result?.sessionId, guest, isIdentityDoc);
+        this.externalResult.submitInBackground(
+          result?.sessionId,
+          guest,
+          isIdentityDoc,
+          result?.documentNumberKey,
+        );
         this.docuscan.lastScanResult = null;
         this._idscanlyResult.set(null);
         this.scanSheetOpen.set(false);

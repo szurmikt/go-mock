@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { ReservationService } from '../../services/reservation';
-import { GuestInterface } from '../../models/guest.interface';
+import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
 import { OptionsService } from '../../services/options.service';
 import { DocuscanService } from 'src/app/regula/services/docuscan';
 import { ExternalResultService } from '../../idscanly/services/external-result.service';
@@ -63,6 +63,7 @@ export class GuestEditPage implements OnInit {
   // plain manual edits leave these untouched, and the feedback call then no-ops.
   private idscanlySessionId: string | undefined;
   private scanWasIdentityDoc = true;
+  private documentNumberKey: ScanResultInterface['documentNumberKey'];
 
   constructor(
     private route: ActivatedRoute,
@@ -113,6 +114,7 @@ export class GuestEditPage implements OnInit {
         const isIdentityDoc = last.documentData?.is_identity_document !== false;
         this.idscanlySessionId = last.sessionId;
         this.scanWasIdentityDoc = isIdentityDoc;
+        this.documentNumberKey = last.documentNumberKey;
         const scanned = this.docuscanService.scannedDataToGuestScannedData(
           last.scannedData!,
         );
@@ -208,6 +210,7 @@ export class GuestEditPage implements OnInit {
         this.idscanlySessionId,
         updated,
         this.scanWasIdentityDoc,
+        this.documentNumberKey,
       );
       // Pop the edit entry to return to the EXISTING guest-detail history entry.
       // navigate('..', { replaceUrl }) turned gd→edit into gd→gd, so the first

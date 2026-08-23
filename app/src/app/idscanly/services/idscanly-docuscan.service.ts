@@ -8,6 +8,7 @@ import { DocumentTypeConfig, DocumentTypeId } from '../models/document-type';
 import { IdRecognitionFields, IdRecognitionResponse } from './idrecognition.service';
 import { LanguageService } from '../../services/language.service';
 import { toNaturalCase } from '../../utils/natural-case';
+import { isTurkishIdentityCard } from '../utils/turkish-id';
 
 /**
  * Maps the app's own DocumentTypeId (the type the user explicitly picked before scanning)
@@ -89,6 +90,15 @@ export class IdscanlyDocuscanService {
     // No dedicated issue-date field; the live response surfaces it in visibleDates[0].
     const issueDate = f.dateOfIssue ?? f.visibleDates?.[0] ?? null;
 
+    // A Turkish ID card carries two numbers and SabeeApp needs the identity number (TC
+    // Kimlik No), not the card serial that `documentNumber` holds. Deliberately NO fallback
+    // to documentNumber when identityNumber is absent: saving the serial into a field the
+    // property will read as an identity number is worse than saving nothing. A null box
+    // means "the scan said nothing", so the downstream merge preserves whatever the guest
+    // already had and the result sheet shows a dash before the user saves.
+    const isTurkishId = isTurkishIdentityCard(f);
+    const documentNumber = isTurkishId ? f.identityNumber : f.documentNumber;
+
     const scannedData: ScannedGuestDataInterface = {
       first_name: box(firstName || null),
       last_name: box(lastName || null),
@@ -105,7 +115,7 @@ export class IdscanlyDocuscanService {
       // CANONICAL_DOCUMENT_TYPE above. null for address-card, matching Regula's behaviour of
       // never populating this field for a non-identity document.
       document_type: box(CANONICAL_DOCUMENT_TYPE[documentType.id] ?? null),
-      document_number: box(f.documentNumber),
+      document_number: box(documentNumber),
       date_of_issue_of_the_document: box(issueDate),
       // No IDScanly equivalent of Regula's document id — send null, exactly like a Regula
       // first scan on a never-scanned guest. The API validates this field as an integer,
@@ -126,7 +136,14 @@ export class IdscanlyDocuscanService {
       is_identity_document: true,
     };
 
-    return { documentData, scannedData, sessionId: response.sessionId };
+    return {
+      documentData,
+      scannedData,
+      sessionId: response.sessionId,
+      // Tells the external-result feedback loop which IDScanly field the saved
+      // document_number corresponds to, so their diff compares like with like.
+      documentNumberKey: isTurkishId ? 'identityNumber' : 'documentNumber',
+    };
   }
 
   /**

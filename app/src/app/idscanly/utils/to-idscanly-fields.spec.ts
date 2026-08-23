@@ -93,6 +93,22 @@ describe('toIdscanlyFields', () => {
     expect(result['documentNumber']).toBeUndefined();
   });
 
+  it('keys the number as identityNumber for a Turkish ID, and never both keys', () => {
+    const result = toIdscanlyFields(
+      guest({
+        document: {
+          document_type: 'id',
+          document_number: '82345678902',
+          date_of_issue_of_the_document: '2018-03-15',
+        },
+      }),
+      true,
+      'identityNumber',
+    );
+    expect(result['identityNumber']).toBe('82345678902');
+    expect('documentNumber' in result).toBe(false);
+  });
+
   it('handles a missing address object on an address card', () => {
     expect(toIdscanlyFields(guest({ address: null }), false)).toEqual({
       documentCountry: null,
