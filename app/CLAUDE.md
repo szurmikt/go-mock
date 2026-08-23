@@ -689,6 +689,16 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-08-23 — Shipment: build 97 (iOS) — merges the Turkish ID fix, IDScanly skip/control-bar redesign, and the guest-card scan shortcut
+
+> Merged `fix/turkish-id-identity-number` and `add-scan-shortcut-to-guest-card` into `main` (the latter carrying `idscan-UI-improvement-with-skip`, and the former carrying `adding-idscanly-feedback-loop`, transitively). **Shipped build: iOS 97 (TestFlight, uploaded successfully — processing).** None of the three merged changes had been device/browser-verified before this shipment — each still needs its own on-device pass (see their individual entries below for what to check).
+
+Ships the three feature entries logged directly below this one, none of which had been released since build 95 (2026-08-18). The merge itself only needed one manual conflict resolution: `app/CLAUDE.md`'s changelog, where `fix/turkish-id-identity-number` and `add-scan-shortcut-to-guest-card` had each inserted their own entry at the same anchor point (immediately after the `## 19. Changelog` header) relative to a common ancestor — resolved by ordering all three same-day entries newest-first by commit time. `guest-detail.page.ts` (touched by both the Turkish-fix branch and the scan-shortcut branch) auto-merged cleanly with no conflict.
+
+**Same App Store Connect blocker as 2026-08-12 and 2026-08-18, recurred a third time:** the first upload attempt (build 96, `MARKETING_VERSION 1.0.2`) was rejected — `1.0.2` was already an approved, closed version train (confirmed by the user before the retry, and independently by the export error: *"The train version '1.0.2' is closed for new build submissions"*). `scripts/publish-ios.sh` only auto-bumps `CURRENT_PROJECT_VERSION` (the build number); `MARKETING_VERSION` still has to be bumped by hand every time. Fixed by bumping `MARKETING_VERSION` to `1.0.3` in both pbxproj configs, and Android's `versionName` (`android/app/build.gradle`) to `1.0.3` to match, then retrying — **build 96 was burned with no result** (the publish script bumps the build number before any build/archive step; the archive itself succeeded, only the export/upload was rejected), 97 is the one that shipped. Android was not built or uploaded this session (not requested) — only its `versionName` was bumped to stay in sync with iOS.
+
+**Verification:** `npx ng build` clean on `main` post-merge (only the three pre-existing known warnings — two IDScanly SCSS budget overages + the `jscanify` CommonJS bailout, none new). `turkish-id.spec.ts` + `to-idscanly-fields.spec.ts` re-run post-merge, 13/13 green. iOS 97 exported and uploaded successfully (`EXPORT SUCCEEDED` / `Upload succeeded`), now processing in TestFlight. **Not yet device-verified** — once build 97 finishes processing: confirm the reservation-detail scan-shortcut icon and its fallback navigation, the IDScanly skip-back-side control-bar redesign, and (once IDScanly ships their `personalNumber`→`identityNumber` rename) a real Turkish ID scan — see each feature's own entry below for exact checks.
+
 ### 2026-08-23 — Reservation-detail guest card: scan shortcut for not-yet-scanned guests
 
 > Branch `add-scan-shortcut-to-guest-card`. No build/version bump, no TestFlight upload (local verification only — `npx ng build` clean; not yet device/`ionic serve`-verified in this environment).
