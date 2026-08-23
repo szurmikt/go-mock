@@ -600,6 +600,12 @@ ion-refresher {
     display: inline-flex; align-items: center; justify-content: center;
 
     &:hover { background: var(--primary-soft-bg); }
+
+    /* Not-yet-scanned shortcut — filled so it reads as a tappable action, not a status icon */
+    &.shortcut {
+      background: var(--primary-soft-bg);
+      border: 1px solid var(--primary-soft);
+    }
   }
 }
 
