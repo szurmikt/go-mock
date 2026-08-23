@@ -71,6 +71,17 @@ export class IdscanScanPage implements OnDestroy {
     return type ? type.sides[this.currentSideIndex()] : null;
   });
 
+  readonly showSecondPageExtras = computed(() => {
+    const type = this.selectedType();
+    return !!type && type.sides.length > 1 && this.currentSideIndex() === 1;
+  });
+
+  readonly firstPageThumb = computed(() => {
+    if (!this.showSecondPageExtras()) return null;
+    const type = this.selectedType();
+    return type ? (this.session.getSide(type.sides[0])?.thumbDataUrl ?? null) : null;
+  });
+
   readonly pageTitle = computed(() => {
     const type = this.selectedType();
     if (!type) return '';
@@ -162,6 +173,19 @@ export class IdscanScanPage implements OnDestroy {
 
   async toggleTorch(): Promise<void> {
     await this.detection.setTorch(!this.torchOn());
+  }
+
+  skipSecondPage(): void {
+    this.detection.stop();
+    void this.router.navigateByUrl('/idscanly/review', { replaceUrl: true });
+  }
+
+  retakeFirstPage(): void {
+    const type = this.selectedType();
+    if (!type) return;
+    this.session.clearSide(type.sides[0]);
+    this.currentSideIndex.set(0);
+    this.detection.arm();
   }
 
   useTakenPhoto(): void {
