@@ -120,6 +120,14 @@
                       <circle cx="8" cy="15" r="1" fill="currentColor"/>
                     </svg>
                   </button>
+                } @else if (propertyConfig.scanVendor()) {
+                  <!-- No document scanned yet — shortcut straight into the scan flow's Type Selection -->
+                  <button class="scan-btn shortcut" (click)="$event.stopPropagation(); startScan(g)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M4 8V5a1 1 0 0 1 1-1h3M20 8V5a1 1 0 0 0-1-1h-3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3"/>
+                      <line x1="3" y1="12" x2="21" y2="12"/>
+                    </svg>
+                  </button>
                 }
                 <div class="id">
                   {{ g.guest_id }}

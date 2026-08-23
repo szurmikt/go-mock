@@ -101,34 +101,69 @@
 
   @if (selectedType()) {
     <div class="control-bar">
-      <button
-        class="control-bar__torch"
-        [class.control-bar__torch--on]="torchOn()"
-        [disabled]="!torchSupported()"
-        (click)="toggleTorch()"
-        [attr.aria-label]="'idscanly.ariaToggleFlash' | tr"
-      >
-        <!-- bolt/lightning bolt -->
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M13 2L4.09 12.97 11 13 11 22 19.91 11.03 13 11 13 2z"/>
-        </svg>
-      </button>
-
-      <div class="control-bar__capture">
-        <button class="control-bar__shutter" (click)="captureManualNow()" [attr.aria-label]="'idscanly.ariaCaptureNow' | tr">
-          <span class="control-bar__shutter-ring"></span>
+      <div class="control-bar__toggles">
+        <button
+          class="control-bar__toggle"
+          [class.control-bar__toggle--on]="autoCaptureOn()"
+          (click)="toggleAutoCapture()"
+          [attr.aria-label]="'idscanly.ariaToggleAuto' | tr"
+        >
+          <!-- viewfinder / reticle -->
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="8.2"/>
+            <circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/>
+          </svg>
         </button>
-        <span class="control-bar__caption">{{ 'idscanly.tapToCapture' | tr }}</span>
+
+        <button
+          class="control-bar__toggle"
+          [class.control-bar__toggle--on]="torchOn()"
+          [disabled]="!torchSupported()"
+          (click)="toggleTorch()"
+          [attr.aria-label]="'idscanly.ariaToggleFlash' | tr"
+        >
+          <!-- bolt/lightning bolt -->
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M13 2L4.09 12.97 11 13 11 22 19.91 11.03 13 11 13 2z"/>
+          </svg>
+        </button>
       </div>
 
-      <button
-        class="control-bar__auto"
-        [class.control-bar__auto--on]="autoCaptureOn()"
-        (click)="toggleAutoCapture()"
-        [attr.aria-label]="'idscanly.ariaToggleAuto' | tr"
-      >
-        {{ 'idscanly.auto' | tr }}
-      </button>
+      <div class="control-bar__row">
+        @if (firstPageThumb(); as thumb) {
+          <button
+            class="control-bar__thumb-btn"
+            (click)="retakeFirstPage()"
+            [attr.aria-label]="'idscanly.ariaRetakeFirstPage' | tr"
+          >
+            <img class="control-bar__thumb" [src]="thumb" alt="">
+          </button>
+        } @else {
+          <span class="control-bar__slot"></span>
+        }
+
+        <div class="control-bar__capture">
+          <button class="control-bar__shutter" (click)="captureManualNow()" [attr.aria-label]="'idscanly.ariaCaptureNow' | tr">
+            <span class="control-bar__shutter-ring"></span>
+          </button>
+          <span class="control-bar__caption">{{ 'idscanly.tapToCapture' | tr }}</span>
+        </div>
+
+        @if (showSecondPageExtras()) {
+          <button
+            class="control-bar__skip"
+            (click)="skipSecondPage()"
+            [attr.aria-label]="'idscanly.ariaSkipScan' | tr"
+          >
+            <!-- "skip to next" glyph (single triangle + bar) — Turn 10 / 10a, recommended -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 5l10 7-10 7V5zM17 5h2v14h-2z"/>
+            </svg>
+          </button>
+        } @else {
+          <span class="control-bar__slot"></span>
+        }
+      </div>
     </div>
   }
 

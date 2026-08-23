@@ -175,6 +175,12 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
       this.scanSheetMode.set('failed');
       this.scanSheetOpen.set(true);
     }
+
+    // Shortcut from the reservation-detail guest card: jump straight into the
+    // scan flow's document-type selection instead of requiring a FAB tap.
+    if (this.route.snapshot.queryParamMap.get('autoScan') === '1') {
+      this.openScanDocument();
+    }
   }
 
   ionViewWillEnter() {

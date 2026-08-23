@@ -65,8 +65,23 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       .filter((image): image is ReviewImage => image !== null);
   });
 
+  readonly missingSides = computed<{ side: Side; label: string }[]>(() => {
+    const type = this.documentType();
+    if (!type) return [];
+    return type.sides
+      .filter((s) => !this.session.getSide(s))
+      .map((side) => ({
+        side,
+        label: this.lang.t(side === 'front' ? 'idscanly.frontSide' : 'idscanly.backSide'),
+      }));
+  });
+
   readonly captureSummary = computed(() => {
     const n = this.images().length;
+    const missing = this.missingSides().length;
+    if (missing > 0) {
+      return this.lang.t('idscanly.captureSummaryPartial', { captured: n, total: n + missing });
+    }
     return n === 1
       ? this.lang.t('idscanly.captureSummarySingle')
       : this.lang.t('idscanly.captureSummaryMultiple', { n });
