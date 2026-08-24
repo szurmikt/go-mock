@@ -635,7 +635,7 @@ ExportOptions.plist (create in `/tmp` — not committed):
 
 ### Build number
 
-`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **95**. `MARKETING_VERSION` (both Debug and Release configs) is NOT auto-bumped by `scripts/publish-ios.sh` — bump by hand when Apple closes the current version train (see 2026-08-12 and 2026-08-18 changelog entries). Current: **1.0.2**.
+`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **100**. `MARKETING_VERSION` (both Debug and Release configs) is NOT auto-bumped by `scripts/publish-ios.sh` — bump by hand when Apple closes the current version train (see 2026-08-12 and 2026-08-18 changelog entries). Current: **1.0.4**.
 
 ### App Store requirements
 
@@ -688,6 +688,42 @@ async ionViewWillEnter() {
 ---
 
 ## 19. Changelog
+
+### 2026-08-24 — Shipment: iOS build 100 (v1.0.4) / Android versionCode 29 (v1.0.4) — submitted to both stores
+
+> Branch `improving-sentry-scan-logging-visibility`. Ships the two entries logged directly below this one. **Submitted to the App Store and Play Store this session.**
+
+**iOS crossed into a new marketing version for the first time this session.** `MARKETING_VERSION` bumped `1.0.3` → `1.0.4` in both Debug and Release configs of [project.pbxproj](ios/App/App.xcodeproj/project.pbxproj) — Android had already been on `1.0.4` since the previous shipment (see the 2026-08-24 "iOS build 98" entry below), this is iOS catching up to match. Two `scripts/publish-ios.sh` runs this session: build 99 (first upload at the new `1.0.4`, carrying the Lock Now button + the `pid`/`code`/`property_id`/`reservation_code`/`guest_id` log additions below) and build 100 (same `1.0.4`, adding the `app_version` log attribute after it was flagged as missing) — **100 is the build that was actually submitted for review**, 99 shipped to TestFlight but was superseded before submission.
+
+**Android**: `scripts/publish-android.sh` run twice this session (`versionCode` 27→28→29, `versionName` unchanged at `1.0.4`) for the same reason as iOS above — 28 was an interim AAB/APK pair built to hand-test the Lock Now button on a real device before the final `app_version` addition, 29 is the one submitted to Play Console.
+
+**Verification:** `npx ng build` clean throughout (only the three pre-existing known warnings). iOS 100 exported and uploaded successfully (`EXPORT SUCCEEDED` / `Upload succeeded`) and has since been submitted for App Store review. Android AAB `sabeeapp-go-v29.aab` built successfully and uploaded to Play Console. **Not yet independently device-verified this session** — the Lock Now button was hand-verified via the interim `sabeeapp-go-v28.apk` (see its own entry below); the Sentry log attribute additions have not yet been confirmed against a real IDScanly scan on a device.
+
+### 2026-08-24 — Settings: "Lock Now" debug button (property 6250 only) — instant biometric-lock trigger for device testing
+
+> Branch `improving-sentry-scan-logging-visibility`. No dedicated build (ships as part of the 1.0.4 shipment above).
+
+The Settings screen's Session-4-era "Lock screen button" had been removed at some point and was never reintroduced, leaving no way to exercise `BiometricService`'s session-lock flow (§14) on a real device without actually waiting out the real 10-minute inactivity/background threshold — a real blocker for verifying the 2026-08-24 biometric-passcode-fallback fix (see below) hands-on.
+
+- **New [lock-debug.const.ts](src/app/pages/settings/lock-debug.const.ts)** — `LOCK_DEBUG_PROPERTY_ID = '6250'`, mirroring the existing `IDSCANLY_DEBUG_PROPERTY_ID`/`BRIEFING_PROPERTY_ID` gate-by-test-property convention (same `String(property_id)` comparison).
+- **[settings.page.ts](src/app/pages/settings/settings.page.ts)**: new `lockButtonEnabled` computed (`auth.selectedProperty()?.property_id` against the const) and `lockNow()`, which just calls the already-existing `biometric.lockSession()` — no new locking mechanism, this only exposes the existing one on demand.
+- **[settings.page.html](src/app/pages/settings/settings.page.html)**: new button rendered above Logout, gated behind `@if (lockButtonEnabled())`, plain English label ("Lock Now") — deliberately left untranslated, matching the precedent set by IDScanly's own untranslated "Show debug" dev/QA toggles (calibration tooling, not staff-facing product copy).
+
+**Device-verified this session** via the interim `sabeeapp-go-v28.apk` — confirmed the button appears on property 6250's Settings screen and immediately shows the lock/biometric overlay on tap, without waiting for the real timeout.
+
+### 2026-08-24 — IDScanly Sentry logs: property_id + reservation_code searchable in the message, guest_id + app_version visible as attributes
+
+> Branch `improving-sentry-scan-logging-visibility`. No dedicated build (ships as part of the 1.0.4 shipment above).
+
+Prompted by a real support investigation (reservation `6P4TGNC`, property `8926` — a report that IDScanly hadn't extracted mother's name/birth place) that hit a dead end: the two IDScanly diagnostic logs (`idscanly response` in `review.page.ts`, `idscanly external-result` in `external-result.service.ts`, both gated on `propertyConfig.extendedLogging()`) already carried a `pid` field, but buried inside a large `response_json`/`sent_json` blob attribute — invisible to Sentry's Logs product, which **only full-text-searches the `message` field**, not structured attributes. There was no way to jump directly to the log for a specific property or reservation, only to page through everything chronologically.
+
+- **[review.page.ts](src/app/idscanly/pages/review/review.page.ts) `logIdscanlyResponse()`**: now takes the already-in-scope `ctx: { reservationCode, guestId }` (read from `CaptureSessionService.context()` in `submit()`, previously read but never passed in) plus `AuthService.selectedProperty()?.property_id` (already injected). Message changed from `'idscanly response'` to `` `idscanly response pid=${propertyId} code=${reservationCode}` `` — plain space-separated tokens **appended** to the existing message text, so any saved search on the original substring still matches. `property_id`, `reservation_code`, `guest_id`, and (added in a same-day follow-up, after being flagged as missing) `app_version` (from the already-existing `AppVersionService`) added as structured attributes alongside the existing ones.
+- **[external-result.service.ts](src/app/idscanly/services/external-result.service.ts)**: `submitInBackground()` widened to take a new `reservationCode: string` param, threaded from both call sites — [guest-detail.page.ts](src/app/pages/guest-detail/guest-detail.page.ts) and [guest-edit.page.ts](src/app/pages/guest-edit/guest-edit.page.ts), both of which already had `this.reservationCode` in scope one line above the existing call. `logOutcome()`'s message changed the same way: `` `idscanly external-result pid=${propertyId} code=${reservationCode}` ``, same four attributes added (`guest_id` sourced from the already-passed `guest.guest_id`). The catch-path `Sentry.captureException` also gained `property_id`/`reservation_code`/`guest_id`/`app_version` **tags** (Sentry's Issues search supports tag filtering, unlike Logs' message-only search) — consistent coverage across both the log and the error-capture path.
+- **Deliberately scoped to IDScanly only** — Regula's parallel diagnostics (`document-reader.service.ts` `logScanOutcome`/`buildScanDiagnostics`/etc.) were explicitly excluded per the user's direction; that service has no reservation/guest context mechanism at all today and would need its own design pass.
+- **Message format convention**: `<original message> pid=<propertyId> code=<reservationCode>` — chosen specifically so a future lookup is a plain-text search for the bare reservation code or `pid=<id>`, no query syntax needed.
+- **Known follow-up, deliberately not done this session**: `platform` (iOS/Android/web) is not logged to Sentry at all today — only `environment` (production/development) is set in `Sentry.init()` ([main.ts](src/main.ts)); Mixpanel already has an equivalent `platform` super property via `Capacitor.getPlatform()` ([mixpanel.ts](src/app/services/mixpanel.ts)) that Sentry has no counterpart to. Flagged by the user immediately after this entry shipped; picked up on its own branch (`fixing-platform-in-sentry-logging`) rather than folded in here, since global-tag-at-boot vs. per-log-attribute is an open scope question.
+
+**Verification:** `npx ng build` clean at every step (only the three pre-existing known warnings). Both logging call sites are gated behind `propertyConfig.extendedLogging()` and only fire on a real IDScanly scan submit/save — **not yet confirmed against a real device scan** that the new message format and attributes actually show up correctly in Sentry Logs.
 
 ### 2026-08-24 — Shipment: iOS build 98 / Android versionCode 27, versionName 1.0.4 (+ signed APK) — biometric passcode fallback + IDScanly network retry
 
