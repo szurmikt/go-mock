@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import * as Sentry from '@sentry/angular';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth';
+import { AppVersionService } from '../../services/app-version';
 import { ApiEnvironmentService } from '../../services/api-environment';
 import { PropertyConfigService } from '../../services/property-config.service';
 import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
@@ -29,6 +30,7 @@ function capJson(value: unknown): string {
 @Injectable({ providedIn: 'root' })
 export class ExternalResultService {
   private auth = inject(AuthService);
+  private appVersion = inject(AppVersionService);
   private apiEnv = inject(ApiEnvironmentService);
   private propertyConfig = inject(PropertyConfigService);
 
@@ -44,19 +46,27 @@ export class ExternalResultService {
   submitInBackground(
     sessionId: string | undefined,
     guest: GuestInterface,
+    reservationCode: string,
     isIdentityDocument: boolean,
     documentNumberKey?: ScanResultInterface['documentNumberKey'],
   ): void {
     if (!sessionId) return;
     const fields = toIdscanlyFields(guest, isIdentityDocument, documentNumberKey);
     this.submit(sessionId, fields)
-      .then(response => this.logOutcome(sessionId, isIdentityDocument, fields, response, null))
+      .then(response =>
+        this.logOutcome(sessionId, reservationCode, guest.guest_id, isIdentityDocument, fields, response, null),
+      )
       .catch(err => {
-        this.logOutcome(sessionId, isIdentityDocument, fields, null, err);
+        this.logOutcome(sessionId, reservationCode, guest.guest_id, isIdentityDocument, fields, null, err);
+        const propertyId = this.auth.selectedProperty()?.property_id ?? 'unknown';
         Sentry.captureException(err, {
           tags: {
             context: 'idscanly_external_result',
             kind: (err as { kind?: string })?.kind ?? 'error',
+            property_id: String(propertyId),
+            reservation_code: reservationCode,
+            guest_id: guest.guest_id,
+            app_version: this.appVersion.version(),
           },
         });
       });
@@ -133,6 +143,8 @@ export class ExternalResultService {
    */
   private logOutcome(
     sessionId: string,
+    reservationCode: string,
+    guestId: string,
     isIdentityDocument: boolean,
     sent: Record<string, unknown>,
     response: unknown,
@@ -140,6 +152,7 @@ export class ExternalResultService {
   ): void {
     if (!this.propertyConfig.extendedLogging()) return;
 
+    const propertyId = this.auth.selectedProperty()?.property_id ?? 'unknown';
     const idscanly = (response as { idscanly?: { imageCount?: number; success?: boolean } } | null)
       ?.idscanly;
 
@@ -155,7 +168,7 @@ export class ExternalResultService {
       error ?? '',
     );
 
-    Sentry.logger.info('idscanly external-result', {
+    Sentry.logger.info(`idscanly external-result pid=${propertyId} code=${reservationCode}`, {
       session_id: sessionId,
       ok: !error,
       is_identity_document: isIdentityDocument,
@@ -165,6 +178,10 @@ export class ExternalResultService {
       error_message: error instanceof Error ? error.message : '',
       sent_json: capJson(sent),
       response_json: capJson(response),
+      property_id: String(propertyId),
+      reservation_code: reservationCode,
+      guest_id: guestId,
+      app_version: this.appVersion.version(),
     });
   }
 }

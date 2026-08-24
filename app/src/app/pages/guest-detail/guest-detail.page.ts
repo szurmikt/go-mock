@@ -370,6 +370,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
         this.externalResult.submitInBackground(
           result?.sessionId,
           guest,
+          this.reservationCode,
           isIdentityDoc,
           result?.documentNumberKey,
         );

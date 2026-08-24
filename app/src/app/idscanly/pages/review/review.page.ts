@@ -10,6 +10,7 @@ import { IdscanlyDocuscanService } from '../../services/idscanly-docuscan.servic
 import { DocumentDetectionService } from '../../services/document-detection.service';
 import { PropertyConfigService } from '../../../services/property-config.service';
 import { AuthService } from '../../../services/auth';
+import { AppVersionService } from '../../../services/app-version';
 import { MixpanelService } from '../../../services/mixpanel';
 import { CaptureQuality } from '../../models/capture-quality';
 import { LanguageService } from '../../../services/language.service';
@@ -39,6 +40,7 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
   private readonly detection = inject(DocumentDetectionService);
   private readonly propertyConfig = inject(PropertyConfigService);
   private readonly auth = inject(AuthService);
+  private readonly appVersion = inject(AppVersionService);
   private readonly mixpanel = inject(MixpanelService);
   private readonly lang = inject(LanguageService);
 
@@ -301,8 +303,13 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
    * detection log — so a real-world capture/scan issue stays diagnosable remotely via Sentry, not
    * just live on a 6250 device.
    */
-  private logIdscanlyResponse(response: unknown): void {
+  private logIdscanlyResponse(
+    response: unknown,
+    ctx: { reservationCode: string; guestId: string },
+  ): void {
     if (!this.propertyConfig.extendedLogging()) return;
+
+    const propertyId = this.auth.selectedProperty()?.property_id ?? 'unknown';
 
     const capturesSummary = Array.from(this.session.captures().entries()).map(([side, c]) => ({
       side,
@@ -336,7 +343,7 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       isProcessing?: boolean;
       summary?: { isComplete?: boolean; imageCount?: number; successfulImageCount?: number; failedImageCount?: number };
     };
-    Sentry.logger.info('idscanly response', {
+    Sentry.logger.info(`idscanly response pid=${propertyId} code=${ctx.reservationCode}`, {
       session_id: String(r?.sessionId ?? ''),
       status: String(r?.status ?? ''),
       is_processing: !!r?.isProcessing,
@@ -347,6 +354,10 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       captures_json: JSON.stringify(capturesSummary),
       detection_log_json: JSON.stringify(detectionLog),
       response_json: cappedJson,
+      property_id: String(propertyId),
+      reservation_code: ctx.reservationCode,
+      guest_id: ctx.guestId,
+      app_version: this.appVersion.version(),
     });
   }
 
@@ -373,7 +384,7 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       }
 
       const response = await this.idRecognition.submit(captures);
-      this.logIdscanlyResponse(response);
+      this.logIdscanlyResponse(response, ctx);
       const mapped = this.idscanlyDocuscan.mapToScanResult(response, docType);
       this.clearStageTimers();
 

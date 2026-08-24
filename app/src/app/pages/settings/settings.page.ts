@@ -1,11 +1,13 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth';
 import { AppVersionService } from '../../services/app-version';
+import { BiometricService } from '../../services/biometric';
 import { LanguageService } from '../../services/language.service';
 import { FeedbackSheetComponent } from '../../components/feedback-sheet/feedback-sheet.component';
 import { TranslatePipe } from '../../pipes/translate.pipe';
+import { LOCK_DEBUG_PROPERTY_ID } from './lock-debug.const';
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.page.html',
@@ -17,12 +19,17 @@ export class SettingsPage {
   loadingLangs = signal(false);
   langOpen = signal(false);
   lang = inject(LanguageService);
+  biometric = inject(BiometricService);
 
   private appVersionService = inject(AppVersionService);
   // Same source AppComponent already resolved at boot (AppVersionService.init()) — read
   // here rather than calling App.getInfo() a second time.
   appVersion = this.appVersionService.version;
   appBuild = this.appVersionService.build;
+
+  readonly lockButtonEnabled = computed(
+    () => String(this.auth.selectedProperty()?.property_id) === LOCK_DEBUG_PROPERTY_ID,
+  );
 
   constructor(
     public auth: AuthService,
@@ -46,6 +53,10 @@ export class SettingsPage {
   async selectLang(code: string) {
     await this.lang.setLanguage(code);
     this.langOpen.set(false);
+  }
+
+  lockNow() {
+    this.biometric.lockSession();
   }
 
   async logout() {

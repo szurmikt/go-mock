@@ -209,6 +209,7 @@ export class GuestEditPage implements OnInit {
       this.externalResult.submitInBackground(
         this.idscanlySessionId,
         updated,
+        this.reservationCode,
         this.scanWasIdentityDoc,
         this.documentNumberKey,
       );
