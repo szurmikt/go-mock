@@ -48,6 +48,11 @@ export class BiometricService {
         title: 'SabeeApp Go',
         subtitle: '',
         description: '',
+        // Without this, a device with no enrolled biometrics (or a failed biometric
+        // read) throws immediately with no OS prompt at all — trapping the user with
+        // no way in but forceLogout(). This falls back to the device passcode/PIN.
+        useFallback: true,
+        fallbackTitle: 'Use Passcode',
       });
       return true;
     } catch {

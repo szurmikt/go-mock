@@ -69,6 +69,16 @@ function toBase64(dataUrl: string): string {
   return dataUrl.slice(dataUrl.indexOf(',') + 1);
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// A dropped connection before any response reaches JS (WKWebView's "Load failed", a DNS
+// blip, a cellular handoff) is usually gone a second later — retry a couple of times
+// before surfacing it as a submit failure. An HTTP error response is a real answer from
+// the server and is never retried here.
+const NETWORK_RETRY_DELAYS_MS = [500, 1500];
+
 /** Discriminates submit() failures for Mixpanel's scan_failed `reason` — see review.page.ts submit(). */
 export type IdRecognitionErrorKind = 'network_error' | 'http_error' | 'empty_response';
 
@@ -109,14 +119,7 @@ export class IdRecognitionService {
 
     let response: Response;
     try {
-      response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${environment.supabaseAnonKey}`,
-        },
-        body: JSON.stringify(body),
-      });
+      response = await this.fetchWithRetry(url, body);
     } catch (err) {
       throw taggedError(
         err instanceof Error ? err.message : 'Network error calling idrecognition',
@@ -140,5 +143,24 @@ export class IdRecognitionService {
       throw taggedError('Empty response from idrecognition', 'empty_response');
     }
     return data;
+  }
+
+  /** Retries only a fetch-level throw (no response reached JS at all) — an HTTP error response is returned as-is, not retried. */
+  private async fetchWithRetry(url: string, body: unknown): Promise<Response> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${environment.supabaseAnonKey}`,
+          },
+          body: JSON.stringify(body),
+        });
+      } catch (err) {
+        if (attempt >= NETWORK_RETRY_DELAYS_MS.length) throw err;
+        await sleep(NETWORK_RETRY_DELAYS_MS[attempt]);
+      }
+    }
   }
 }

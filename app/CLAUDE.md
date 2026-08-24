@@ -485,7 +485,7 @@ interface ApiResponse<T> { success: boolean; data: T; errors: unknown; }
 | # | Old bug | Correct behaviour |
 |---|---------|-------------------|
 | 1 | Proactive token refresh triggered with ~10 s remaining (`expiresAt - 3590s`) | Refresh when **< 5 min remain**: `auth.needsRefresh()` → `expiresAt - Date.now() < 300_000` |
-| 2 | Biometric inactivity timer: `diffLimit = 60 * 0.5` = 30 seconds | Lock threshold is **60 seconds** (`LOCK_AFTER_MS = 60_000` in `AppComponent` and `BiometricService`) |
+| 2 | Biometric inactivity timer: `diffLimit = 60 * 0.5` = 30 seconds | Lock threshold is **10 minutes** (`LOCK_AFTER_MS = 10 * 60 * 1000` in `AppComponent` and `BiometricService`) |
 | 3 | Auth stored as 5 separate Preferences keys | Stored as **one JSON blob** under `Config.STORAGE_AUTH_KEY` |
 | 4 | `Property-Id` header sent with empty value during login flow | Interceptor only adds it **when `auth.selectedProperty()` is non-null** |
 
@@ -531,7 +531,7 @@ import { IonContent, AlertController } from '@ionic/angular/standalone';
 
 **Boot redirect** (`app.component.ts` `ngOnInit`):
 1. `await auth.loadStoredAuth()` — restores tokens + selected property from Capacitor Preferences
-2. If authenticated → `await biometric.checkAndLock()` — lock if backgrounded for ≥ 1 min before cold start
+2. If authenticated → `await biometric.checkAndLock()` — lock if backgrounded for ≥ 10 min before cold start
 3. If authenticated + property selected → `/home`
 4. If authenticated + no property → `/property-select`
 5. Else → `/login`
@@ -546,8 +546,8 @@ import { IonContent, AlertController } from '@ionic/angular/standalone';
 
 | Trigger | Mechanism |
 |---|---|
-| Inactivity ≥ 1 min | `setTimeout` in `AppComponent`, reset by `@HostListener('touchstart'/'click')` |
-| Background ≥ 1 min | `App.addListener('appStateChange')` in `AppComponent`; timestamp persisted to `Config.STORAGE_BACKGROUND_AT_KEY` |
+| Inactivity ≥ 10 min | `setTimeout` in `AppComponent`, reset by `@HostListener('touchstart'/'click')` |
+| Background ≥ 10 min | `App.addListener('appStateChange')` in `AppComponent`; timestamp persisted to `Config.STORAGE_BACKGROUND_AT_KEY` |
 | Cold start after long background | `biometric.checkAndLock()` called in boot sequence after `loadStoredAuth()` |
 
 ### BiometricService API
@@ -557,7 +557,7 @@ biometric.sessionLocked()          // signal<boolean> — read in templates
 biometric.lockSession()            // set locked = true
 biometric.unlockSession()          // set locked = false
 await biometric.recordBackground() // persist Date.now() to storage (called on appStateChange pause)
-await biometric.checkAndLock()     // read stored timestamp; lock if elapsed ≥ 60s; clear timestamp
+await biometric.checkAndLock()     // read stored timestamp; lock if elapsed ≥ 10 min; clear timestamp
 await biometric.isAvailable()      // boolean — device has enrolled biometrics
 await biometric.authenticate()     // boolean — true on success, false on failure/cancel
 ```
@@ -688,6 +688,43 @@ async ionViewWillEnter() {
 ---
 
 ## 19. Changelog
+
+### 2026-08-24 — Shipment: iOS build 98 / Android versionCode 27, versionName 1.0.4 (+ signed APK) — biometric passcode fallback + IDScanly network retry
+
+> Ships the two fix entries logged directly below this one. **Shipped: iOS 98 (TestFlight, uploaded successfully — processing), Android versionCode 27 / versionName 1.0.4 (signed AAB `sabeeapp-go-v27.aab` + signed APK `sabeeapp-go-v27.apk`, both built — manual Play Console drag-drop for the AAB, not auto-uploaded).**
+
+**iOS needed no version bump.** `MARKETING_VERSION` stayed at `1.0.3` (unchanged since build 97) — that train was still open, so `scripts/publish-ios.sh` bumped only `CURRENT_PROJECT_VERSION` (97→98) and the archive/export/upload succeeded on the first attempt.
+
+**Android's `1.0.3` had already been approved and published on the Play Store**, so a same-version AAB would have been rejected. Per the established pattern (see the 2026-08-23/2026-08-18/2026-08-12 entries below), bumped Android's `versionName` in [build.gradle](android/app/build.gradle) `1.0.3` → `1.0.4` by hand (`scripts/publish-android.sh` only auto-bumps `versionCode`, never `versionName`) — **this time iOS did not need the matching bump**, since its own train was still open; only Android's build.gradle changed, `project.pbxproj`'s `MARKETING_VERSION` was left at `1.0.3`. First Android build (`versionCode` 26, still `versionName 1.0.3`) was built then discarded once the mismatch was caught, before any upload — no wasted Play Console submission. Rebuilt at `versionCode` 27 / `versionName 1.0.4`.
+
+**Signed APK built alongside the AAB, on request** — `gradlew -p android assembleRelease` (same pattern as the 2026-06-01 Session 16 entry below), output copied to `sabeeapp-go-v27.apk` for direct install/sideload use cases the Play-Console-only AAB doesn't cover.
+
+**Verification:** `npx ng build` clean throughout (only the three pre-existing known warnings). iOS 98 exported and uploaded successfully (`EXPORT SUCCEEDED` / `Upload succeeded`), now processing in TestFlight. Android AAB (v27) and APK (v27) both built successfully (`BUILD SUCCESSFUL`), neither uploaded anywhere yet (AAB → Play Console is a manual step; APK has no equivalent auto-upload). **Not yet device-verified** — see each fix's own entry below for what specifically needs checking on a real device.
+
+### 2026-08-24 — Fix: IDScanly submit retries a dropped connection before failing
+
+> Branch: none (uncommitted local change, folded into this session's shipment above). No dedicated build — ships as part of the iOS 98 / Android 1.0.4 shipment above.
+
+`IdRecognitionService.submit()`'s single `fetch()` POST to the `idrecognition` Edge Function had no retry — a connection dropped before any response reached JS (WKWebView's "Load failed", a DNS blip, a cellular handoff mid-scan-submission) surfaced immediately as a hard submit failure, even though the same request often succeeds a second later with no user action needed.
+
+- **[idrecognition.service.ts](src/app/idscanly/services/idrecognition.service.ts)**: new private `fetchWithRetry()` wraps the POST in a retry loop over `NETWORK_RETRY_DELAYS_MS = [500, 1500]` (2 retries, short backoff) — retries **only** a fetch-level `throw` (no response reached JS at all). An HTTP error response (4xx/5xx) is a real answer from the server and is returned as-is on the first attempt, never retried — `submit()`'s existing non-OK-response handling (→ `http_error` tagged error) is unchanged.
+- Scoped deliberately narrow: no retry on the empty-body case, no change to the `network_error`/`http_error`/`empty_response` error-kind contract Mixpanel's `scan_failed` reason already relies on (see the 2026-08-12 Mixpanel entry below) — a request that still fails after 2 retries throws the same `network_error`-tagged error as before, just ~2s later.
+
+**Verification:** `npx ng build` clean. **Not yet device/browser-verified** — no way to simulate a genuine dropped-connection mid-`fetch()` in this environment; next real-device IDScanly submit under flaky network (e.g. a cellular handoff) should confirm a transient drop no longer surfaces as a user-facing failure.
+
+### 2026-08-24 — Fix: biometric lock had no passcode fallback (iOS + Android), read as "app doesn't ask for a biometric scan"
+
+> Reported by a user: the app doesn't ask for a biometric scan for all users, and when no biometric (Touch/Face ID, or Android biometric) is enrolled there's no fallback to the device passcode — on both platforms. Ships as part of the iOS 98 / Android 1.0.4 shipment above.
+
+**Root cause, one bug explaining both symptoms.** [biometric.ts](src/app/services/biometric.ts) `authenticate()` called `NativeBiometric.verifyIdentity()` with no `useFallback` option. Per the plugin's own types/README (`capacitor-native-biometric@4.2.2`), `useFallback` defaults to `false` — so on a device with no enrolled biometrics (or a failed biometric read), `verifyIdentity()` throws **immediately, with no OS prompt shown at all**. From the user's side this looks exactly like "the app doesn't ask for a biometric scan" — there's no dialog, biometric or passcode. `LockOverlayComponent.tryUnlock()` ([lock-overlay.component.ts](src/app/components/lock-overlay/lock-overlay.component.ts)) catches this as a plain failed attempt; after 3 such failures the only escape is "Use password instead" → `forceLogout()`, i.e. a full logout instead of a passcode unlock.
+
+- **[biometric.ts](src/app/services/biometric.ts) `authenticate()`**: added `useFallback: true` + `fallbackTitle: 'Use Passcode'` (iOS-only label) to the `verifyIdentity()` call. With this, a device with no enrolled biometry (or a failed biometric attempt) now falls back to the system passcode/PIN prompt instead of failing silently — the user is actually asked to authenticate, just not necessarily via biometrics. Cross-checked against the plugin's native source (`ios/Plugin/Plugin.swift`, `android/.../NativeBiometric.java`) — both branch on this exact flag: iOS chooses `LAPolicy.deviceOwnerAuthentication` (biometry-or-passcode) vs. biometrics-only, and Android only enables device-credential fallback when this is `true`.
+- **Investigated and ruled out: Android manifest permission.** The plugin's README says `USE_BIOMETRIC` must be declared in the app's own `AndroidManifest.xml` — it wasn't there, so this looked like a second, Android-only cause. Checked the actual dependency chain instead of trusting the (older) README: the plugin depends on `androidx.biometric:biometric:1.0.1` ([build.gradle](android/app/src/main/AndroidManifest.xml) → `node_modules/capacitor-native-biometric/android/build.gradle)`), and that library's own AAR manifest (confirmed by unzipping the cached artifact in `~/.gradle`) already self-declares both `USE_BIOMETRIC` and `USE_FINGERPRINT` — Gradle's manifest merger pulls these into the final APK automatically regardless of the app manifest. Added the permission explicitly, then reverted it once this was confirmed — it would have been redundant, not a fix. **The single `useFallback` change above is the entire fix; nothing else needed changing for Android.**
+- **`BiometricService.isAvailable()` is dead code** — confirmed via grep, it's defined but never called anywhere in the app (the lock overlay always attempts `authenticate()` directly, regardless of enrollment state). Left as-is; not part of this fix's scope since nothing reads its return value.
+- **Timing confirmed correct, not a bug — user confirmed 10 minutes is the intended threshold.** The lock overlay only appears when `biometric.sessionLocked()` is true, which happens after ≥10 minutes backgrounded or ≥10 minutes inactive (`LOCK_AFTER_MS` in both [app.component.ts](src/app/app.component.ts) and [biometric.ts](src/app/services/biometric.ts)) — a **session lock**, not a mandatory gate on every app open, per §14's existing "not a login replacement" design. The "doesn't ask for a biometric scan for all users" report is fully explained by the `useFallback` bug above (no OS prompt of any kind on a device with no enrolled biometrics), not by this threshold.
+- **Doc/code drift fixed:** §11 and §14 previously claimed the lock threshold was "60 seconds"/"≥ 1 min" — stale from an earlier iteration. Both `app.component.ts` and `biometric.ts` have always actually had `LOCK_AFTER_MS = 10 * 60 * 1000` (10 minutes), which is the confirmed-correct value. Updated §11's bug-fix table and §14's trigger table/API comments to read 10 minutes throughout.
+
+**Verification:** `npx ng build` clean (only the three pre-existing known warnings — two IDScanly SCSS budget overages + the `jscanify` CommonJS bailout, none new). **Not yet device-verified** — no biometric-capable device/simulator session available in this environment. Next device pass (both iOS and Android) should confirm: on a device/simulator with no biometrics enrolled, locking the session now prompts for the device passcode/PIN (not an instant silent failure); on a device with biometrics enrolled, a failed biometric attempt also offers the passcode fallback.
 
 ### 2026-08-23 — Shipment: build 97 (iOS) — merges the Turkish ID fix, IDScanly skip/control-bar redesign, and the guest-card scan shortcut
 
