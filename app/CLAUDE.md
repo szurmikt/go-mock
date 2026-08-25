@@ -689,6 +689,16 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-08-25 — Sentry logs/errors now tagged with `platform` (iOS/Android/web)
+
+> Branch `fixing-platform-in-sentry-logging`, merged into `main`. No dedicated build.
+
+Follow-up to the 2026-08-24 IDScanly Sentry-logging entry, which flagged that `platform` had no Sentry counterpart to Mixpanel's existing `platform` super property. Resolved the open "global tag vs. per-log attribute" question in favor of a **global tag set once at boot**, not a per-log attribute — every future Sentry event and log automatically carries it with no per-call-site changes needed.
+
+- **[app.component.ts](app/src/app/app.component.ts)** `ngOnInit()`: `Sentry.setTag('platform', Capacitor.getPlatform())` as the very first line, before any other boot logic, so it's present even on an error during boot. Same `Capacitor.getPlatform()` source Mixpanel already uses ([mixpanel.ts](app/src/app/services/mixpanel.ts)).
+
+**Verification:** `npx ng build` clean. **Not yet device-verified** — next real-device session should confirm the `platform` tag actually appears on a Sentry event/log.
+
 ### 2026-08-24 — Shipment: iOS build 100 (v1.0.4) / Android versionCode 29 (v1.0.4) — submitted to both stores
 
 > Branch `improving-sentry-scan-logging-visibility`. Ships the two entries logged directly below this one. **Submitted to the App Store and Play Store this session.**
