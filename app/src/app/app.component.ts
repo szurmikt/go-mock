@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Keyboard } from '@capacitor/keyboard';
+import * as Sentry from '@sentry/angular';
 import { IonApp, IonRouterOutlet, createAnimation, Animation } from '@ionic/angular/standalone';
 import { LockOverlayComponent } from './components/lock-overlay/lock-overlay.component';
 import { ApiEnvironmentService } from './services/api-environment';
@@ -70,6 +71,11 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   async ngOnInit(): Promise<void> {
+    // Global tag so every Sentry event/log carries the platform — mirrors Mixpanel's
+    // existing `platform` super property (same Capacitor.getPlatform() source). Set first,
+    // before anything else, so it's present even on an error that happens during boot.
+    Sentry.setTag('platform', Capacitor.getPlatform());
+
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios') {
       document.body.classList.add('ios-native');
       Keyboard.addListener('keyboardWillShow', () => document.body.classList.add('keyboard-open'));
