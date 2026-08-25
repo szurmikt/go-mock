@@ -635,7 +635,7 @@ ExportOptions.plist (create in `/tmp` — not committed):
 
 ### Build number
 
-`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **100**. `MARKETING_VERSION` (both Debug and Release configs) is NOT auto-bumped by `scripts/publish-ios.sh` — bump by hand when Apple closes the current version train (see 2026-08-12 and 2026-08-18 changelog entries). Current: **1.0.4**.
+`CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **101**. `MARKETING_VERSION` (both Debug and Release configs) is NOT auto-bumped by `scripts/publish-ios.sh` — bump by hand when Apple closes the current version train (see 2026-08-12 and 2026-08-18 changelog entries). Current: **1.0.5**.
 
 ### App Store requirements
 
@@ -688,6 +688,29 @@ async ionViewWillEnter() {
 ---
 
 ## 19. Changelog
+
+### 2026-08-26 — Shipment: iOS build 101 (v1.0.5) / Android versionCode 30 (v1.0.5) — Home screen "Open in PMS" section + foreground refresh polling
+
+> Branch `implement-open-in-pms-for-main-screen`. **Shipped builds: iOS 101 (TestFlight, uploaded successfully — processing), Android versionCode 30 (signed AAB `sabeeapp-go-v30.aab`, built — manual Play Console drag-drop, not auto-uploaded).**
+
+The reservation list API returns a per-reservation boolean flagging whether it's currently open in the desktop PMS — surfacing that on Home lets front-desk staff jump straight to a reservation a colleague is actively working on, instead of hunting for it in the arrivals list.
+
+**Field name correction during discovery — `open_in_pms`, not `open_in_chm`.** The feature was initially specced against a field named `open_in_chm` (from an early example payload), but a live API response captured mid-session showed the real key is **`open_in_pms`** — confirmed against a reservation the user had genuinely open in the PMS at the time (`open_in_pms: true` in the raw response). The `open_in_chm` name never existed in the API; it was corrected everywhere (model, service mapping, component, template) before this shipped.
+
+- **[reservation.interface.ts](app/src/app/models/reservation.interface.ts):** `ReservationInterface` gained `open_in_pms: boolean`.
+- **[reservation.ts](app/src/app/services/reservation.ts) `convert()`:** maps `open_in_pms: r.open_in_pms === true` (defensive boolean coercion, matching this method's existing `?? ''`/`?? 0` style for other API fields).
+- **[home.page.ts](app/src/app/home/home.page.ts):** new `openInPms` computed — filters `res.reservations()` for `open_in_pms`, deliberately **independent of the Yesterday/Today/Tomorrow tab** (a reservation open in PMS may not even arrive today; the point is to surface it regardless of which tab is active).
+- **[home.page.html](app/src/app/home/home.page.html):** new "Open in PMS" section inside `.app-scroll`, first child (below the search field, above the segment tabs), gated by `@if (openInPms().length > 0)` — invisible when nothing is open in PMS. Reuses the same `.res-card` markup as the arrivals list below it (same duplication-over-abstraction precedent as the existing Home/Search card markup). Cards are **not** removed from the normal day-tab list — this section is a convenience shortcut, not a filter.
+- **Spacing note:** the wrapping `.stagger` div needed `display: flex; flex-direction: column` plus an explicit `margin-bottom: 0` override on the last card — without it, the wrapper's own `margin-bottom` **collapses** with its last child's bottom margin (a CSS parent/child margin-collapse rule) instead of adding to it, making the gap smaller than intended and hard to reason about from the CSS alone. Verified against the real compiled stylesheet with a headless Playwright repro (`getBoundingClientRect()` before vs. after the `.stagger > *` entry animation settles — the animation's transient transform also throws off a naive measurement taken too early). Final value landed on **28px** by direct visual iteration with the user, rather than an exact match to any other on-screen gap.
+
+**Foreground refresh polling — Phase 0 of a larger rapid-refresh investigation (see the session's plan doc for Phases 1-2, not implemented).** Before this, `ReservationService`'s 60s stale-while-revalidate window only re-fetched on **navigation into Home** (`ionViewWillEnter`) or **pull-to-refresh** — sitting on the Home screen with nothing triggering a re-entry meant the list never refreshed at all, no matter how long the app stayed open. No polling, WebSocket, or push notification mechanism existed anywhere in `app/` before this (confirmed by grep).
+
+- **[home.page.ts](app/src/app/home/home.page.ts):** `HomePage` now implements `ViewDidEnter`/`ViewWillLeave`. `ionViewDidEnter()` starts a 10s `setInterval` calling `res.fetchReservations(true)` (bypasses the 60s staleness gate; already silent for a populated list — no spinner flash) and registers an `App.addListener('appStateChange', ...)` handler that pauses the interval when the app backgrounds and resumes it on foreground (mirrors the existing pattern in [app.component.ts](app/src/app/app.component.ts)). `ionViewWillLeave()` and `ngOnDestroy()` both tear the interval and listener down.
+- Gives a worst-case latency of ~10s and an average of ~5s while the app is open on Home, entirely client-side — directly answers "how long until a PMS change shows up on the phone" without any backend work. Explicitly scoped as Phase 0 only; Phases 1 (investigate real-time push with the backend team) and 2 (build it, if Phase 0 proves insufficient) are deliberately deferred.
+
+**Version bump:** `MARKETING_VERSION` 1.0.4 → 1.0.5 (both Debug and Release configs, [project.pbxproj](ios/App/App.xcodeproj/project.pbxproj)) and Android `versionName` 1.0.4 → 1.0.5 ([build.gradle](android/app/build.gradle)) — bumped by hand as always, since neither publish script auto-bumps the marketing/name version, only the build number/versionCode.
+
+**Verification:** `npx ng build` clean throughout (only the three pre-existing known warnings — two IDScanly SCSS budget overages + the `jscanify` CommonJS bailout, none new). UI verified live via `ionic serve` against a real logged-in session and a real reservation with `open_in_pms: true` — the section appears/disappears correctly and the spacing was iterated to a value the user confirmed looks right. **Not device-verified:** the actual desktop-PMS-to-phone latency of the polling — this environment has no way to trigger a real PMS-side change and watch it arrive on a device; that needs a real property with PMS access.
 
 ### 2026-08-25 — Sentry logs/errors now tagged with `platform` (iOS/Android/web)
 

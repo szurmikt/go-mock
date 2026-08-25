@@ -87,6 +87,34 @@
     <!-- Scrollable content -->
     <div class="app-scroll" style="padding-top: 12px; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px))">
 
+      <!-- Open in PMS: reservations currently open in the desktop PMS, regardless of tab -->
+      @if (openInPms().length > 0) {
+        <div class="section-title">
+          <h2>Open in PMS</h2>
+        </div>
+        <div class="stagger" style="display: flex; flex-direction: column; margin-bottom: 28px">
+          @for (r of openInPms(); track r.reservation_code; let last = $last) {
+            <div class="card res-card tap-anim tappable" [style.marginBottom]="last ? '0' : null" (click)="goReservation(r)">
+              <div class="top">
+                <span class="res-code">{{ r.reservation_code }}</span>
+                <span class="pill" [attr.data-status]="pillStatus(r.status)">
+                  {{ pillLabel(r.status) }}
+                </span>
+              </div>
+              <div class="res-name">{{ bookerName(r) }}</div>
+              <div class="res-email">{{ r.booker.email }}</div>
+              <div class="res-meta">
+                <span class="res-when">
+                  <span class="v">{{ r.arrival_date | localizedDate:'dayMonth' }}</span>
+                  <span>{{ r.number_of_guests }} guests / {{ r.nights }} nights</span>
+                </span>
+                <span class="v">{{ r.room_name }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
       <!-- Segment tabs -->
       <div class="segment">
         <div class="seg-thumb" [style.left.px]="thumb().left" [style.width.px]="thumb().width"></div>

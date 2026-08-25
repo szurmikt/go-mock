@@ -1,7 +1,9 @@
 import { Component, OnDestroy, inject, signal, computed, ElementRef, QueryList, ViewChildren, AfterViewInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { ViewWillEnter } from '@ionic/angular';
+import { ViewWillEnter, ViewDidEnter, ViewWillLeave } from '@ionic/angular';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
+import { App } from '@capacitor/app';
+import type { PluginListenerHandle } from '@capacitor/core';
 import { ApiEnvironmentService } from '../services/api-environment';
 import { AuthService } from '../services/auth';
 import { ReservationService, pillStatus, pillLabel } from '../services/reservation';
@@ -33,7 +35,7 @@ function localDateStr(offset: number): string {
   standalone: true,
   imports: [IonContent, IonRefresher, IonRefresherContent, LocalizedDatePipe, TranslatePipe, FeedbackSheetComponent],
 })
-export class HomePage implements ViewWillEnter, AfterViewInit, OnDestroy {
+export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, AfterViewInit, OnDestroy {
   @ViewChildren('segBtn') segBtns!: QueryList<ElementRef<HTMLButtonElement>>;
 
   private timeouts: ReturnType<typeof setTimeout>[] = [];
@@ -96,6 +98,18 @@ export class HomePage implements ViewWillEnter, AfterViewInit, OnDestroy {
     this.arrivals().reduce((s, r) => s + r.number_of_guests, 0),
   );
 
+  // Independent of the Yesterday/Today/Tomorrow tab — a reservation open in PMS
+  // may not even arrive today, and the point is to surface it regardless of tab.
+  readonly openInPms = computed(() => this.res.reservations().filter(r => r.open_in_pms));
+
+  // Foreground polling while Home is the active view (Part B, Phase 0 of the
+  // open-in-PMS investigation — see the plan doc): no push/websocket exists yet,
+  // so this is the fastest way to surface a PMS-side change without backend work.
+  // Paused whenever the app backgrounds so it doesn't burn battery/data in a pocket.
+  private static readonly POLL_MS = 10_000;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private appStateHandle: Promise<PluginListenerHandle> | null = null;
+
   private options = inject(OptionsService);
   apiEnv = inject(ApiEnvironmentService);
   private mixpanel = inject(MixpanelService);
@@ -113,12 +127,40 @@ export class HomePage implements ViewWillEnter, AfterViewInit, OnDestroy {
     this.res.fetchReservations();
   }
 
+  ionViewDidEnter() {
+    this.startPolling();
+    this.appStateHandle = App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) this.startPolling();
+      else this.stopPolling();
+    });
+  }
+
+  ionViewWillLeave() {
+    this.stopPolling();
+    this.appStateHandle?.then(h => h.remove());
+    this.appStateHandle = null;
+  }
+
+  private startPolling() {
+    this.stopPolling();
+    this.pollTimer = setInterval(() => this.res.fetchReservations(true), HomePage.POLL_MS);
+  }
+
+  private stopPolling() {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+
   ngAfterViewInit() {
     this.t(() => this.updateThumb(), 50);
   }
 
   ngOnDestroy() {
     this.timeouts.forEach(clearTimeout);
+    this.stopPolling();
+    this.appStateHandle?.then(h => h.remove());
   }
 
   setTab(t: Tab) {

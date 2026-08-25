@@ -317,6 +317,7 @@ export class ReservationService {
       },
       number_of_guests: r.number_of_guests ?? 0,
       nights,
+      open_in_pms: r.open_in_pms === true,
     };
   }
 }
