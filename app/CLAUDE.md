@@ -684,9 +684,19 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-08-28 — Shipment: iOS build 102 (v1.0.6) / Android versionCode 31 (v1.0.6) — Regula removal + Open in PMS
+
+> `main`, merged from `regula-remove-and-cleanup`. Ships the Regula-removal entry directly below, plus the already-shipped-separately 2026-08-26 Open in PMS entry (this is the first `main` build to include both). **Shipped builds: iOS 102 (TestFlight, `EXPORT SUCCEEDED` / `Upload succeeded`, processing), Android versionCode 31 (signed AAB `sabeeapp-go-v31.aab`, built — manual Play Console drag-drop, not auto-uploaded).**
+
+**Version bump required before this shipment:** v1.0.5 (iOS build 101 / Android versionCode 30) was already approved and released on both the App Store and Play Store by the time this branch was ready to ship — the same "version train closed" situation this project has hit repeatedly. `MARKETING_VERSION`/`versionName` bumped by hand `1.0.5` → `1.0.6` (neither publish script auto-bumps these, only the build number/`versionCode`) before running `publish-ios.sh`/`publish-android.sh`.
+
+**iOS upload survived a mid-export scare:** the user's laptop reported a battery/power event while `xcodebuild -exportArchive` was mid-upload. Checked process state directly (`ps aux`) rather than guessing — the export process was still alive and actively progressing (`dwarfdump-classic` running, archive already complete on disk), so the machine hadn't actually lost power; the run was left alone rather than restarted, and completed normally (`Upload succeeded`, `EXPORT SUCCEEDED`). No wasted build number.
+
+**Verification:** `npx ng build` clean throughout this whole sequence (only the three pre-existing known warnings). Both native builds verified from a fully clean state as part of the Regula-removal work below, before this shipment.
+
 ### 2026-08-28 — Regula removed entirely — IDScanly is now the sole scan backend
 
-> Branch `regula-remove-and-cleanup`. Two commits: source-level removal + native-project cleanup (with an unrelated CocoaPods fix folded into the second). No build/version bump, no TestFlight upload.
+> Branch `regula-remove-and-cleanup`, merged into `main` and shipped as iOS build 102 / Android versionCode 31 (v1.0.6) — see the shipment entry directly above. Originally two commits (source-level removal + native-project cleanup, with an unrelated CocoaPods fix folded into the second) at the time this was written, before the merge/ship.
 
 Regula (native SDK, optical + RFID/NFC chip reading) is dropped for good. IDScanly (browser-based OpenCV + Supabase Edge Function OCR, live since 2026-07-04) is now the only scan backend — it already independently covers all four document types, including Hungarian address cards (`mapAddressCard()`, 2026-08-18 entry above), so there is no functional gap. **RFID/NFC chip reading has no IDScanly equivalent and is a deliberate, accepted loss** — decided with the user up front.
 
