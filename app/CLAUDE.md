@@ -599,10 +599,9 @@ Node version: v25 (odd, non-LTS) — produces a deprecation warning from Angular
 cd /Users/tamas/SabeeAppGO/app
 npm run build -- --configuration production
 npm run sync:ios
-# ✔  DocumentReaderPlugin is patched back automatically
 
 xcodebuild -workspace ios/App/App.xcworkspace \
-  -scheme SabeeAppGo \
+  -scheme App \
   -configuration Release \
   -destination generic/platform=iOS \
   -archivePath /tmp/SabeeAppGo-<N>.xcarchive \
@@ -629,17 +628,13 @@ ExportOptions.plist (create in `/tmp` — not committed):
 </plist>
 ```
 
-### DocumentReaderPlugin — patched automatically by `npm run sync:ios`
-
-`cap sync ios` regenerates `ios/App/CapApp-SPM/Package.swift` and removes the local `DocumentReaderPlugin` entry every time. **Always use `npm run sync:ios` instead of `npx cap sync ios`** — it runs `scripts/patch-package-swift.js` immediately after sync to restore both entries. Running bare `cap sync ios` will break the build.
-
 ### Build number
 
 `CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` — increment before each TestFlight upload. Current: **100**. `MARKETING_VERSION` (both Debug and Release configs) is NOT auto-bumped by `scripts/publish-ios.sh` — bump by hand when Apple closes the current version train (see 2026-08-12 and 2026-08-18 changelog entries). Current: **1.0.4**.
 
 ### App Store requirements
 
-- `NSCameraUsageDescription` must be in `Info.plist` — Regula SDK references camera APIs even if you don't call `AVCaptureSession` directly.
+- `NSCameraUsageDescription` must be in `Info.plist` — IDScanly's document-scan flow uses the camera.
 - `NSFaceIDUsageDescription` must be in `Info.plist` — for biometric authentication.
 
 ---
@@ -688,6 +683,33 @@ async ionViewWillEnter() {
 ---
 
 ## 19. Changelog
+
+### 2026-08-28 — Regula removed entirely — IDScanly is now the sole scan backend
+
+> Branch `regula-remove-and-cleanup`. Two commits: source-level removal + native-project cleanup (with an unrelated CocoaPods fix folded into the second). No build/version bump, no TestFlight upload.
+
+Regula (native SDK, optical + RFID/NFC chip reading) is dropped for good. IDScanly (browser-based OpenCV + Supabase Edge Function OCR, live since 2026-07-04) is now the only scan backend — it already independently covers all four document types, including Hungarian address cards (`mapAddressCard()`, 2026-08-18 entry above), so there is no functional gap. **RFID/NFC chip reading has no IDScanly equivalent and is a deliberate, accepted loss** — decided with the user up front.
+
+**Source removal:**
+- Deleted `src/app/regula/` in full (`document-reader.service.ts`, the dead legacy `docuscan.service.ts` duplicate, `pages/id-scan/`) and `utils/hungarian-address.ts`+spec (Regula-only; IDScanly's `mapAddressCard()` is fully independent code, never called it).
+- **Moved** `regula/services/docuscan.ts` (`DocuscanService` — the guest save/merge logic both vendors' scan results flow through) to `services/docuscan.ts`, since it was never Regula-exclusive despite its old location. Trimmed its long-dead `fieldsToScan`/`sendStatistics` API surface (zero callers anywhere) while there.
+- Surgically stripped the Regula-only slice out of `guest-detail.page.ts`/`.html` — `DocumentReaderService`/`ReaderStatus` injection, the reader-status `effect()`, `goScan()`/`scanAgain()`, the `'failed'` sheet mode, the Regula-only `?previewScanSheet=` deep links (`starting`/`loading`/`timeout`/`cancelled`/`interrupted`) — while leaving the shared FAB, doc-type picker, result sheet, and `processScanResult()` save/edit flow completely untouched. The "Scan Document" action is now unconditional (previously gated on `propertyConfig.scanVendor()`).
+- **`PropertyConfigService.scanVendor` removed entirely** (not just narrowed) — queried the live `property_config` table first: all 531 rows (530 live + 1 test) already read `scan_vendor = 'idscanly'`, zero exceptions, perfectly correlated with `go_enabled`. The vendor field had nothing left to select between. `scanDocTypes`/`DOC_TYPE_MAP` were deliberately left untouched — the user wants the per-property document-type-restriction mechanism to stay available even though every row currently allows all four types. The `scan_vendor` **column** itself was left in Supabase (unused, harmless) — no schema migration.
+- Removed Regula-only `Config` constants (`SCAN_DEBUG_LOGGING`, `ADDRESS_CARDS`, `ID_CARDS`, `PASSPORTS`, `DRIVING_LICENCES`) and the dead `/guest/:code/:guestId/scan` route.
+- Narrowed Mixpanel's `vendor: 'regula' | 'idscanly'` unions to `'idscanly'` on all four scan events, and dropped the Regula-only optional fields (`scan_type`, `document_type_id`) — confirmed no IDScanly call site ever set them, so this is a type-only change.
+- Pruned translation keys with zero remaining consumers after the above (`idScan.title`/`webNotAvailable`/`initializing`/`instruction`/`resultTitle`/`edit`/`save`/`scanAgain`/`resultSaved`, `guestDetail.idScan`/`scanTimedOut`/`scanCancelled`/`scanInterrupted`/`scanFailed`/`scanLoadingDb`) across `translations.ts`/`.en.json`/`.hu.json` — key-parity re-checked programmatically (231 = 231 = 231). The `idScan.fullName`/`docType`/`docNumber`/`age`/`gender`/`birthPlace`/`birthDate`/`citizenship`/`motherName` keys were **kept** — despite the namespace name, they're read by the shared, still-live result sheet, not a Regula-only page.
+
+**Native project cleanup**, then a full resync + from-scratch rebuild verification:
+- `package.json`: removed `@regulaforensics/document-reader` + `@regulaforensics/document-reader-core-fullrfid`; `sync:ios` reverted to plain `cap sync ios` (the `patch-package-swift.js` step, and the script itself, are gone — nothing left to re-patch into `Package.swift`).
+- iOS: deleted `App.entitlements` (NFC-only content) + its two `CODE_SIGN_ENTITLEMENTS` wirings in `project.pbxproj`; dropped `NFCReaderUsageDescription` + the `iso7816.select-identifiers` array from `Info.plist`; dropped the Podfile's `pod 'CordovaPlugins'` line (confirmed via Capacitor's own CLI source that a fresh Podfile wouldn't include it once there are zero Cordova-bridged plugins — this project now has none).
+- Android: dropped the NFC permission + `<uses-feature>` from `AndroidManifest.xml`.
+- `pod install` explicitly confirmed the binaries are gone: `Removing CordovaPlugins / DocumentReader / DocumentReaderFullRFID / RegulaCommon`.
+
+**Unrelated bug found and fixed along the way.** Verifying "does this still build" required a fully clean `Pods`/`Podfile.lock`/`DerivedData` wipe (the committed `Podfile.lock` hadn't changed since a very early commit, meaning local CocoaPods state had been incrementally patched, never rebuilt from scratch, for a long time) — that clean rebuild surfaced a real, pre-existing, **Regula-unrelated** bug: `scripts/patch-native-biometric.js` (runs on every `npm install`) writes a second `ios/Plugin/objc/Plugin.h` into `capacitor-native-biometric` purely to satisfy its SPM target's "no Swift+ObjC in one target" rule, but the plugin's CocoaPods podspec globs it too, producing two build steps that write the same output header (`error: Multiple commands produce ... Plugin.h`). A warm/incremental Pods state silently tolerated this (likely last-writer-wins); a from-scratch install does not. Fixed by extending the same patch script to also add `exclude_files = 'ios/Plugin/objc/**/*'` to the podspec (CocoaPods doesn't need the SPM-only ObjC shim — the top-level `ios/Plugin/Plugin.m` already provides `CAP_PLUGIN` registration for the Pods build). Confirmed same version (`4.2.2`/`0.0.1`) before and after, so this wasn't a dependency bump either — purely a latent conflict this session's clean-build verification happened to expose.
+
+**§16 doc fixes (unrelated, found while touching this section):** the documented archive scheme name `-scheme SabeeAppGo` doesn't exist — `xcodebuild -workspace App.xcworkspace -list` shows the real scheme is `App`; corrected. Removed the now-obsolete "DocumentReaderPlugin — patched automatically" subsection and its "Regula SDK references camera APIs" App Store note (camera permission is IDScanly's now).
+
+**Verification:** `npx ng build` clean throughout (only the three pre-existing known warnings). Grep-audited `app/src`, `ios/`, `android/`, `package.json`, `scripts/` for `regula`/`Regula`/`DocumentReader`/`RFID` — zero real hits (the only matches were false positives: `RegularExpression`/`regexp` in a minified bundle, and unrelated hits inside the vendored `opencv.js`). **From a fully clean `Pods`/`Podfile.lock`/`DerivedData`/`node_modules` state:** `xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -destination "generic/platform=iOS Simulator" build` → **BUILD SUCCEEDED**; `./gradlew assembleDebug` → **BUILD SUCCESSFUL**. **Not yet device/browser-verified:** the actual IDScanly scan flow (incl. Address Card) end-to-end on this branch — no camera session available in this environment; the code path itself is unchanged from `main` (only Regula's parallel path was removed), so this is a low-risk gap, but a real `ionic serve` or TestFlight pass should confirm before merging.
 
 ### 2026-08-25 — Sentry logs/errors now tagged with `platform` (iOS/Android/web)
 
