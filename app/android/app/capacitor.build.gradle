@@ -18,8 +18,7 @@ dependencies {
     implementation project(':capacitor-native-biometric')
 
 }
-apply from: "../../node_modules/@regulaforensics/document-reader/android/cordova.gradle"
-apply from: "../../node_modules/@regulaforensics/document-reader-core-fullrfid/android/cordova.gradle"
+
 
 if (hasProperty('postBuildExtras')) {
   postBuildExtras()

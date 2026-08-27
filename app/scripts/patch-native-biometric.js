@@ -72,4 +72,24 @@ let package = Package(
 `;
 
 fs.writeFileSync(path.join(pluginRoot, 'Package.swift'), packageSwift, 'utf8');
-console.log('✔ Patched capacitor-native-biometric: Package.swift + objc/ registration target');
+
+// The podspec's source_files glob ('ios/Plugin/**/*.{swift,h,m,...}') picks up the
+// objc/ files above too — CocoaPods then tries to copy two different Plugin.h files
+// to the same Headers output path ("Multiple commands produce ... Plugin.h"). objc/
+// exists only to satisfy SPM's "no Swift + ObjC in one target" rule (see above); the
+// CocoaPods build already gets its CAP_PLUGIN registration from the top-level
+// ios/Plugin/Plugin.m, so objc/ must be excluded from its glob.
+const podspecPath = path.join(pluginRoot, 'CapacitorNativeBiometric.podspec');
+const podspec = fs.readFileSync(podspecPath, 'utf8');
+if (!podspec.includes('exclude_files')) {
+  const patched = podspec.replace(
+    /(\s*s\.source_files\s*=\s*'ios\/Plugin\/\*\*\/\*\.\{[^}]+\}'\n)/,
+    `$1    s.exclude_files = 'ios/Plugin/objc/**/*'\n`,
+  );
+  if (patched === podspec) {
+    throw new Error('patch-native-biometric.js: source_files line not found in podspec — update the regex to match the new podspec format');
+  }
+  fs.writeFileSync(podspecPath, patched, 'utf8');
+}
+
+console.log('✔ Patched capacitor-native-biometric: Package.swift + objc/ registration target + podspec exclude_files');
