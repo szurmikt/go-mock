@@ -5,7 +5,7 @@ import { Config } from '../config/config';
 import { StorageService } from './storage';
 import { ApiEnvironmentService } from './api-environment';
 import { ReservationService } from './reservation';
-import { DocuscanService } from '../regula/services/docuscan';
+import { DocuscanService } from './docuscan';
 import { PropertyConfigService } from './property-config.service';
 import { MixpanelService } from './mixpanel';
 import { LanguageService } from './language.service';
@@ -118,8 +118,8 @@ export class AuthService {
     const property = await this.storage.get<PropertyInterface>(Config.STORAGE_PROPERTY_KEY);
     if (property) {
       this._selectedProperty.set(property);
-      // Cold start with a restored property re-reads the scan config; otherwise
-      // scanVendor stays null and "Scan Document" is hidden until a manual switch.
+      // Cold start with a restored property re-reads the scan config (scanDocTypes,
+      // extendedLogging) so it's populated without waiting for a manual switch.
       this.propertyConfig.load(property.property_id).catch(() => {});
     }
     const properties = await this.storage.get<PropertyInterface[]>(Config.STORAGE_PROPERTIES_KEY);

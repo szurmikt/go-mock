@@ -76,19 +76,19 @@ export interface ScanResultInterface {
   documentData: DocumentData | null;
   scannedData: ScannedGuestDataInterface | null;
   /**
-   * IDScanly's own session id for the scan that produced this result. Set only by
-   * IdscanlyDocuscanService.mapToScanResult() — Regula has no equivalent and leaves it
-   * undefined. Carried to the two save sites (guest-detail's save-as-is and guest-edit's
-   * save-after-edit) so the final, user-confirmed values can be posted back to IDScanly's
-   * external-result endpoint; see ExternalResultService.
+   * IDScanly's own session id for the scan that produced this result. Set by
+   * IdscanlyDocuscanService.mapToScanResult(); left undefined otherwise. Carried to the two
+   * save sites (guest-detail's save-as-is and guest-edit's save-after-edit) so the final,
+   * user-confirmed values can be posted back to IDScanly's external-result endpoint; see
+   * ExternalResultService.
    */
   sessionId?: string;
   /**
    * Which IDScanly field the saved document_number corresponds to. 'identityNumber' only
    * for Turkish ID cards (which carry both a card serial and a TC Kimlik No — see
-   * idscanly/utils/turkish-id.ts); 'documentNumber' otherwise, undefined on the Regula
-   * path. Carried alongside sessionId so the external-result payload can key the value the
-   * same way IDScanly does, instead of reporting an identity number as a document number.
+   * idscanly/utils/turkish-id.ts); 'documentNumber' otherwise. Carried alongside sessionId
+   * so the external-result payload can key the value the same way IDScanly does, instead of
+   * reporting an identity number as a document number.
    */
   documentNumberKey?: 'documentNumber' | 'identityNumber';
 }

@@ -41,7 +41,7 @@ export class ExternalResultService {
    * never disturb that flow. Failures go to Sentry rather than the user — without that,
    * a broken Edge Function would mean IDScanly silently receives nothing forever.
    *
-   * No-ops unless the scan actually came from IDScanly (Regula sets no sessionId).
+   * No-ops unless a real IDScanly sessionId was set (e.g. a manual edit with no scan).
    */
   submitInBackground(
     sessionId: string | undefined,

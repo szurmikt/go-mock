@@ -13,11 +13,9 @@ import { isTurkishIdentityCard } from '../utils/turkish-id';
 /**
  * Maps the app's own DocumentTypeId (the type the user explicitly picked before scanning)
  * to the SabeeApp API's document_type enum — the same vocabulary `GET /options` populates
- * the guest-edit Document Type <select> from, and the same one Regula's scan path produces
- * via its own Config.ID_CARDS/PASSPORTS/DRIVING_LICENCES → 'id'/'passport'/'driving_license'
- * mapping (document-reader.service.ts). The OCR's own freeform classification string (e.g.
- * "identity_card") does NOT belong in this vocabulary — using it left the edit-page select
- * unmatched (blank) and would have saved an invalid enum value to the API.
+ * the guest-edit Document Type <select> from. The OCR's own freeform classification string
+ * (e.g. "identity_card") does NOT belong in this vocabulary — using it left the edit-page
+ * select unmatched (blank) and would have saved an invalid enum value to the API.
  * address-card is intentionally omitted: it isn't an identity document.
  */
 const CANONICAL_DOCUMENT_TYPE: Partial<Record<DocumentTypeId, string>> = {
@@ -27,8 +25,8 @@ const CANONICAL_DOCUMENT_TYPE: Partial<Record<DocumentTypeId, string>> = {
 };
 
 /**
- * Maps an IdRecognitionResponse → ScanResultInterface (the same type Regula produces),
- * so the existing guest-detail result sheet and processScanResult() work unchanged.
+ * Maps an IdRecognitionResponse → ScanResultInterface, the shared type the guest-detail
+ * result sheet and processScanResult() render/consume.
  *
  * Field names are best-effort and MUST be validated against a real live API response.
  * Update FIELD_MAP if the IDScanly endpoint returns different key names.
@@ -68,11 +66,9 @@ export class IdscanlyDocuscanService {
   ): ScanResultInterface {
     const f: IdRecognitionFields = response.summary?.fields ?? {};
 
-    // An address card is not an identity document — capture ONLY the address and
-    // stop here, mirroring Regula's captureAddressFields()+stripToAddressFields()
-    // (document-reader.service.ts): no identity box (name/DOB/etc.) is ever
-    // produced for this type, so the shared fillGuestDataFromScannedData() merge
-    // has nothing identity-shaped to write onto the guest.
+    // An address card is not an identity document — capture ONLY the address and stop
+    // here: no identity box (name/DOB/etc.) is ever produced for this type, so the shared
+    // fillGuestDataFromScannedData() merge has nothing identity-shaped to write onto the guest.
     if (documentType.id === 'address-card') {
       return this.mapAddressCard(f, documentType, response.sessionId);
     }
@@ -80,7 +76,7 @@ export class IdscanlyDocuscanService {
     // The live response splits the name as `givenNames`/`surname`; keep the
     // `firstName`/`lastName` variants as fallbacks in case the API changes.
     // IDScanly's OCR returns names/places in ALL CAPS — toNaturalCase() title-cases
-    // them for display, since (unlike Regula) this source has no casing cleanup at all.
+    // them for display, since this source has no casing cleanup at all.
     const firstName = toNaturalCase((f.givenNames ?? f.firstName ?? '') as string) ?? '';
     const lastName = toNaturalCase((f.surname ?? f.lastName ?? '') as string) ?? '';
     const fullName =
@@ -112,15 +108,14 @@ export class IdscanlyDocuscanService {
       age: box(computeAge(f.dateOfBirth)),
       // Document sub-fields. document_type must be the API's canonical enum (not the OCR's
       // freeform string) — it feeds guest-edit's <select> and the save payload; see
-      // CANONICAL_DOCUMENT_TYPE above. null for address-card, matching Regula's behaviour of
-      // never populating this field for a non-identity document.
+      // CANONICAL_DOCUMENT_TYPE above. null for address-card — never populated for a
+      // non-identity document.
       document_type: box(CANONICAL_DOCUMENT_TYPE[documentType.id] ?? null),
       document_number: box(documentNumber),
       date_of_issue_of_the_document: box(issueDate),
-      // No IDScanly equivalent of Regula's document id — send null, exactly like a Regula
-      // first scan on a never-scanned guest. The API validates this field as an integer,
-      // so the previous 'idscanly' marker string made POST /guests reject EVERY save
-      // (ret_code 1003); the backend assigns the real id server-side.
+      // Send null, exactly like a first scan on a never-scanned guest. The API validates
+      // this field as an integer, so the previous 'idscanly' marker string made POST /guests
+      // reject EVERY save (ret_code 1003); the backend assigns the real id server-side.
       doc_reader_scanned_document_id: box(null),
     };
 
@@ -147,12 +142,11 @@ export class IdscanlyDocuscanService {
   }
 
   /**
-   * Address card (lakcímkártya): capture ONLY the residence address, matching Regula's
-   * address-card path. `streetAddress` is the vendor's pre-combined "<street> <type> <house
-   * number>" string (already includes the house number); streetName/streetType/houseNumber
-   * are a fallback if streetAddress is missing. country_code stays whatever code the vendor
-   * returns (e.g. "HUN") — a 3-letter code against CountryOption's 2-letter values is a known,
-   * accepted best-effort limitation, same as Regula's address-card path.
+   * Address card (lakcímkártya): capture ONLY the residence address. `streetAddress` is the
+   * vendor's pre-combined "<street> <type> <house number>" string (already includes the house
+   * number); streetName/streetType/houseNumber are a fallback if streetAddress is missing.
+   * country_code stays whatever code the vendor returns (e.g. "HUN") — a 3-letter code against
+   * CountryOption's 2-letter values is a known, accepted best-effort limitation.
    */
   private mapAddressCard(
     f: IdRecognitionFields,

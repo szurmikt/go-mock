@@ -2,8 +2,6 @@ import { Injectable, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { ApiEnvironmentService } from './api-environment';
 
-export type ScanVendor = 'regula' | 'idscanly';
-
 // Matches the scan_doc_type enum in Supabase property_config table
 type DbDocType = 'id_card' | 'passport' | 'driving_license' | 'address_card';
 
@@ -17,7 +15,6 @@ const DOC_TYPE_MAP: Record<DbDocType, string> = {
 
 @Injectable({ providedIn: 'root' })
 export class PropertyConfigService {
-  scanVendor = signal<ScanVendor | null>(null);
   scanDocTypes = signal<string[]>([]);
   /** Per-property opt-in to send full scan responses to Sentry — see review.page.ts submit(). */
   extendedLogging = signal<boolean>(false);
@@ -31,7 +28,7 @@ export class PropertyConfigService {
       const url =
         `${environment.supabaseUrl}/rest/v1/property_config` +
         `?property_id=eq.${propertyId}&environment=eq.${this.apiEnv.mode()}` +
-        `&select=scan_vendor,scan_doc_types,extended_logging&limit=1`;
+        `&select=scan_doc_types,extended_logging&limit=1`;
 
       const res = await fetch(url, {
         headers: {
@@ -45,7 +42,7 @@ export class PropertyConfigService {
         return;
       }
 
-      const rows: { scan_vendor: string; scan_doc_types: DbDocType[]; extended_logging?: boolean }[] =
+      const rows: { scan_doc_types: DbDocType[]; extended_logging?: boolean }[] =
         await res.json();
 
       if (!rows.length) {
@@ -54,8 +51,6 @@ export class PropertyConfigService {
       }
 
       const row = rows[0];
-      const vendor = row.scan_vendor as ScanVendor;
-      this.scanVendor.set(vendor === 'regula' || vendor === 'idscanly' ? vendor : null);
       this.scanDocTypes.set(
         (row.scan_doc_types ?? []).map(t => DOC_TYPE_MAP[t]).filter(Boolean),
       );
@@ -73,7 +68,6 @@ export class PropertyConfigService {
   }
 
   clear(): void {
-    this.scanVendor.set(null);
     this.scanDocTypes.set([]);
     this.extendedLogging.set(false);
   }

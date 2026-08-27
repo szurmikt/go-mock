@@ -6,7 +6,6 @@ import { ViewWillEnter } from '@ionic/angular';
 import { ReservationService, pillStatus, pillLabel } from '../../services/reservation';
 import { OptionsService } from '../../services/options.service';
 import { LanguageService } from '../../services/language.service';
-import { PropertyConfigService } from '../../services/property-config.service';
 import { ReservationInterface } from '../../models/reservation.interface';
 import { GuestInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
@@ -35,7 +34,6 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     private res: ReservationService,
     private options: OptionsService,
     private lang: LanguageService,
-    public propertyConfig: PropertyConfigService,
   ) {}
 
   private reservationCode!: string;

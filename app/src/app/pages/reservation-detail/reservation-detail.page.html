@@ -120,7 +120,7 @@
                       <circle cx="8" cy="15" r="1" fill="currentColor"/>
                     </svg>
                   </button>
-                } @else if (propertyConfig.scanVendor()) {
+                } @else {
                   <!-- No document scanned yet — shortcut straight into the scan flow's Type Selection -->
                   <button class="scan-btn shortcut" (click)="$event.stopPropagation(); startScan(g)">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">

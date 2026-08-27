@@ -18,8 +18,8 @@ export interface IdentifyTraits {
 /**
  * Thin, defensive wrapper around the mixpanel-browser singleton (initialised in
  * main.ts). Depends on nothing app-level so it can be injected anywhere — incl.
- * AuthService / DocumentReaderService — without a DI cycle. Every call is wrapped
- * in `safe()`: analytics must never break the app.
+ * AuthService — without a DI cycle. Every call is wrapped in `safe()`: analytics
+ * must never break the app.
  *
  * PRIVACY: only the logged-in *staff* user's identity is ever sent (identify /
  * people.set). No guest PII — no guest names, emails, document numbers, DOB,
@@ -147,14 +147,14 @@ export class MixpanelService {
     this.track('scan_result_saved', { ...p });
   }
 
-  trackScanStarted(p: { vendor: 'regula' | 'idscanly'; document_type: string }): void {
+  trackScanStarted(p: { vendor: 'idscanly'; document_type: string }): void {
     this.track('scan_started', { ...p });
   }
 
   /**
    * One event per captured side (fires again on a retake's recapture — no separate retake
    * event needed, the second capture_completed for the same side carries its own quality
-   * score). IDScanly-only today — Regula has no per-side capture exposed at the app layer.
+   * score).
    */
   trackScanCaptureCompleted(p: {
     vendor: 'idscanly';
@@ -171,7 +171,7 @@ export class MixpanelService {
   }
 
   trackScanDiscarded(p: {
-    vendor: 'regula' | 'idscanly';
+    vendor: 'idscanly';
     document_type: string;
     stage: 'capture' | 'review';
     sides_captured: number;
@@ -180,11 +180,9 @@ export class MixpanelService {
   }
 
   trackScanSucceeded(p: {
-    vendor: 'regula' | 'idscanly';
+    vendor: 'idscanly';
     document_type: string;
     attempts: number;
-    document_type_id?: number;
-    scan_type?: 'optical' | 'rfid';
     is_complete?: boolean;
     is_processing?: boolean;
     image_count?: number;
@@ -195,19 +193,15 @@ export class MixpanelService {
   }
 
   trackScanFailed(p: {
-    vendor: 'regula' | 'idscanly';
+    vendor: 'idscanly';
     document_type?: string;
     reason:
-      | 'timed_out'
-      | 'cancelled'
-      | 'interrupted'
       | 'error'
       | 'network_error'
       | 'http_error'
       | 'empty_response'
       | 'camera_unavailable';
     attempt_number: number;
-    scan_type?: 'optical' | 'rfid';
   }): void {
     this.track('scan_failed', { ...p });
   }

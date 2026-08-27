@@ -1,12 +1,11 @@
-import { Component, OnInit, OnDestroy, computed, effect, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TitleCasePipe } from '@angular/common';
 import { ViewWillEnter } from '@ionic/angular';
 import { IonContent, IonSpinner } from '@ionic/angular/standalone';
 import { ReservationService } from '../../services/reservation';
-import { DocumentReaderService, ReaderStatus } from '../../regula/services/document-reader.service';
 import { OptionsService } from '../../services/options.service';
-import { DocuscanService } from '../../regula/services/docuscan';
+import { DocuscanService } from '../../services/docuscan';
 import { MixpanelService } from '../../services/mixpanel';
 import { PropertyConfigService } from '../../services/property-config.service';
 import { CaptureSessionService } from '../../idscanly/services/capture-session.service';
@@ -18,8 +17,7 @@ import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { LanguageService } from '../../services/language.service';
 
-type ScanPreviewMode = 'starting' | 'loading' | 'result' | 'timeout' | 'cancelled' | 'interrupted';
-type ScanSheetMode = 'loading' | 'result' | 'failed';
+type ScanSheetMode = 'loading' | 'result';
 
 const MOCK_SCAN_RESULT: ScanResultInterface = {
   documentData: {
@@ -64,40 +62,16 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
   scanSheetMode = signal<ScanSheetMode>('loading');
   scanSaving = signal(false);
   scanSaveError = signal<string | null>(null);
-  failedStatus = signal<ReaderStatus | null>(null);
   docTypeSheetOpen = signal(false);
-  private awaitingScanResult = signal(false);
-  private previewMessageMode = signal<ScanPreviewMode | null>(null);
   private _previewScanResult = signal<ScanResultInterface | null>(null);
-  private _previewFailed = signal(false);
   private _idscanlyResult = signal<ScanResultInterface | null>(null);
 
-  readonly scanSheetMessage = computed(() => {
-    const override = this.previewMessageMode();
-    if (override === 'loading') return this.lang.t('guestDetail.scanLoadingDb');
-    if (override === 'starting') return this.lang.t('guestDetail.scanStarting');
-    return this.documentReader.readerStatus() === ReaderStatus.INIT
-      ? this.lang.t('guestDetail.scanLoadingDb')
-      : this.lang.t('guestDetail.scanStarting');
-  });
-
   readonly scanSheetTitle = computed(() => {
-    const mode = this.scanSheetMode();
-    if (mode === 'result') return this.lang.t('guestDetail.scanResult');
-    if (mode === 'failed') {
-      switch (this.failedStatus()) {
-        case ReaderStatus.TIMEOUT:     return this.lang.t('guestDetail.scanTimedOut');
-        case ReaderStatus.CANCELLED:   return this.lang.t('guestDetail.scanCancelled');
-        case ReaderStatus.INTERRUPTED: return this.lang.t('guestDetail.scanInterrupted');
-        default:                       return this.lang.t('guestDetail.scanFailed');
-      }
-    }
+    if (this.scanSheetMode() === 'result') return this.lang.t('guestDetail.scanResult');
     return this.lang.t('guestDetail.scanDocument');
   });
 
-  readonly scanResult = computed(
-    () => this._idscanlyResult() ?? this._previewScanResult() ?? this.documentReader.scanResult(),
-  );
+  readonly scanResult = computed(() => this._idscanlyResult() ?? this._previewScanResult());
 
   readonly availableDocTypes = computed(() => {
     const allowed = this.propertyConfig.scanDocTypes();
@@ -115,7 +89,6 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     private route: ActivatedRoute,
     private router: Router,
     private res: ReservationService,
-    private documentReader: DocumentReaderService,
     private options: OptionsService,
     private docuscan: DocuscanService,
     private mixpanel: MixpanelService,
@@ -123,56 +96,16 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     public propertyConfig: PropertyConfigService,
     private captureSession: CaptureSessionService,
     private externalResult: ExternalResultService,
-  ) {
-    effect(() => {
-      if (!this.awaitingScanResult()) return;
-      const status = this.documentReader.readerStatus();
-
-      // Only show the result sheet when this scan actually produced data. Guards against
-      // an empty/stale FINISHED surfacing a previous document's preview.
-      if (
-        status === ReaderStatus.FINISHED &&
-        this.documentReader.scanResult()?.scannedData != null
-      ) {
-        this.awaitingScanResult.set(false);
-        this.scanSheetMode.set('result');
-        return;
-      }
-
-      const failed =
-        status === ReaderStatus.TIMEOUT ||
-        status === ReaderStatus.CANCELLED ||
-        status === ReaderStatus.INTERRUPTED;
-      if (!failed) return;
-
-      this.awaitingScanResult.set(false);
-      this.failedStatus.set(status);
-      this.scanSheetMode.set('failed');
-    });
-  }
+  ) {}
 
   ngOnInit() {
     this.reservationCode = this.route.snapshot.paramMap.get('code')!;
     this.guestId = this.route.snapshot.paramMap.get('guestId')!;
 
     const preview = this.route.snapshot.queryParamMap.get('previewScanSheet');
-    if (preview === 'starting' || preview === 'loading') {
-      this.previewMessageMode.set(preview);
-      this.scanSheetMode.set('loading');
-      this.scanSheetOpen.set(true);
-    } else if (preview === 'result') {
+    if (preview === 'result') {
       this._previewScanResult.set(MOCK_SCAN_RESULT);
       this.scanSheetMode.set('result');
-      this.scanSheetOpen.set(true);
-    } else if (preview === 'timeout' || preview === 'cancelled' || preview === 'interrupted') {
-      const statusMap: Record<string, ReaderStatus> = {
-        timeout:     ReaderStatus.TIMEOUT,
-        cancelled:   ReaderStatus.CANCELLED,
-        interrupted: ReaderStatus.INTERRUPTED,
-      };
-      this.failedStatus.set(statusMap[preview]);
-      this._previewFailed.set(true);
-      this.scanSheetMode.set('failed');
       this.scanSheetOpen.set(true);
     }
 
@@ -233,58 +166,19 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     this.t(() => this.router.navigate(['/guest', this.reservationCode, this.guestId, 'edit']), 300);
   }
 
-  async goScan() {
-    this.menuOpen.set(false);
-    // Guarantee a 100% clean start: wipe any prior scan's pages/result data and the
-    // leftover edit-prefill payload BEFORE arming the result watcher, so a stale
-    // session can't surface the previous document's data on this new scan.
-    this.documentReader.resetScanSession();
-    this.docuscan.lastScanResult = null;
-    this.scanSheetMode.set('loading');
-    this._previewScanResult.set(null);
-    this._previewFailed.set(false);
-    this.failedStatus.set(null);
-    this.scanSaveError.set(null);
-    this.scanSheetOpen.set(true);
-    try {
-      await this.documentReader.init();
-      this.awaitingScanResult.set(true);
-      this.documentReader.scan();
-    } catch (e) {
-      console.error('GuestDetailPage goScan init failed', e);
-      this.scanSheetOpen.set(false);
-      this.awaitingScanResult.set(false);
-      this.router.navigate(['/guest', this.reservationCode, this.guestId, 'scan']);
-    }
-  }
-
-  scanAgain() {
-    if (this._previewFailed()) {
-      this.cancelScanSheet();
-      return;
-    }
-    this.goScan();
-  }
-
   cancelScanSheet() {
-    if (this.awaitingScanResult() || this.scanSaving()) return;
+    if (this.scanSaving()) return;
     this.scanSheetOpen.set(false);
     this.scanSheetMode.set('loading');
     this.scanSaveError.set(null);
     this._previewScanResult.set(null);
-    this._previewFailed.set(false);
-    this.failedStatus.set(null);
     this._idscanlyResult.set(null);
   }
 
-  /** Open the scan document flow — routes to IDScanly doc-type picker or starts Regula. */
+  /** Open the scan document flow — opens the IDScanly doc-type picker. */
   openScanDocument() {
-    if (this.propertyConfig.scanVendor() === 'idscanly') {
-      this.menuOpen.set(false);
-      this.docTypeSheetOpen.set(true);
-    } else {
-      this.goScan();
-    }
+    this.menuOpen.set(false);
+    this.docTypeSheetOpen.set(true);
   }
 
   startIdscanly(type: DocumentTypeConfig) {

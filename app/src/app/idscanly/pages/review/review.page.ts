@@ -133,7 +133,7 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
    */
   readonly submitStage = signal<'processing' | 'longwait'>('processing');
   private stageTimers: ReturnType<typeof setTimeout>[] = [];
-  /** Submit is retryable via the same button after a failure — mirrors Regula's _scanAttempts. */
+  /** Submit is retryable via the same button after a failure — counts attempts for tracking. */
   private submitAttempts = 0;
 
   readonly submitStageMessage = computed(() =>
@@ -292,9 +292,9 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Full idrecognition response, console + Sentry Logs (mirrors Regula's logScanOutcome/
-   * buildScanDiagnostics pairing) — gated on the CURRENT property's `extended_logging` flag
-   * (property_config table), never unconditional. The response contains guest PII (name, DOB,
+   * Full idrecognition response, console + Sentry Logs — gated on the CURRENT property's
+   * `extended_logging` flag (property_config table), never unconditional. The response
+   * contains guest PII (name, DOB,
    * document number, mother's maiden name); logging it everywhere for everyone would leak that into
    * Sentry via breadcrumbs on any unrelated error. Opt-in per property keeps it off by default.
    *

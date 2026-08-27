@@ -101,15 +101,9 @@
     "scanned": "Beolvasva",
     "notScanned": "Nincs beolvasva",
     "editGuest": "Vendég szerkesztése",
-    "idScan": "Okmány beolvasása",
     "scanDocument": "Dokumentum beolvasása",
     "scanStarting": "Beolvasás indítása…",
-    "scanLoadingDb": "Beolvasási adatbázis betöltése…",
-    "scanResult": "Beolvasás eredménye",
-    "scanTimedOut": "Beolvasás – időtúllépés",
-    "scanCancelled": "Beolvasás megszakítva",
-    "scanInterrupted": "Beolvasás félbeszakadt",
-    "scanFailed": "Beolvasás sikertelen"
+    "scanResult": "Beolvasás eredménye"
   },
   "guestEdit": {
     "title": "Vendég szerkesztése",
@@ -134,11 +128,6 @@
     "saved": "A vendég adatai elmentve"
   },
   "idScan": {
-    "title": "Okmány beolvasása",
-    "webNotAvailable": "Az okmánybeolvasás csak a mobilalkalmazásban érhető el.",
-    "initializing": "Beolvasó inicializálása…",
-    "instruction": "Tartsd az okmányt a kereten belül",
-    "resultTitle": "Beolvasás eredménye",
     "fullName": "Vezeték- és keresztnév",
     "docType": "Okmány típusa",
     "docNumber": "Okmány száma",
@@ -147,11 +136,7 @@
     "birthPlace": "Születési hely",
     "birthDate": "Születési dátum",
     "citizenship": "Állampolgárság",
-    "motherName": "Anyja neve",
-    "edit": "Szerkesztés",
-    "save": "Mentés",
-    "scanAgain": "Újra beolvasás",
-    "resultSaved": "Eredmény elmentve"
+    "motherName": "Anyja neve"
   },
   "idscanly": {
     "docTypeIdCard": "Személyi igazolvány",

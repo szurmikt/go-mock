@@ -1,62 +1,14 @@
-import { inject, Injectable } from '@angular/core';
-import { firstValueFrom, Observable } from 'rxjs';
-import { ApiService } from '../../services/api';
-import { ApiResponse } from '../../models/auth.interfaces';
-import { StorageService } from '../../services/storage';
+import { Injectable } from '@angular/core';
 import {
   GuestInterface,
   ScannedDataInterface,
   ScannedGuestDataInterface,
   ScanResultInterface,
-} from '../../models/guest.interface';
-
-const STORAGE_KEY = 'fieldsToScan';
-
-export interface ScanField {
-  name: string;
-  regula_id: number;
-  lc_id: number;
-}
+} from '../models/guest.interface';
 
 @Injectable({ providedIn: 'root' })
 export class DocuscanService {
-  private api = inject(ApiService);
-  private storage = inject(StorageService);
-
-  private fieldsToScan: ScanField[] = [];
-
   private _lastScanResult: ScanResultInterface | null = null;
-
-  async load(): Promise<void> {
-    if (this.fieldsToScan.length > 0) return;
-
-    const stored = await this.storage.get<any[]>(STORAGE_KEY);
-    if (stored && stored.length > 0) {
-      this.fieldsToScan = stored;
-      return;
-    }
-
-    this.fieldsToScan = await this.fetchScanFields();
-    await this.storage.set(STORAGE_KEY, this.fieldsToScan);
-  }
-
-  get(): ScanField[] {
-    return this.fieldsToScan;
-  }
-
-  async refresh(): Promise<void> {
-    this.fieldsToScan = [];
-    await this.storage.remove(STORAGE_KEY);
-    await this.load();
-  }
-
-  private async fetchScanFields(): Promise<ScanField[]> {
-    const resp = await firstValueFrom(
-      this.api.get<ApiResponse<{ scan_fields: any[] }>>('properties/settings'),
-    );
-    if (!resp.success) throw new Error('Failed to load scan fields');
-    return resp.data.scan_fields;
-  }
 
   scannedDataToGuestScannedData(
     scannedGuestData: ScannedGuestDataInterface,
@@ -156,22 +108,5 @@ export class DocuscanService {
   /** Clears in-memory scanned guest data. Called on logout / property switch. */
   clear(): void {
     this._lastScanResult = null;
-  }
-
-  sendStatistics(
-    _guestId: string,
-    _documentId: string,
-    _status: string,
-    _documentData: any,
-  ): Observable<any> {
-    return this.api.put('guests/scan_statistics', {
-      reservation_guest_id: _guestId,
-      doc_reader_scanned_document_id: _documentId,
-      status: _status,
-      scan_type: _documentData.scan_type,
-      message: _documentData.message,
-      date_of_issue: _documentData.date_of_issue,
-      type: _documentData.document_type,
-    });
   }
 }

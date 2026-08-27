@@ -177,18 +177,16 @@
             </span>
             {{ 'guestDetail.editGuest' | tr }}
           </button>
-          @if (propertyConfig.scanVendor()) {
-            <button class="action-item" (click)="openScanDocument()">
-              <span class="action-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="2" y="5" width="20" height="14" rx="2"/>
-                  <line x1="2" y1="10" x2="22" y2="10"/>
-                  <circle cx="8" cy="15" r="1" fill="currentColor"/>
-                </svg>
-              </span>
-              {{ 'guestDetail.scanDocument' | tr }}
-            </button>
-          }
+          <button class="action-item" (click)="openScanDocument()">
+            <span class="action-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <line x1="2" y1="10" x2="22" y2="10"/>
+                <circle cx="8" cy="15" r="1" fill="currentColor"/>
+              </svg>
+            </span>
+            {{ 'guestDetail.scanDocument' | tr }}
+          </button>
         </div>
       </div>
     </div>
@@ -241,7 +239,7 @@
       @if (scanSheetMode() === 'loading') {
         <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 32px 16px">
           <ion-spinner></ion-spinner>
-          <div style="font-size: var(--font-md); font-weight: 600; color: var(--ink-2)">{{ scanSheetMessage() }}</div>
+          <div style="font-size: var(--font-md); font-weight: 600; color: var(--ink-2)">{{ 'guestDetail.scanStarting' | tr }}</div>
         </div>
       } @else if (scanSheetMode() === 'result') {
         @let _result = scanResult();
@@ -347,11 +345,6 @@
               {{ 'common.save' | tr }}
             }
           </button>
-        </div>
-      } @else if (scanSheetMode() === 'failed') {
-        <div class="actions">
-          <button class="btn secondary" (click)="cancelScanSheet()">{{ 'common.cancel' | tr }}</button>
-          <button class="btn" (click)="scanAgain()">{{ 'idScan.scanAgain' | tr }}</button>
         </div>
       }
     </div>

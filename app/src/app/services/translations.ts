@@ -116,15 +116,9 @@ export const TRANSLATIONS: TranslationMap = {
     scanned: 'Scanned',
     notScanned: 'Not scanned',
     editGuest: 'Edit guest',
-    idScan: 'ID Scan',
     scanDocument: 'Scan Document',
     scanStarting: 'Starting ID scan…',
-    scanLoadingDb: 'Loading scan database…',
     scanResult: 'Scan result',
-    scanTimedOut: 'Scan Timed out',
-    scanCancelled: 'Scan Cancelled',
-    scanInterrupted: 'Scan Interrupted',
-    scanFailed: 'Scan Failed',
   },
   guestEdit: {
     title: 'Edit Guest',
@@ -148,12 +142,9 @@ export const TRANSLATIONS: TranslationMap = {
     documentNumber: 'Document Number',
     saved: 'Guest details saved',
   },
+  // Shared scan-result vocabulary — read by guest-detail's scan-result bottom sheet,
+  // used by IDScanly's mapped results.
   idScan: {
-    title: 'ID Scan',
-    webNotAvailable: 'ID scanning is only available in the native app.',
-    initializing: 'Initializing scanner…',
-    instruction: 'Hold the document inside the frame',
-    resultTitle: 'ID Scan result',
     fullName: 'First & Last name',
     docType: 'Document type',
     docNumber: 'Document number',
@@ -163,14 +154,9 @@ export const TRANSLATIONS: TranslationMap = {
     birthDate: 'Date of birth',
     citizenship: 'Citizenship',
     motherName: "Mother's name",
-    edit: 'Edit',
-    save: 'Save',
-    scanAgain: 'Scan Again',
-    resultSaved: 'Result saved',
   },
-  // IDScanly (browser-based scan flow, second scan backend alongside Regula's `idScan` namespace
-  // above). `docType*` values also double as translation KEYS on DocumentTypeConfig.label
-  // (idscanly/models/document-type.ts) — see the comment there.
+  // IDScanly (browser-based scan/review flow). `docType*` values also double as translation
+  // KEYS on DocumentTypeConfig.label (idscanly/models/document-type.ts) — see the comment there.
   idscanly: {
     docTypeIdCard: 'ID card',
     docTypePassport: 'Passport',

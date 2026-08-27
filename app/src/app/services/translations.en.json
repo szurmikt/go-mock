@@ -101,15 +101,9 @@
     "scanned": "Scanned",
     "notScanned": "Not scanned",
     "editGuest": "Edit guest",
-    "idScan": "ID Scan",
     "scanDocument": "Scan Document",
     "scanStarting": "Starting ID scan…",
-    "scanLoadingDb": "Loading scan database…",
-    "scanResult": "Scan result",
-    "scanTimedOut": "Scan Timed out",
-    "scanCancelled": "Scan Cancelled",
-    "scanInterrupted": "Scan Interrupted",
-    "scanFailed": "Scan Failed"
+    "scanResult": "Scan result"
   },
   "guestEdit": {
     "title": "Edit Guest",
@@ -134,11 +128,6 @@
     "saved": "Guest details saved"
   },
   "idScan": {
-    "title": "ID Scan",
-    "webNotAvailable": "ID scanning is only available in the native app.",
-    "initializing": "Initializing scanner…",
-    "instruction": "Hold the document inside the frame",
-    "resultTitle": "ID Scan result",
     "fullName": "First & Last name",
     "docType": "Document type",
     "docNumber": "Document number",
@@ -147,11 +136,7 @@
     "birthPlace": "Place of birth",
     "birthDate": "Date of birth",
     "citizenship": "Citizenship",
-    "motherName": "Mother's name",
-    "edit": "Edit",
-    "save": "Save",
-    "scanAgain": "Scan Again",
-    "resultSaved": "Result saved"
+    "motherName": "Mother's name"
   },
   "idscanly": {
     "docTypeIdCard": "ID card",

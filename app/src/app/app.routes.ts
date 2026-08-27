@@ -50,11 +50,6 @@ export const routes: Routes = [
       import('./pages/settings/settings.page').then(m => m.SettingsPage),
   },
   {
-    path: 'guest/:code/:guestId/scan',
-    canActivate: [authGuard],
-    loadComponent: () => import('./regula/pages/id-scan/id-scan.page').then(m => m.IdScanPage),
-  },
-  {
     path: 'idscanly/scan',
     canActivate: [authGuard],
     loadComponent: () => import('./idscanly/pages/scan/scan.page').then(m => m.IdscanScanPage),

@@ -5,7 +5,7 @@ import { IonContent } from '@ionic/angular/standalone';
 import { ReservationService } from '../../services/reservation';
 import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
 import { OptionsService } from '../../services/options.service';
-import { DocuscanService } from 'src/app/regula/services/docuscan';
+import { DocuscanService } from 'src/app/services/docuscan';
 import { ExternalResultService } from '../../idscanly/services/external-result.service';
 import { MixpanelService } from '../../services/mixpanel';
 import { AuthService } from '../../services/auth';
@@ -59,8 +59,8 @@ export class GuestEditPage implements OnInit {
   private formSnapshot: Record<string, string> = {};
 
   // IDScanly feedback loop: set only when this edit was prefilled by an IDScanly scan, so
-  // save() can post the corrected values back to that scan's session. Regula scans and
-  // plain manual edits leave these untouched, and the feedback call then no-ops.
+  // save() can post the corrected values back to that scan's session. A plain manual edit
+  // leaves these untouched, and the feedback call then no-ops.
   private idscanlySessionId: string | undefined;
   private scanWasIdentityDoc = true;
   private documentNumberKey: ScanResultInterface['documentNumberKey'];

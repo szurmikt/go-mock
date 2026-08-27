@@ -182,7 +182,7 @@ export class ReservationService {
         tags: {
           context: 'guest_save',
           failure_kind: exception != null ? 'http_error' : 'api_rejected',
-          // 'idscanly' marks an IDScanly-scanned save; Regula sets its own document id.
+          // 'idscanly' marks an IDScanly-scanned save; a real document id marks a prior scan.
           scan_marker: scanMarker != null ? String(scanMarker) : 'none',
         },
         contexts: {
