@@ -15,6 +15,7 @@ export interface ReservationInterface {
   guest_count: { adults: number; children: number; infants: number };
   number_of_guests: number;
   nights: number;
+  open_in_pms: boolean;
 }
 
 export interface BookerInterface {
