@@ -67,6 +67,15 @@
           &copy; SabeeApp &ndash; thePass Ltd 2026{{ appVersion() && appBuild() ? ' | v' + appVersion() + ' (' + appBuild() + ')' : '' }}
         </div>
 
+        <!-- Live-update bundle — tap to copy the full version triple for support -->
+        <button
+          class="tappable"
+          (click)="copyDiagnostics()"
+          style="display: block; width: 100%; background: none; border: none; text-align: center; color: var(--ink-4); font-size: var(--font-xs); margin-top: 2px; padding: 4px 0; word-break: break-all"
+        >
+          {{ copied() ? 'Copied' : 'Bundle: ' + bundleId() }}
+        </button>
+
       </div>
     </div>
 

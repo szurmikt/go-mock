@@ -17,6 +17,11 @@ def capacitor_pods
   pod 'CapacitorKeyboard', :path => '../../node_modules/@capacitor/keyboard'
   pod 'CapacitorPreferences', :path => '../../node_modules/@capacitor/preferences'
   pod 'CapacitorStatusBar', :path => '../../node_modules/@capacitor/status-bar'
+  # Added by hand: `cap sync` writes new plugins into CapApp-SPM/Package.swift, but device builds
+  # go through App.xcworkspace (CocoaPods) — see scripts/publish-ios.sh — so a plugin missing here
+  # is simply absent on iOS at runtime. It fails silently, since LiveUpdateService catches
+  # unavailable-plugin errors. Keep this list in sync when adding plugins.
+  pod 'CapawesomeCapacitorLiveUpdate', :path => '../../node_modules/@capawesome/capacitor-live-update'
   pod 'CapacitorNativeBiometric', :path => '../../node_modules/capacitor-native-biometric'
 end
 

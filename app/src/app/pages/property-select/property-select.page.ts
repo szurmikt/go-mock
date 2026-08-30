@@ -18,6 +18,14 @@ import { TranslatePipe } from '../../pipes/translate.pipe';
 export class PropertySelectPage implements OnInit {
   properties: PropertyInterface[] = [];
   loading = true;
+  /**
+   * True while select() is resolving the property's live-update channel and checking for a
+   * bundle against it — this is the first moment that channel is known, so it's also the first
+   * chance to apply a pending update without waiting for a 90s+ resume (see AuthService.
+   * selectProperty()). That check can take a couple of seconds, so this needs its own visible
+   * state — silently blocking the tap would look like the app hung.
+   */
+  selecting = false;
   query = '';
 
   constructor(
@@ -81,10 +89,19 @@ export class PropertySelectPage implements OnInit {
     if (current?.property_id !== property.property_id) {
       this.options.clear();
     }
-    await this.auth.selectProperty(property);
-    if (this.options.countries().length === 0) {
-      try { await this.options.load(); } catch { /* non-fatal */ }
+    this.selecting = true;
+    try {
+      // May apply a live-update bundle and reload the webview entirely (see
+      // AuthService.selectProperty()) — everything after this line can be interrupted mid-flight
+      // by that reload, which is fine: the fresh boot re-derives the same destination from the
+      // property already persisted inside selectProperty(), so nothing here needs to complete.
+      await this.auth.selectProperty(property);
+      if (this.options.countries().length === 0) {
+        try { await this.options.load(); } catch { /* non-fatal */ }
+      }
+      await this.router.navigate(['/home'], { replaceUrl: true });
+    } finally {
+      this.selecting = false;
     }
-    await this.router.navigate(['/home'], { replaceUrl: true });
   }
 }

@@ -1,7 +1,8 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { CaptureQuality } from '../models/capture-quality';
 import { DocumentTypeConfig, Side } from '../models/document-type';
 import { ScanResultInterface } from '../../models/guest.interface';
+import { BusyGuardService } from '../../services/busy-guard';
 
 export interface CapturedSide {
   side: Side;
@@ -15,11 +16,20 @@ export interface CapturedSide {
   quality: CaptureQuality;
 }
 
+/** Busy-guard key for the whole scan flow — see start()/reset()/clearScanResult(). */
+const SCAN_BUSY_KEY = 'idscanly-scan';
+
 /**
  * Holds the in-progress capture session across navigation (Scan -> Review -> GuestDetail).
+ *
+ * Also owns the scan flow's busy-guard claim, so a live-update reload can't discard captures
+ * mid-scan. Held here rather than in the pages because these three methods already mark the
+ * flow's real start and end points, across every exit path.
  */
 @Injectable({ providedIn: 'root' })
 export class CaptureSessionService {
+  private readonly busyGuard = inject(BusyGuardService);
+
   readonly documentType = signal<DocumentTypeConfig | null>(null);
   readonly captures = signal<Map<Side, CapturedSide>>(new Map());
 
@@ -30,6 +40,7 @@ export class CaptureSessionService {
   readonly scanResult = signal<ScanResultInterface | null>(null);
 
   start(type: DocumentTypeConfig): void {
+    this.busyGuard.acquire(SCAN_BUSY_KEY);
     this.documentType.set(type);
     this.captures.set(new Map());
   }
@@ -50,11 +61,18 @@ export class CaptureSessionService {
     return this.captures().get(side);
   }
 
+  /**
+   * Consumed by guest-detail once the result sheet has the scan — the flow's end point on the
+   * success path, which never calls reset().
+   */
   clearScanResult(): void {
+    this.busyGuard.release(SCAN_BUSY_KEY);
     this.scanResult.set(null);
   }
 
+  /** Abandonment path: scan-screen close, review-screen discard. */
   reset(): void {
+    this.busyGuard.release(SCAN_BUSY_KEY);
     this.documentType.set(null);
     this.captures.set(new Map());
     this.context.set(null);

@@ -38,11 +38,28 @@ export class MixpanelService {
    * appVersion should be the real installed version (from App.getInfo()) — this service
    * has no opinion on the fallback for platforms without the native App plugin (web/dev);
    * that's the caller's call.
+   *
+   * bundleVersion is the live-update bundle actually running ('native' when no OTA bundle has
+   * been applied). Required, not optional: once live updates ship, app_version alone no longer
+   * identifies the running code, so an event without bundle_version is unattributable.
+   *
+   * bundleState says WHY that bundle is running, and is required for the same reason. On its own
+   * `bundle_version: 'native'` conflates a fresh install, a rollback, a new binary, a missing
+   * plugin and web/dev — which makes "native should be ~0% of the fleet" impossible to falsify.
+   * Split at source, it separates the ~0.01% that actually matters (native_after_rollback) from
+   * the majority that is expected and self-healing.
    */
-  registerSuperProps(apiMode: ApiEnvMode, appVersion: string): void {
+  registerSuperProps(
+    apiMode: ApiEnvMode,
+    appVersion: string,
+    bundleVersion: string,
+    bundleState: string,
+  ): void {
     this.safe(() =>
       mixpanel.register({
         app_version: appVersion,
+        bundle_version: bundleVersion,
+        bundle_state: bundleState,
         platform: Capacitor.getPlatform(),
         environment: environment.production ? 'production' : 'development',
         api_mode: apiMode,
@@ -208,6 +225,37 @@ export class MixpanelService {
 
   trackHomeSegmentChanged(segment: string): void {
     this.track('home_segment_changed', { segment });
+  }
+
+  // ---- live updates (OTA) ----
+
+  trackBundleDownloaded(p: { bundle_id: string; channel: string }): void {
+    this.track('bundle_downloaded', { ...p });
+  }
+
+  trackBundleApplied(p: { bundle_id: string }): void {
+    this.track('bundle_applied', { ...p });
+  }
+
+  /**
+   * `plugin_unavailable` means the native side is missing on a real device (e.g. the pod was
+   * never added to ios/App/Podfile) — distinct from a runtime sync failure, because it otherwise
+   * looks exactly like a healthy device that simply has no bundle yet.
+   */
+  trackBundleFailed(p: {
+    reason: 'rollback' | 'sync_error' | 'plugin_unavailable';
+    bundle_id?: string;
+  }): void {
+    this.track('bundle_failed', { ...p });
+  }
+
+  /**
+   * A staged bundle was NOT applied because a flow held the busy guard (mid-scan, dirty form).
+   * Only fires when a bundle actually exists to apply — otherwise a device whose staff scan a
+   * lot would look identical to one genuinely stuck several bundles behind.
+   */
+  trackBundleApplyDeferred(p: { bundle_id: string; channel: string }): void {
+    this.track('bundle_apply_deferred', { ...p });
   }
 
   // ---- core ----

@@ -12,6 +12,11 @@
         <div class="page-loading">
           <span class="spin-primary" style="width: 28px; height: 28px; border-width: 3px"></span>
         </div>
+      } @else if (selecting) {
+        <div class="page-loading" style="flex-direction: column; align-items: center">
+          <span class="spin-primary" style="width: 28px; height: 28px; border-width: 3px"></span>
+          <div style="margin-top: 16px; font-size: var(--font-base); font-weight: 600; color: var(--ink-4)">{{ 'propertySelect.settingUp' | tr }}</div>
+        </div>
       } @else {
         @if (properties.length > 10) {
           <div class="search-field" style="margin-bottom: 16px">

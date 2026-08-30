@@ -28,6 +28,11 @@ export const Config = {
   STORAGE_SEARCH_HISTORY_KEY: 'searchHistory',
   STORAGE_BACKGROUND_AT_KEY: 'backgroundAt',
   STORAGE_API_ENV_KEY: 'apiEnvironment',
+  // One JSON record (LiveUpdateState, see utils/live-update-state.ts) rather than split keys:
+  // it is read once at boot and mutated as a unit, and a reload mid-write across several keys
+  // would leave torn state. Deliberately NOT cleared by AuthService.clearSessionData() — most of
+  // it describes what is on this device's disk, which logging out does not change.
+  STORAGE_LIVE_UPDATE_KEY: 'liveUpdateState',
   // Apple/Google App Store reviewers can't complete MFA (no access to an authenticator
   // app), so this one account skips the /mfa screen entirely and verifies with an empty
   // code — per the backend team, /mfa/verify accepts code: '' for this account only.

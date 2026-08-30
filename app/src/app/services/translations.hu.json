@@ -26,6 +26,7 @@
     "mfaTitle": "Kétlépcsős azonosítás",
     "mfaSubtitle": "Add meg a hitelesítő alkalmazás 6 jegyű kódját",
     "mfaInvalidCode": "Érvénytelen kód.",
+    "settingUp": "Az alkalmazás előkészítése…",
     "tryAgain": "Próbáld újra",
     "errIncorrect": "A megadott e-mail cím vagy jelszó helytelen. Ellenőrizd az adataidat, és próbáld újra.",
     "errNoInternet": "Nincs internetkapcsolat",
@@ -35,7 +36,8 @@
     "appName": "SabeeApp Go",
     "title": "Szálláshely kiválasztása",
     "subtitle": "Válassz kezelendő szálláshelyet",
-    "noMatch": "Nincs találat."
+    "noMatch": "Nincs találat.",
+    "settingUp": "Az alkalmazás előkészítése…"
   },
   "home": {
     "switchProperty": "Szálláshely váltása",

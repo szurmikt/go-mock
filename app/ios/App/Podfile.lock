@@ -1,4 +1,5 @@
 PODS:
+  - Alamofire (5.12.0)
   - Capacitor (8.3.1):
     - CapacitorCordova
   - CapacitorApp (8.1.0):
@@ -16,6 +17,11 @@ PODS:
     - Capacitor
   - CapacitorStatusBar (8.0.2):
     - Capacitor
+  - CapawesomeCapacitorLiveUpdate (8.4.1):
+    - Alamofire (< 6.0.0, >= 5.10.2)
+    - Capacitor
+    - ZIPFoundation (~> 0.9.0)
+  - ZIPFoundation (0.9.20)
 
 DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
@@ -27,6 +33,12 @@ DEPENDENCIES:
   - CapacitorNativeBiometric (from `../../node_modules/capacitor-native-biometric`)
   - "CapacitorPreferences (from `../../node_modules/@capacitor/preferences`)"
   - "CapacitorStatusBar (from `../../node_modules/@capacitor/status-bar`)"
+  - "CapawesomeCapacitorLiveUpdate (from `../../node_modules/@capawesome/capacitor-live-update`)"
+
+SPEC REPOS:
+  trunk:
+    - Alamofire
+    - ZIPFoundation
 
 EXTERNAL SOURCES:
   Capacitor:
@@ -47,8 +59,11 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/preferences"
   CapacitorStatusBar:
     :path: "../../node_modules/@capacitor/status-bar"
+  CapawesomeCapacitorLiveUpdate:
+    :path: "../../node_modules/@capawesome/capacitor-live-update"
 
 SPEC CHECKSUMS:
+  Alamofire: ddb8d5201667b256dbc225f3fc6e835a0753186f
   Capacitor: 46dbaa89c1d1cd121b9fc2dc839c1f39cc49e326
   CapacitorApp: 449ffe26375e96f8aaaee625ac6e01e5c57c8650
   CapacitorCordova: 9010447fe25e869705fcf525e5f490facde87608
@@ -58,7 +73,9 @@ SPEC CHECKSUMS:
   CapacitorNativeBiometric: 94ef685310a7d48b844c323f84be83a4721771d1
   CapacitorPreferences: cca2021f386efb75947c850334447d9ff22b14f1
   CapacitorStatusBar: 01d5763b4ed720de5ce2edbc938de6a98f4c8f32
+  CapawesomeCapacitorLiveUpdate: 5a73f1df3b0509ec496feaf93ef4326e150412bb
+  ZIPFoundation: dfd3d681c4053ff7e2f7350bc4e53b5dba3f5351
 
-PODFILE CHECKSUM: 3a1cf0ba1905be8dddc6e59d9405422be4e6c837
+PODFILE CHECKSUM: cba85d06277b082c766fdaffe2c78526920f5987
 
 COCOAPODS: 1.16.2

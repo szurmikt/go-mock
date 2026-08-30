@@ -26,6 +26,7 @@
     "mfaTitle": "Two-step verification",
     "mfaSubtitle": "Enter the 6-digit code from your authenticator app",
     "mfaInvalidCode": "Invalid code.",
+    "settingUp": "Setting up your app…",
     "tryAgain": "Try again",
     "errIncorrect": "The email or password you entered is incorrect. Please check your credentials and try again.",
     "errNoInternet": "No internet connection",
@@ -35,7 +36,8 @@
     "appName": "SabeeApp Go",
     "title": "Select Property",
     "subtitle": "Choose a property to manage",
-    "noMatch": "No properties match."
+    "noMatch": "No properties match.",
+    "settingUp": "Setting up your app…"
   },
   "home": {
     "switchProperty": "Switch Property",

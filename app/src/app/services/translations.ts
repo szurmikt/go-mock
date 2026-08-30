@@ -40,6 +40,11 @@ export const TRANSLATIONS: TranslationMap = {
     mfaSubtitle: 'Enter the 6-digit code from your authenticator app',
     mfaInvalidCode: 'Invalid code.',
     // Shared atoms the login/MFA screens need pre-token
+    // settingUp captions the boot splash during the pre-login update gate. It lives in `login`,
+    // not `propertySelect` (which has the same English text), because /languages only returns the
+    // `login` namespace to an unauthenticated caller — anywhere else it would fall back to English
+    // on a non-English device at exactly the moment the caption is meant to reassure.
+    settingUp: 'Setting up your app…',
     tryAgain: 'Try again',
     errIncorrect:
       'The email or password you entered is incorrect. Please check your credentials and try again.',
@@ -51,6 +56,7 @@ export const TRANSLATIONS: TranslationMap = {
     title: 'Select Property',
     subtitle: 'Choose a property to manage',
     noMatch: 'No properties match.',
+    settingUp: 'Setting up your app…',
   },
   home: {
     switchProperty: 'Switch Property',

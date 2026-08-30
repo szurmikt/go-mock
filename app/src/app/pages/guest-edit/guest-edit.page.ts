@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
@@ -12,6 +12,10 @@ import { AuthService } from '../../services/auth';
 import { LanguageService } from '../../services/language.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { toInputDate } from '../../utils/date';
+import { BusyGuardService } from '../../services/busy-guard';
+
+/** Busy-guard key: an unsaved edit must not be discarded by a live-update reload. */
+const EDIT_BUSY_KEY = 'guest-edit-dirty';
 
 @Component({
   selector: 'app-guest-edit',
@@ -20,9 +24,10 @@ import { toInputDate } from '../../utils/date';
   standalone: true,
   imports: [IonContent, FormsModule, TranslatePipe],
 })
-export class GuestEditPage implements OnInit {
+export class GuestEditPage implements OnInit, OnDestroy {
   private docuscanService = inject(DocuscanService);
   private externalResult = inject(ExternalResultService);
+  private busyGuard = inject(BusyGuardService);
 
   guest = signal<GuestInterface | null>(null);
   loading = signal(true);
@@ -64,6 +69,9 @@ export class GuestEditPage implements OnInit {
   private idscanlySessionId: string | undefined;
   private scanWasIdentityDoc = true;
   private documentNumberKey: ScanResultInterface['documentNumberKey'];
+
+  /** Whether this form currently holds the busy guard (see markDirty). */
+  private dirty = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -163,6 +171,23 @@ export class GuestEditPage implements OnInit {
     }
   }
 
+  /**
+   * Bound to every field's (ngModelChange). Claims the busy guard on the first real edit so a
+   * live-update reload can't discard unsaved changes. Idempotent — after the first call this is
+   * a boolean check.
+   */
+  markDirty(): void {
+    if (this.dirty) return;
+    this.dirty = true;
+    this.busyGuard.acquire(EDIT_BUSY_KEY);
+  }
+
+  private clearDirty(): void {
+    if (!this.dirty) return;
+    this.dirty = false;
+    this.busyGuard.release(EDIT_BUSY_KEY);
+  }
+
   async save() {
     const g = this.guest();
     if (!g) return;
@@ -213,6 +238,8 @@ export class GuestEditPage implements OnInit {
         this.scanWasIdentityDoc,
         this.documentNumberKey,
       );
+      // Saved — nothing left to protect from a reload.
+      this.clearDirty();
       // Pop the edit entry to return to the EXISTING guest-detail history entry.
       // navigate('..', { replaceUrl }) turned gd→edit into gd→gd, so the first
       // back-press on guest-detail appeared to do nothing. Guest-detail re-fetches
@@ -223,6 +250,11 @@ export class GuestEditPage implements OnInit {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  /** Covers abandoning a dirty edit (back-navigation without saving) — never leak the guard. */
+  ngOnDestroy(): void {
+    this.clearDirty();
   }
 
   back() {

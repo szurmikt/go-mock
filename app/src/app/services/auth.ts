@@ -9,6 +9,7 @@ import { DocuscanService } from './docuscan';
 import { PropertyConfigService } from './property-config.service';
 import { MixpanelService } from './mixpanel';
 import { LanguageService } from './language.service';
+import { LiveUpdateService } from './live-update';
 import {
   AuthState,
   ApiResponse,
@@ -62,7 +63,29 @@ export class AuthService {
     private mixpanel: MixpanelService,
     private lang: LanguageService,
     private propertyConfig: PropertyConfigService,
+    private liveUpdate: LiveUpdateService,
   ) {}
+
+  /**
+   * Load the property's config, then point live updates at whatever channel it maps to. Chained
+   * rather than parallel: the channel is only known once the config row has been read. Failures
+   * are swallowed — PropertyConfigService already falls back to 'prod' on any error, so the
+   * worst case is a device staying on the safe channel.
+   *
+   * Returns the promise so `selectProperty()` can await it before correcting the channel (see
+   * there for why). `loadStoredAuth()`'s restore path deliberately stays fire-and-forget and
+   * passes `allowReload: false`: boot must not be slowed waiting on it, and a user landing on
+   * /home must not have the webview reloaded under them. It still stages the right-channel bundle,
+   * which closes a real gap — a pilot device restoring a `dev` property previously stayed on
+   * whatever it had until a 90s+ resume happened to come along.
+   */
+  private loadPropertyConfig(propertyId: number, allowReload: boolean): Promise<void> {
+    return this.propertyConfig
+      .load(propertyId)
+      .then(() => this.liveUpdate.setChannelForProperty(this.propertyConfig.liveUpdateChannel()))
+      .then(() => this.liveUpdate.applyChannelChangeIfNeeded(allowReload))
+      .catch(() => {});
+  }
 
   /**
    * The startup LanguageService.init() fetch runs unauthenticated (app initializer,
@@ -105,6 +128,15 @@ export class AuthService {
     this.reservations.clear();
     this.docuscan.clear();
     this.propertyConfig.clear();
+    // Reset the plugin's persisted channel too — propertyConfig.clear() only resets our signal,
+    // and a device must never stay pinned to a previous property's early/dev channel.
+    this.liveUpdate.setChannelForProperty('prod');
+    // Drop the remembered property channel: it is session state, and this device may next be used
+    // by someone from a different hotel. Deliberately does NOT clear the installed bundle's own
+    // channel — that describes what is physically on this disk, which logging out does not change.
+    // Conflating the two would send every logged-out canary device back to production and
+    // reintroduce a full double download on its next login.
+    this.liveUpdate.clearResolvedChannel();
   }
 
   async loadStoredAuth(): Promise<void> {
@@ -119,8 +151,9 @@ export class AuthService {
     if (property) {
       this._selectedProperty.set(property);
       // Cold start with a restored property re-reads the scan config (scanDocTypes,
-      // extendedLogging) so it's populated without waiting for a manual switch.
-      this.propertyConfig.load(property.property_id).catch(() => {});
+      // extendedLogging) and the live-update channel, so both are populated without
+      // waiting for a manual switch.
+      this.loadPropertyConfig(property.property_id, false);
     }
     const properties = await this.storage.get<PropertyInterface[]>(Config.STORAGE_PROPERTIES_KEY);
     if (properties?.length) {
@@ -245,7 +278,18 @@ export class AuthService {
     await this.storage.set(Config.STORAGE_PROPERTY_KEY, property);
     if (!this._auth()?.name || !this._auth()?.userId) await this.fetchUser();
     this.identifyToMixpanel();
-    this.propertyConfig.load(property.property_id).catch(() => {});
+    // Corrects the channel if this property's differs from the one the installed bundle came
+    // from. Reload is safe here, unlike at boot or on a short resume: the session is already
+    // persisted above, so a reload's fresh boot restores straight through to this same property
+    // with no re-login; and the user is already mid-navigation (about to see a screen transition
+    // regardless), so it isn't the unannounced mid-task interruption the resume threshold exists
+    // to avoid.
+    //
+    // Unlike the previous unconditional check-and-apply here, this makes no plugin or network
+    // call at all when the channel already matches — which is every re-selection of the same
+    // property, and every selection at all for the overwhelming majority on `production`. The
+    // pre-login setup gate has usually already fetched the right bundle by this point.
+    await this.loadPropertyConfig(property.property_id, true);
   }
 
   async logout(): Promise<void> {

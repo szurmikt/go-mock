@@ -26,7 +26,7 @@
         <h3 class="group-title" style="margin-top: 8px">{{ 'guestEdit.personal' | tr }}</h3>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.first_name" name="first_name" autocomplete="given-name" />
+          <input placeholder=" " [(ngModel)]="form.first_name" (ngModelChange)="markDirty()" name="first_name" autocomplete="given-name" />
           <label>{{ 'guestEdit.firstName' | tr }}</label>
           @if (isScannedSource('first_name')) {
             <span class="form-icon">
@@ -39,7 +39,7 @@
         </div>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.last_name" name="last_name" autocomplete="family-name" />
+          <input placeholder=" " [(ngModel)]="form.last_name" (ngModelChange)="markDirty()" name="last_name" autocomplete="family-name" />
           <label>{{ 'guestEdit.lastName' | tr }}</label>
           @if (isScannedSource('last_name')) {
             <span class="form-icon">
@@ -52,7 +52,7 @@
         </div>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.maiden_name" name="maiden_name" />
+          <input placeholder=" " [(ngModel)]="form.maiden_name" (ngModelChange)="markDirty()" name="maiden_name" />
           <label>{{ 'guestEdit.maidenFullName' | tr }}</label>
           @if (isScannedSource('maiden_name')) {
             <span class="form-icon">
@@ -65,7 +65,7 @@
         </div>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.mother_name" name="mother_name" />
+          <input placeholder=" " [(ngModel)]="form.mother_name" (ngModelChange)="markDirty()" name="mother_name" />
           <label>{{ 'guestEdit.motherFullName' | tr }}</label>
           @if (isScannedSource('mother_name')) {
             <span class="form-icon">
@@ -78,7 +78,7 @@
         </div>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.birth_date" name="birth_date" type="date" />
+          <input placeholder=" " [(ngModel)]="form.birth_date" (ngModelChange)="markDirty()" name="birth_date" type="date" />
           <label>{{ 'guestEdit.birthDate' | tr }}</label>
           <span class="form-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -91,12 +91,12 @@
         </div>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.birth_place" name="birth_place" />
+          <input placeholder=" " [(ngModel)]="form.birth_place" (ngModelChange)="markDirty()" name="birth_place" />
           <label>{{ 'guestEdit.birthPlace' | tr }}</label>
         </div>
 
         <div class="form-group">
-          <select [(ngModel)]="form.gender" name="gender">
+          <select [(ngModel)]="form.gender" (ngModelChange)="markDirty()" name="gender">
             <option value=""></option>
             @for (g of options.genders(); track g.value) {
               <option [value]="g.value">{{ g.label }}</option>
@@ -111,7 +111,7 @@
         </div>
 
         <div class="form-group">
-          <select [(ngModel)]="form.citizenship" name="citizenship">
+          <select [(ngModel)]="form.citizenship" (ngModelChange)="markDirty()" name="citizenship">
             <option value=""></option>
             @for (c of options.countries(); track c.country_code) {
               <option [value]="c.country_code">{{ c.name }}</option>
@@ -128,29 +128,29 @@
         <h3 class="group-title">{{ 'guestEdit.contactDetails' | tr }}</h3>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.phone_number" name="phone_number" type="tel" autocomplete="tel" />
+          <input placeholder=" " [(ngModel)]="form.phone_number" (ngModelChange)="markDirty()" name="phone_number" type="tel" autocomplete="tel" />
           <label>{{ 'guestEdit.phone' | tr }}</label>
         </div>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.email" name="email" type="email" autocomplete="email" />
+          <input placeholder=" " [(ngModel)]="form.email" (ngModelChange)="markDirty()" name="email" type="email" autocomplete="email" />
           <label>{{ 'guestEdit.email' | tr }}</label>
         </div>
 
         <h3 class="group-title">{{ 'guestDetail.addressDetails' | tr }}</h3>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.zip" name="zip" autocomplete="postal-code" />
+          <input placeholder=" " [(ngModel)]="form.zip" (ngModelChange)="markDirty()" name="zip" autocomplete="postal-code" />
           <label>{{ 'guestDetail.postalCode' | tr }}</label>
         </div>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.city" name="city" autocomplete="address-level2" />
+          <input placeholder=" " [(ngModel)]="form.city" (ngModelChange)="markDirty()" name="city" autocomplete="address-level2" />
           <label>{{ 'guestDetail.city' | tr }}</label>
         </div>
 
         <div class="form-group">
-          <select [(ngModel)]="form.country_code" name="country_code">
+          <select [(ngModel)]="form.country_code" (ngModelChange)="markDirty()" name="country_code">
             <option value=""></option>
             @for (c of options.countries(); track c.country_code) {
               <option [value]="c.country_code">{{ c.name }}</option>
@@ -165,14 +165,14 @@
         </div>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.address_line" name="address_line" autocomplete="street-address" />
+          <input placeholder=" " [(ngModel)]="form.address_line" (ngModelChange)="markDirty()" name="address_line" autocomplete="street-address" />
           <label>{{ 'guestDetail.address' | tr }}</label>
         </div>
 
         <h3 class="group-title">{{ 'guestEdit.travelDocument' | tr }}</h3>
 
         <div class="form-group">
-          <select [(ngModel)]="form.document_type" name="document_type">
+          <select [(ngModel)]="form.document_type" (ngModelChange)="markDirty()" name="document_type">
             <option value=""></option>
             @for (dt of options.documentTypes(); track dt.value) {
               <option [value]="dt.value">{{ dt.label }}</option>
@@ -187,7 +187,7 @@
         </div>
 
         <div class="form-group">
-          <input placeholder=" " [(ngModel)]="form.document_number" name="document_number" />
+          <input placeholder=" " [(ngModel)]="form.document_number" (ngModelChange)="markDirty()" name="document_number" />
           <label>{{ 'guestEdit.documentNumber' | tr }}</label>
         </div>
 
