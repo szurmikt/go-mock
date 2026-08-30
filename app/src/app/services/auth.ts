@@ -18,6 +18,13 @@ import {
 } from '../models/auth.interfaces';
 import { PropertyInterface } from '../models/property.interface';
 
+/** Discriminates refreshAccessToken() failures for the interceptor's force-logout decision. */
+export type AuthErrorKind = 'refresh_rejected';
+
+function taggedAuthError(message: string, kind: AuthErrorKind): Error & { kind: AuthErrorKind } {
+  return Object.assign(new Error(message), { kind });
+}
+
 function sortPropertiesByCompany(props: PropertyInterface[]): PropertyInterface[] {
   const startsWithLetter = (s: string) => /^\p{L}/u.test(s);
   return [...props].sort((a, b) => {
@@ -237,6 +244,15 @@ export class AuthService {
         refresh_token: rt,
       }),
     );
+    // Same as login(): the API signals a rejected refresh token as HTTP 200 with
+    // { success: false }, not necessarily an HTTP 401. Without this check a dead refresh
+    // token throws a generic TypeError while destructuring res.data, which the interceptor
+    // could not tell apart from a transient network/server error — leaving the session stuck
+    // retrying the same doomed refresh on every request instead of forcing a clean re-login.
+    if (!res.success || !res.data?.access_token) {
+      const apiErrors = res.errors as { ret_code?: number; ret_msg?: string }[] | undefined;
+      throw taggedAuthError(apiErrors?.[0]?.ret_msg ?? 'Refresh token rejected', 'refresh_rejected');
+    }
     const { access_token, refresh_token, expires_in } = res.data;
     await this.setAuth({
       ...this._auth()!,

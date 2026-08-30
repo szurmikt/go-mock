@@ -1,5 +1,6 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import * as Sentry from '@sentry/angular';
 import { ApiService } from './api';
 import { LanguageService } from './language.service';
@@ -112,8 +113,18 @@ export class ReservationService {
 
         this._reservations.set(resp.data.reservations.map(r => this.convert(r)));
         this._fetchedAt = Date.now();
-      } catch {
+      } catch (err) {
         if (showSpinner) this._error.set(this.lang.t('errors.networkError'));
+        // A Log, not an Issue — an occasional dropped connection is expected and not
+        // actionable on its own. Tagged by kind so a real pattern (e.g. a burst of
+        // refresh_rejected from the interceptor) is distinguishable from one-off network
+        // blips, which previously showed the exact same generic "Network error" with no
+        // trace left anywhere to diagnose it from.
+        Sentry.logger.warn('reservations fetch failed', {
+          kind:
+            (err as { kind?: string })?.kind ??
+            (err instanceof HttpErrorResponse ? `http_${err.status}` : 'network_error'),
+        });
       } finally {
         if (showSpinner) this._loading.set(false);
         this._inFlight = null;
