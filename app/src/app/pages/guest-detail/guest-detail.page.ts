@@ -81,6 +81,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
 
   private reservationCode!: string;
   private guestId!: string;
+  private scanSource: 'guest_card' | 'fab_menu' = 'fab_menu';
 
   private timeouts: ReturnType<typeof setTimeout>[] = [];
   private t(fn: () => void, ms: number) { this.timeouts.push(setTimeout(fn, ms)); }
@@ -112,7 +113,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     // Shortcut from the reservation-detail guest card: jump straight into the
     // scan flow's document-type selection instead of requiring a FAB tap.
     if (this.route.snapshot.queryParamMap.get('autoScan') === '1') {
-      this.openScanDocument();
+      this.openScanDocument('guest_card');
     }
   }
 
@@ -176,7 +177,8 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
   }
 
   /** Open the scan document flow — opens the IDScanly doc-type picker. */
-  openScanDocument() {
+  openScanDocument(source: 'guest_card' | 'fab_menu' = 'fab_menu') {
+    this.scanSource = source;
     this.menuOpen.set(false);
     this.docTypeSheetOpen.set(true);
   }
@@ -185,7 +187,11 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     this.docTypeSheetOpen.set(false);
     this.captureSession.start(type);
     this.captureSession.context.set({ reservationCode: this.reservationCode, guestId: this.guestId });
-    this.mixpanel.trackScanStarted({ vendor: 'idscanly', document_type: type.id });
+    this.mixpanel.trackScanStarted({
+      vendor: 'idscanly',
+      document_type: type.id,
+      source: this.scanSource,
+    });
     void this.router.navigate(['/idscanly/scan']);
   }
 

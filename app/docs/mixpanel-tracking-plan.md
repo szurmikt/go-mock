@@ -90,6 +90,7 @@ address, or raw search text.
 
 | Event | When | Properties |
 |---|---|---|
+| `scan_started` | a document type is picked in the IDScanly doc-type sheet (guest-detail) | `vendor` = `idscanly`, `document_type` (string), `source` = `guest_card` \| `fab_menu` |
 | `scan_succeeded` | a scan produced data | `attempts` (int), `document_type` (string), `document_type_id` (int), `scan_type` = `optical` \| `rfid` |
 | `scan_failed` | scan timed out / cancelled / interrupted / errored, no data | `reason` = `timed_out` \| `cancelled` \| `interrupted` \| `error`, `attempt_number` (int), `scan_type` |
 | `scan_result_edited` | taps **Edit** on the scan-result sheet (corrects before saving) | `document_type` |
@@ -98,6 +99,11 @@ address, or raw search text.
 - **"Failed / cancelled / timed-out scans"** → `scan_failed` broken down by `reason`.
 - **"How many attempts to make a scan"** → `scan_succeeded.attempts` (count of scan launches
   since the last success; `1` = first-try). Distribution / average over `attempts`.
+- **"Where staff start scans from"** → `scan_started` broken down by `source`: `guest_card`
+  is the not-yet-scanned-guest shortcut icon in the reservation-detail guest card; `fab_menu`
+  is the "Scan Document" FAB action on guest-detail. Both paths converge on the same doc-type
+  picker before this event fires — `source` is captured at the moment each entry point is
+  tapped and carried through to here.
 - `document_type` is the Regula document label (e.g. `Hungary - ID Card`, `passport`) —
   categorical, **not** the document number.
 - **Known approximation:** `scan_type` is derived from whether the chip path was attempted

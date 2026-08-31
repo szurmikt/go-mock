@@ -170,7 +170,11 @@ export class MixpanelService {
     this.track('scan_result_saved', { ...p });
   }
 
-  trackScanStarted(p: { vendor: 'idscanly'; document_type: string }): void {
+  trackScanStarted(p: {
+    vendor: 'idscanly';
+    document_type: string;
+    source: 'guest_card' | 'fab_menu';
+  }): void {
     this.track('scan_started', { ...p });
   }
 

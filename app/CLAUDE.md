@@ -688,6 +688,18 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-09-01 — Mixpanel: `scan_started` now carries a `source` (guest-card shortcut vs. FAB menu)
+
+> Branch `add-scan-source-tracking`. No native build/version bump — ships OTA to the `dev` channel.
+
+Staff can start an IDScanly document scan from two entry points — the not-yet-scanned-guest shortcut icon on the reservation-detail guest card, or the "Scan Document" FAB action on guest-detail — and both converge on the same doc-type picker before `scan_started` fires ([guest-detail.page.ts](src/app/pages/guest-detail/guest-detail.page.ts) `startIdscanly()`), with no way to tell which one was used. Added a `source: 'guest_card' | 'fab_menu'` property to distinguish them, reusing the existing event rather than adding a new one (deliberate — a separate tap-time event would also catch users who abandon before picking a document type, but wasn't asked for and adds a second event to maintain for the same funnel).
+
+- **[mixpanel.ts](src/app/services/mixpanel.ts)**: `trackScanStarted()`'s payload widened with the required `source` field.
+- **[guest-detail.page.ts](src/app/pages/guest-detail/guest-detail.page.ts)**: new private `scanSource` field (default `'fab_menu'`). `openScanDocument(source = 'fab_menu')` now sets it before opening the doc-type sheet — the FAB's template call site (`(click)="openScanDocument()"`) needed no change since the default covers it; the `ngOnInit` `autoScan=1` branch (the guest-card shortcut's landing point) now calls `openScanDocument('guest_card')`. `startIdscanly()` passes `source: this.scanSource` into the existing `trackScanStarted()` call.
+- **[docs/mixpanel-tracking-plan.md](docs/mixpanel-tracking-plan.md)**: added a `scan_started` row to the Document scanning table (it wasn't documented there at all before — the doc predates this event) plus a "where staff start scans from" reporting note.
+
+**Verification:** `npx ng build` clean (only the three pre-existing known warnings — two IDScanly SCSS budget overages + the `jscanify` CommonJS bailout, none new). **Not yet device/browser-verified** — next `ionic serve` pass should confirm via the Mixpanel MCP against the live EU project that a scan started via the guest-card icon reports `source: 'guest_card'` and one started via the FAB reports `source: 'fab_menu'`.
+
 ### 2026-08-31 — Settings: user-configurable Auto-Lock interval
 
 > Branch `add-auto-lock-interval-setting`. No native build/version bump — ships OTA to the `dev` channel. Implements `app/docs/auto-lock-interval-setting-handoff.md`.
