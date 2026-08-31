@@ -77,6 +77,26 @@ esac
 echo "▸ Channel:      $CHANNEL"
 echo "▸ Native floor: android >= $ANDROID_MIN, ios >= $IOS_MIN"
 
+# Guard against accidentally skipping the dev-test step. This script always rebuilds `www` from
+# the current working tree, so publishing straight to early/prod ships whatever the tree looks
+# like right now — untested. The intended path for anything that should reach real users is:
+# push to dev, test it, then `npm run promote:liveupdate <bundle-id> <channel>`, which attaches
+# that exact already-tested build with no rebuild. This has been skipped by mistake before.
+if [ "$CHANNEL" != "dev" ]; then
+  echo ""
+  echo "⚠️  Publishing directly to '$CHANNEL' — this skips dev testing."
+  echo "   This rebuilds from your CURRENT working tree and uploads a brand-new bundle;"
+  echo "   it will not be the same bytes as anything already verified on dev."
+  echo "   If you meant to ship something already tested on dev, Ctrl-C and run instead:"
+  echo "     npm run promote:liveupdate <bundle-id> $CHANNEL"
+  echo ""
+  read -r -p "  Type '$CHANNEL' to confirm publishing untested code directly: " CONFIRM_CHANNEL
+  if [ "$CONFIRM_CHANNEL" != "$CHANNEL" ]; then
+    echo "Aborted."
+    exit 1
+  fi
+fi
+
 # --- build ---
 
 echo "▸ Building web..."

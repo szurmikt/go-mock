@@ -15,7 +15,8 @@
     "resources": "capacitor-assets generate --ios --android",
     "publish:ios": "bash scripts/publish-ios.sh",
     "publish:android": "bash scripts/publish-android.sh",
-    "publish:liveupdate": "bash scripts/publish-liveupdate.sh"
+    "publish:liveupdate": "bash scripts/publish-liveupdate.sh",
+    "promote:liveupdate": "bash scripts/promote-liveupdate.sh"
   },
   "private": true,
   "dependencies": {

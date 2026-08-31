@@ -18,3 +18,20 @@ Ideas and concerns raised during development that were deliberately **not** acte
 - To look up a specific user's Mixpanel activity, compute the same `HMAC-SHA256(user_id, SECRET)` from a backend context that holds the secret — one-way for everyone else, reversible only where the secret is available.
 
 **Scope note:** this requires a SabeeApp API change (not something this repo can do alone) — flagging that as the reason it wasn't just implemented inline.
+
+---
+
+## Show the real OTA bundle publish time (matching the Capawesome dashboard) in Settings
+
+**Date:** 2026-08-31
+**Status:** Open / not started
+
+**Context:** [Settings](../src/app/pages/settings/settings.page.html#L70-L77) shows the running OTA bundle id (`LiveUpdateService.currentBundleId`, tap-to-copy). The user wanted the exact time that bundle was *published* shown underneath it — e.g. the "Created: 8/31/26, 12:21 AM" value visible on a deployment's page in the Capawesome Cloud dashboard (`console.cloud.capawesome.io/apps/.../deployments/...`).
+
+**Why it isn't there today:** checked both places this could come from —
+- The on-device SDK (`@capawesome/capacitor-live-update`, the only thing that runs inside the app) exposes no timestamp anywhere in its type surface — `getCurrentBundle()`/`getNextBundle()`/`fetchLatestBundle()`/`fetchChannels()` all return opaque bundle ids, channel names, and download URLs, never a date. [LiveUpdateState](../src/app/utils/live-update-state.ts) (this app's own persisted record) doesn't store one either.
+- The real value **does** exist and is exactly what the dashboard renders — `GET /v1/apps/{appId}/deployments/{deploymentId}` on Capawesome's management REST API (`api.cloud.capawesome.io`, the same API `@capawesome/cli apps:deployments:list` and the dashboard are built on). But that API requires the org-scoped bearer token already used by [scripts/publish-liveupdate.sh](../scripts/publish-liveupdate.sh) (`CAPAWESOME_CLOUD_TOKEN`, held outside the repo) — a **management** credential (can publish bundles, manage channels/devices for the whole app), not something safe to embed in a shipped mobile client.
+
+**Proposed resolution, if picked up:** a small backend proxy holding that token server-side (mirroring this app's existing Supabase Edge Function pattern, e.g. `idrecognition`/`external-result`) that the app calls with a bundle id and gets back just its `createdAt` — never the token itself, never reachable from the device.
+
+**Scope note:** requires a new backend endpoint (Edge Function), not something addable purely client-side — flagging that as why it wasn't implemented inline. Parked at the user's request rather than built.

@@ -10,6 +10,7 @@ import { PropertyConfigService } from './property-config.service';
 import { MixpanelService } from './mixpanel';
 import { LanguageService } from './language.service';
 import { LiveUpdateService } from './live-update';
+import { AppVersionService } from './app-version';
 import {
   AuthState,
   ApiResponse,
@@ -21,8 +22,29 @@ import { PropertyInterface } from '../models/property.interface';
 /** Discriminates refreshAccessToken() failures for the interceptor's force-logout decision. */
 export type AuthErrorKind = 'refresh_rejected';
 
-function taggedAuthError(message: string, kind: AuthErrorKind): Error & { kind: AuthErrorKind } {
-  return Object.assign(new Error(message), { kind });
+interface AuthErrorExtra {
+  status?: number;
+  body?: unknown;
+  url?: string;
+}
+
+function taggedAuthError(
+  message: string,
+  kind: AuthErrorKind,
+  extra?: AuthErrorExtra,
+): Error & { kind: AuthErrorKind } & AuthErrorExtra {
+  return Object.assign(new Error(message), { kind, ...extra });
+}
+
+/** Untagged — the interceptor's rejected-vs-transient check only matches taggedAuthError's kind,
+ * so this always falls into the "transient, keep retrying" branch, same as before. */
+function transientAuthError(message: string, extra?: AuthErrorExtra): Error & AuthErrorExtra {
+  return Object.assign(new Error(message), extra);
+}
+
+export interface RefreshRequestResult {
+  request: { url: string; body: Record<string, unknown>; headers: Record<string, string> };
+  response: { status: number; body: unknown; parseError: string | null };
 }
 
 function sortPropertiesByCompany(props: PropertyInterface[]): PropertyInterface[] {
@@ -71,6 +93,7 @@ export class AuthService {
     private lang: LanguageService,
     private propertyConfig: PropertyConfigService,
     private liveUpdate: LiveUpdateService,
+    private appVersion: AppVersionService,
   ) {}
 
   /**
@@ -235,23 +258,106 @@ export class AuthService {
     }
   }
 
+  /**
+   * SINGLE SOURCE OF TRUTH for the refresh-token HTTP exchange — url, body, headers, and the
+   * raw fetch call itself. Used by BOTH refreshAccessToken() (the automatic path, below) and
+   * the Settings "New Refresh Token" debug tool, so the two can never silently diverge again —
+   * they already had once (the debug tool kept sending a `Token` header after the automatic
+   * path stopped), only caught by comparing the two side by side during the 2026-08-31
+   * investigation (see CLAUDE.md changelog). Deliberately raw `fetch()`, bypassing
+   * HttpClient/api.interceptor.ts entirely, so nothing else in the pipeline can alter what's
+   * actually sent. `overrides` lets the debug tool test a modified Device-Id/App-Version
+   * without touching live state; the automatic path calls this with no overrides.
+   */
+  async performRefreshRequest(overrides?: { deviceId?: string; appVersion?: string }): Promise<RefreshRequestResult> {
+    const rt = this._auth()?.refreshToken ?? '';
+    const url = `${this.env.apiUrl()}/token`;
+    const body: Record<string, unknown> = { grant_type: 'refresh_token', refresh_token: rt };
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Api-Version': Config.API_VERSION,
+      'App-Version': overrides?.appVersion ?? this.appVersion.version(),
+      'Ci-Version': Config.CI_VERSION,
+      'Device-Id': overrides?.deviceId ?? (this._deviceId() || 'web-dev-device'),
+      'Lang': this.lang.currentLanguage(),
+      // Deliberately no Token header — the API's own Postman collection for this exact
+      // request does not send one (confirmed 2026-08-31; only login and every other
+      // endpoint carry it). Sending the dead access token being refreshed made no logical
+      // sense either way.
+    };
+    const property = this._selectedProperty();
+    if (property) headers['Property-Id'] = String(property.property_id);
+
+    let status = 0;
+    let responseBody: unknown = null;
+    let parseError: string | null = null;
+    try {
+      const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+      status = res.status;
+      const text = await res.text();
+      try {
+        responseBody = JSON.parse(text);
+      } catch {
+        responseBody = text;
+        parseError = 'response body is not JSON';
+      }
+    } catch (err) {
+      responseBody = { fetchError: err instanceof Error ? err.message : String(err) };
+    }
+    return { request: { url, body, headers }, response: { status, body: responseBody, parseError } };
+  }
+
   async refreshAccessToken(): Promise<void> {
     const rt = this._auth()?.refreshToken;
-    if (!rt) throw new Error('No refresh token');
-    const res = await firstValueFrom(
-      this.http.post<ApiResponse<TokenResponse>>(`${this.env.apiUrl()}/token`, {
-        grant_type: 'refresh_token',
-        refresh_token: rt,
-      }),
-    );
-    // Same as login(): the API signals a rejected refresh token as HTTP 200 with
-    // { success: false }, not necessarily an HTTP 401. Without this check a dead refresh
-    // token throws a generic TypeError while destructuring res.data, which the interceptor
-    // could not tell apart from a transient network/server error — leaving the session stuck
-    // retrying the same doomed refresh on every request instead of forcing a clean re-login.
-    if (!res.success || !res.data?.access_token) {
-      const apiErrors = res.errors as { ret_code?: number; ret_msg?: string }[] | undefined;
-      throw taggedAuthError(apiErrors?.[0]?.ret_msg ?? 'Refresh token rejected', 'refresh_rejected');
+    // Tagged the same as an API-rejected refresh (not a plain Error) so the interceptor's
+    // force-logout condition catches this too — no refresh token to use is just as terminal
+    // as one the API rejects, and must not fall into the "transient, keep retrying" branch.
+    if (!rt) throw taggedAuthError('No refresh token', 'refresh_rejected');
+
+    const { request, response } = await this.performRefreshRequest();
+
+    if (response.status === 0) {
+      // fetch() itself threw — no response reached at all. Transient (network/connectivity),
+      // not a rejection: keep the stored session so the user can retry without re-logging in.
+      const fetchErrorMsg =
+        response.body && typeof response.body === 'object' && 'fetchError' in response.body
+          ? String((response.body as { fetchError: unknown }).fetchError)
+          : 'Network error';
+      throw transientAuthError(fetchErrorMsg, { status: 0, body: response.body, url: request.url });
+    }
+    if (response.status === 401 || response.status === 403) {
+      // Confirmed 2026-08-31 (see CLAUDE.md changelog): the API answers a refresh token it
+      // won't honor with a real HTTP 403 { success: false, errors: [...] } — not the HTTP 200
+      // { success: false } shape login() uses, and not always a literal 401 either.
+      const body = response.body as { errors?: { ret_msg?: string }[] } | undefined;
+      throw taggedAuthError(
+        body?.errors?.[0]?.ret_msg ?? `Refresh token rejected (${response.status})`,
+        'refresh_rejected',
+        { status: response.status, body: response.body, url: request.url },
+      );
+    }
+    if (response.status !== 200) {
+      // Any other non-2xx (5xx, etc.) is transient — matches the pre-existing rule that only
+      // an explicit 401/403 counts as a terminal rejection.
+      throw transientAuthError(`Refresh failed with status ${response.status}`, {
+        status: response.status,
+        body: response.body,
+        url: request.url,
+      });
+    }
+    // Same as login(): the API can ALSO signal a rejected refresh token as HTTP 200 with
+    // { success: false }. Without this check a dead refresh token throws a generic TypeError
+    // while destructuring res.data, which the interceptor could not tell apart from a
+    // transient network/server error — leaving the session stuck retrying the same doomed
+    // refresh on every request instead of forcing a clean re-login.
+    const res = response.body as ApiResponse<TokenResponse>;
+    if (!res?.success || !res.data?.access_token) {
+      const apiErrors = res?.errors as { ret_code?: number; ret_msg?: string }[] | undefined;
+      throw taggedAuthError(apiErrors?.[0]?.ret_msg ?? 'Refresh token rejected', 'refresh_rejected', {
+        status: response.status,
+        body: response.body,
+        url: request.url,
+      });
     }
     const { access_token, refresh_token, expires_in } = res.data;
     await this.setAuth({
