@@ -8,8 +8,6 @@ import type { ApiEnvMode } from './api-environment';
 const SESSION_IDLE_MS = 30 * 60 * 1000;
 
 export interface IdentifyTraits {
-  name?: string;
-  email?: string;
   propertyId?: string | number;
   propertyName?: string;
   company?: string;
@@ -21,9 +19,10 @@ export interface IdentifyTraits {
  * AuthService — without a DI cycle. Every call is wrapped in `safe()`: analytics
  * must never break the app.
  *
- * PRIVACY: only the logged-in *staff* user's identity is ever sent (identify /
- * people.set). No guest PII — no guest names, emails, document numbers, DOB,
- * nationality, address, or raw search text — is passed to any track call.
+ * PRIVACY: only the logged-in *staff* user's opaque id + property/company
+ * context is ever sent (identify / people.set) — never their name or email,
+ * and never any guest PII (no guest names, emails, document numbers, DOB,
+ * nationality, address, or raw search text) on any track call.
  */
 @Injectable({ providedIn: 'root' })
 export class MixpanelService {
@@ -73,8 +72,6 @@ export class MixpanelService {
     this.safe(() => {
       mixpanel.identify(userId);
       const people: Record<string, unknown> = {};
-      if (traits.name) people['$name'] = traits.name;
-      if (traits.email) people['$email'] = traits.email;
       if (traits.propertyId != null) people['property_id'] = traits.propertyId;
       if (traits.propertyName) people['property_name'] = traits.propertyName;
       if (traits.company) people['company'] = traits.company;

@@ -131,15 +131,14 @@ export class AuthService {
   /**
    * Push the current staff user + active property to Mixpanel. No-ops until the
    * userId is known (it is backfilled by fetchUser after property selection).
-   * Only the logged-in staff member's own identity is sent — never guest PII.
+   * Only the logged-in staff member's opaque id + property context is sent —
+   * never their name/email, and never guest PII.
    */
   private identifyToMixpanel(): void {
     const auth = this._auth();
     if (!auth?.userId) return;
     const prop = this._selectedProperty();
     this.mixpanel.identify(auth.userId, {
-      name: auth.name,
-      email: auth.email,
       propertyId: prop?.property_id ?? undefined,
       propertyName: prop?.property_name ?? undefined,
       company: prop?.property_company_name ?? undefined,
