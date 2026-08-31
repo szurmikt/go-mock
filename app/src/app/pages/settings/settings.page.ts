@@ -5,6 +5,7 @@ import { AuthService } from '../../services/auth';
 import { AppVersionService } from '../../services/app-version';
 import { BiometricService } from '../../services/biometric';
 import { LiveUpdateService } from '../../services/live-update';
+import { MixpanelService } from '../../services/mixpanel';
 import { LanguageService } from '../../services/language.service';
 import { FeedbackSheetComponent } from '../../components/feedback-sheet/feedback-sheet.component';
 import { TranslatePipe } from '../../pipes/translate.pipe';
@@ -19,8 +20,10 @@ export class SettingsPage {
   loggingOut = signal(false);
   loadingLangs = signal(false);
   langOpen = signal(false);
+  autoLockOpen = signal(false);
   lang = inject(LanguageService);
   biometric = inject(BiometricService);
+  private mixpanel = inject(MixpanelService);
 
   private appVersionService = inject(AppVersionService);
   // Same source AppComponent already resolved at boot (AppVersionService.init()) — read
@@ -76,6 +79,20 @@ export class SettingsPage {
 
   lockNow() {
     this.biometric.lockSession();
+  }
+
+  openAutoLockPicker() {
+    this.autoLockOpen.set(true);
+  }
+
+  closeAutoLockPicker() {
+    this.autoLockOpen.set(false);
+  }
+
+  async selectAutoLock(minutes: number) {
+    await this.biometric.setAutoLockMinutes(minutes);
+    this.mixpanel.setAutoLockInterval(minutes);
+    this.autoLockOpen.set(false);
   }
 
   async logout() {

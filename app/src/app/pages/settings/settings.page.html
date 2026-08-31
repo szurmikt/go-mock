@@ -29,6 +29,15 @@
         <!-- Separator -->
         <div style="border-top: 1.5px solid var(--line-strong); margin: 16px 0"></div>
 
+        <!-- Auto-Lock interval -->
+        <button class="btn secondary" (click)="openAutoLockPicker()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          {{ 'settings.autoLock' | tr }}: {{ 'settings.autoLockValue' | tr:{value: biometric.autoLockMinutes()} }}
+        </button>
+
         <!-- Language -->
         <button class="btn secondary" (click)="openLangPicker()">{{ 'settings.language' | tr }}</button>
 
@@ -119,6 +128,39 @@
               }
             </button>
           }
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Auto-Lock interval sheet — rendered outside ion-content so position:fixed reaches the viewport -->
+@if (autoLockOpen()) {
+  <div class="sheet-backdrop" (click)="closeAutoLockPicker()">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      <div class="head">
+        <h3>{{ 'settings.autoLock' | tr }}</h3>
+        <button class="icon-btn" (click)="closeAutoLockPicker()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div style="margin-top: 8px">
+        @for (m of biometric.AUTO_LOCK_OPTIONS; track m) {
+          <button class="action-item" (click)="selectAutoLock(m)">
+            <span class="action-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+            </span>
+            <span style="flex: 1; text-align: left">{{ 'settings.autoLockValue' | tr:{value: m} }}</span>
+            @if (biometric.autoLockMinutes() === m) {
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex-shrink: 0"></span>
+            }
+          </button>
         }
       </div>
     </div>

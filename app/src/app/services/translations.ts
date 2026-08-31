@@ -241,6 +241,8 @@ export const TRANSLATIONS: TranslationMap = {
     language: 'Language',
     noLanguages: 'No languages available',
     lockScreen: 'Lock screen',
+    autoLock: 'Auto-Lock',
+    autoLockValue: '{{value}} min',
     logout: 'Log out',
   },
   feedback: {

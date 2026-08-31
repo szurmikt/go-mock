@@ -85,6 +85,15 @@ export class MixpanelService {
   }
 
   /**
+   * Fired only when the user actively picks a value from the Auto-Lock sheet — never on
+   * load/default/init. The property's mere presence on the profile is the "used this
+   * feature" signal, so setting it automatically would make that signal meaningless.
+   */
+  setAutoLockInterval(minutes: number): void {
+    this.safe(() => mixpanel.people.set({ auto_lock_interval: minutes }));
+  }
+
+  /**
    * Attach the active property to every subsequent event (a Mixpanel super property,
    * distinct from identify()'s People-profile update). Call on session start and on every
    * property switch — mixpanel.register() overwrites the previous value, so a switch

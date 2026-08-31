@@ -28,6 +28,7 @@ export const Config = {
   STORAGE_SEARCH_HISTORY_KEY: 'searchHistory',
   STORAGE_BACKGROUND_AT_KEY: 'backgroundAt',
   STORAGE_API_ENV_KEY: 'apiEnvironment',
+  STORAGE_AUTO_LOCK_MINUTES_KEY: 'autoLockMinutes',
   // One JSON record (LiveUpdateState, see utils/live-update-state.ts) rather than split keys:
   // it is read once at boot and mutated as a unit, and a reload mid-write across several keys
   // would leave torn state. Deliberately NOT cleared by AuthService.clearSessionData() — most of

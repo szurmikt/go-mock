@@ -75,7 +75,6 @@ export class AppComponent implements OnInit, OnDestroy {
   readonly slideTransition = slideTransition;
 
   private inactivityTimer?: ReturnType<typeof setTimeout>;
-  private readonly LOCK_AFTER_MS = 10 * 60 * 1000; // 10 minutes
 
   /**
    * When the app last went to background, for the live-update reload gate. 0 = we have not seen a
@@ -123,6 +122,9 @@ export class AppComponent implements OnInit, OnDestroy {
     // interceptor's App-Version header and the force-update gate both read it on the very
     // first request/check.
     await this.appVersion.init();
+    // Purely local read (the persisted auto-lock interval) — no network dependency, must resolve
+    // before the inactivity timer or biometric.checkAndLock() can fire.
+    await this.biometric.init();
     await this.apiEnv.init();
     // Which OTA bundle is running — a purely local read, deliberately not gated on any backend
     // call, so bundle_version is correct on the very first event even on a flaky network.
@@ -320,9 +322,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private resetInactivityTimer(): void {
     clearTimeout(this.inactivityTimer);
-    this.inactivityTimer = setTimeout(() => {
-      if (this.auth.isAuthenticated()) this.biometric.lockSession();
-    }, this.LOCK_AFTER_MS);
+    this.inactivityTimer = setTimeout(
+      () => {
+        if (this.auth.isAuthenticated()) this.biometric.lockSession();
+      },
+      this.biometric.autoLockMinutes() * 60 * 1000,
+    );
   }
 
   ngOnDestroy(): void {

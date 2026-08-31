@@ -7,9 +7,26 @@ import { StorageService } from './storage';
 export class BiometricService {
   readonly sessionLocked = signal(false);
 
-  private readonly LOCK_AFTER_MS = 10 * 60 * 1000; // 10 minutes
+  /** User-configurable via Settings; 10 min matches the previous hardcoded default. */
+  readonly AUTO_LOCK_OPTIONS: readonly number[] = [10, 30, 60, 90, 120];
+  readonly autoLockMinutes = signal<number>(10);
+
+  private get lockAfterMs(): number {
+    return this.autoLockMinutes() * 60 * 1000;
+  }
 
   constructor(private storage: StorageService) {}
+
+  /** Hydrate the persisted auto-lock interval. Purely local — call early at boot. */
+  async init(): Promise<void> {
+    const minutes = await this.storage.get<number>(Config.STORAGE_AUTO_LOCK_MINUTES_KEY);
+    if (minutes) this.autoLockMinutes.set(minutes);
+  }
+
+  async setAutoLockMinutes(minutes: number): Promise<void> {
+    await this.storage.set(Config.STORAGE_AUTO_LOCK_MINUTES_KEY, minutes);
+    this.autoLockMinutes.set(minutes);
+  }
 
   async recordBackground(): Promise<void> {
     await this.storage.set(Config.STORAGE_BACKGROUND_AT_KEY, Date.now());
@@ -19,7 +36,7 @@ export class BiometricService {
     const ts = await this.storage.get<number>(Config.STORAGE_BACKGROUND_AT_KEY);
     if (!ts) return;
     await this.storage.remove(Config.STORAGE_BACKGROUND_AT_KEY);
-    if (Date.now() - ts >= this.LOCK_AFTER_MS) {
+    if (Date.now() - ts >= this.lockAfterMs) {
       this.sessionLocked.set(true);
     }
   }
