@@ -13,6 +13,9 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+### 2026-09-01 — dev — dbdadeff-d4d1-487c-b429-a3b8d3d29a57
+- Mixpanel `scan_started` now carries a `source` (`guest_card` | `fab_menu`), so scan entry point is reportable — no new event, no user-facing change
+
 ### 2026-08-31 — prod — ed96716e-499f-4e10-8c07-e5c880cf583b
 - Force logout on a rejected refresh token now also covers HTTP 403 (the shape the API actually uses), not just 401
 - Force logout on "no refresh token available" too, instead of retrying forever
