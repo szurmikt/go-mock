@@ -89,12 +89,6 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       : this.lang.t('idscanly.captureSummaryMultiple', { n });
   });
 
-  readonly allGood = computed(() => this.images().every((i) => i.quality.verdict === 'good'));
-
-  readonly footerNote = computed(() =>
-    this.allGood() ? '' : this.lang.t('idscanly.footerNote'),
-  );
-
   readonly lightbox = signal<ReviewImage | null>(null);
   readonly zoomed = signal(false);
 
@@ -109,8 +103,6 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
 
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
-  /** Once the user has tapped Submit, the pre-submit quality nag stops competing with submitError. */
-  readonly submitAttempted = signal(false);
 
   /** Dev/QA toggle for the per-side metrics readout — mirrors the Scan page's debug overlay. */
   readonly showDebug = signal(false);
@@ -363,8 +355,6 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
 
   async submit(): Promise<void> {
     if (this.submitting()) return;
-    // Set before the preview early-return so ?preview= can still demo the note disappearing.
-    this.submitAttempted.set(true);
     // Preview mode has no real captures/context — don't hit the Edge Function or navigate.
     if (this.preview()) return;
     this.submitting.set(true);

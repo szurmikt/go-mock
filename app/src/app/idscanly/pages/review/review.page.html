@@ -39,28 +39,6 @@
                   <img [src]="image.src" [alt]="image.label" />
                 </button>
                 <span class="side-card__chip">{{ image.label }}</span>
-                <span
-                  class="pill side-card__quality-pill"
-                  [class.quality-good]="image.quality.verdict === 'good'"
-                  [class.quality-recheck]="image.quality.verdict === 'recheck'"
-                >
-                  @if (image.quality.verdict === 'good') {
-                    <!-- check icon -->
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    {{ 'idscanly.goodQuality' | tr }}
-                  } @else {
-                    <!-- warning icon -->
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M12 9v4M12 17h.01"/>
-                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    </svg>
-                    {{ 'idscanly.recheck' | tr }}
-                  }
-                </span>
               </div>
 
               <!-- Quality verdict row -->
@@ -85,9 +63,6 @@
                 </div>
                 <div class="side-card__status-text">
                   <span class="side-card__status-line">{{ image.quality.summary }}</span>
-                  @if (image.quality.verdict === 'good') {
-                    <span class="side-card__status-sub detail-label">{{ 'idscanly.readyToSubmit' | tr }}</span>
-                  }
                   @if (showDebug()) {
                     <span class="side-card__debug">
                       found {{ image.quality.metrics.cornersFound ? 'Y' : 'N' }} ·
@@ -220,17 +195,6 @@
      fold, letting the user tap Submit without ever seeing them. -->
 @if (images().length) {
   <div class="sticky-btn-bar">
-    @if (!allGood() && !submitAttempted()) {
-      <p class="review-footer__note note-warn">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        {{ footerNote() }}
-      </p>
-    }
     @if (submitError()) {
       <p class="review-error">{{ submitError() }}</p>
     }

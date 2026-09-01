@@ -11,16 +11,26 @@ import { Location } from '@angular/common';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { CaptureQuality } from '../../models/capture-quality';
-import { DocumentTypeConfig, Side } from '../../models/document-type';
+import {
+  CaptureBucket,
+  DocumentTypeConfig,
+  DocumentTypeId,
+  Side,
+  isCardBucketAllowed,
+  isPassportBucketAllowed,
+  resolveScanEntryType,
+} from '../../models/document-type';
 import { CaptureSessionService } from '../../services/capture-session.service';
 import { CaptureSource, DocumentDetectionService } from '../../services/document-detection.service';
-import { DETECTION_TUNING } from '../../capture-tuning';
+import { CARD_TUNING_PROFILES, DETECTION_TUNING } from '../../capture-tuning';
 import { makeThumbnail, toDataUrl } from '../../utils/canvas.util';
 import { isManualCaptureNagDue, markManualCaptureNagShown } from '../../utils/manual-capture-nag.util';
 import { LanguageService } from '../../../services/language.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { AuthService } from '../../../services/auth';
 import { MixpanelService } from '../../../services/mixpanel';
+import { PropertyConfigService } from '../../../services/property-config.service';
+import { CapturePreferenceService } from '../../services/capture-preference.service';
 import { IDSCANLY_DEBUG_PROPERTY_ID } from '../../idscanly-debug.const';
 
 const ORDINAL_KEYS = ['idscanly.ordinal1', 'idscanly.ordinal2', 'idscanly.ordinal3', 'idscanly.ordinal4'];
@@ -40,6 +50,8 @@ export class IdscanScanPage implements OnDestroy {
   private readonly lang = inject(LanguageService);
   private readonly auth = inject(AuthService);
   private readonly mixpanel = inject(MixpanelService);
+  private readonly propertyConfig = inject(PropertyConfigService);
+  private readonly capturePreference = inject(CapturePreferenceService);
 
   readonly selectedType = signal<DocumentTypeConfig | null>(null);
   readonly currentSideIndex = signal(0);
@@ -54,8 +66,48 @@ export class IdscanScanPage implements OnDestroy {
   readonly torchOn = this.detection.torchOn;
   private readonly captures = this.session.captures;
 
+  readonly huntActive = this.detection.huntActive;
+
+  /** Once any side is captured, tapping the toggle opens a confirm dialog instead of switching
+   *  immediately — switching restarts the scan and would silently discard what's captured. */
+  readonly bucketSwitchEnabled = computed(() => this.captures().size === 0);
+  readonly bucketChangeConfirmOpen = signal(false);
+  private pendingBucket: CaptureBucket | null = null;
+
+  readonly bucket = computed<CaptureBucket>(() => {
+    const type = this.selectedType();
+    return type?.id === 'passport' ? 'passport' : 'card';
+  });
+
+  readonly bucketLabel = computed(() =>
+    this.lang.t(this.bucket() === 'passport' ? 'idscanly.bucketPassport' : 'idscanly.bucketCard'),
+  );
+
+  /** Only offer the toggle when the property's scan_doc_types restriction actually allows both
+   *  buckets — otherwise there is nothing to switch to. */
+  readonly showBucketToggle = computed(() => {
+    const allowed = this.propertyConfig.scanDocTypes() as DocumentTypeId[];
+    return isCardBucketAllowed(allowed) && isPassportBucketAllowed(allowed);
+  });
+
   readonly autoCaptureOn = signal(true);
-  readonly pendingManualCapture = signal<{ full: HTMLCanvasElement; quality: CaptureQuality } | null>(null);
+  /** `reason` distinguishes the weekly-throttled UX nag from the unthrottled, always-on lighting
+   *  gate — see onCaptured(). */
+  readonly pendingManualCapture = signal<{
+    full: HTMLCanvasElement;
+    quality: CaptureQuality;
+    reason: 'nag' | 'lighting';
+  } | null>(null);
+  readonly nagDialogMessageKey = computed(() =>
+    this.pendingManualCapture()?.reason === 'lighting'
+      ? 'idscanly.lightingNagMessage'
+      : 'idscanly.nagMessage',
+  );
+  readonly nagDialogRetakeKey = computed(() =>
+    this.pendingManualCapture()?.reason === 'lighting'
+      ? 'idscanly.lightingNagRetake'
+      : 'idscanly.nagRetake',
+  );
   readonly captureFlash = signal(false);
   private readonly flipPromptHold = signal(false);
 
@@ -85,7 +137,10 @@ export class IdscanScanPage implements OnDestroy {
   readonly pageTitle = computed(() => {
     const type = this.selectedType();
     if (!type) return '';
-    const label = this.lang.t(type.label);
+    // Card always captures via the id-card config now, so type.label would always literally
+    // read 'idscanly.docTypeIdCard' — confidently mislabeling every driving-licence/address-card
+    // scan as "ID card". bucketLabel is the generic, never-wrong alternative.
+    const label = this.bucketLabel();
     if (type.sides.length <= 1) return label;
     return this.lang.t('idscanly.pageTitleMultiPage', {
       type: label,
@@ -95,7 +150,7 @@ export class IdscanScanPage implements OnDestroy {
 
   readonly flipCardLabel = computed(() => {
     const type = this.selectedType();
-    return type ? this.lang.t('idscanly.flipCard', { type: this.lang.t(type.label) }) : '';
+    return type ? this.lang.t('idscanly.flipCard', { type: this.bucketLabel() }) : '';
   });
 
   readonly message = computed(() => {
@@ -105,6 +160,12 @@ export class IdscanScanPage implements OnDestroy {
         : this.lang.t('idscanly.tooDark');
     }
     if (this.showFlipPrompt()) return this.lang.t('idscanly.turnCard');
+    // Lowest priority — real actionable states (bad-light, the flip-prompt) still win. Reuses
+    // the same .scan-message element so there's a visible "still working" signal during the
+    // adaptive tuning hunt rather than a frozen-looking guide box.
+    if (this.huntActive() && this.status() === 'searching') {
+      return this.lang.t('idscanly.stillSearching');
+    }
     const scanningMessage = this.selectedType()?.scanningMessage;
     return scanningMessage
       ? this.lang.t(scanningMessage)
@@ -138,6 +199,49 @@ export class IdscanScanPage implements OnDestroy {
     const firstMissing = type.sides.findIndex((s) => !this.session.getSide(s));
     this.currentSideIndex.set(firstMissing >= 0 ? firstMissing : 0);
     this.startDetection();
+  }
+
+  /** Tapping the toggle: switches immediately if nothing is captured yet, otherwise opens the
+   *  discard-confirm dialog first (see bucketSwitchEnabled). */
+  onBucketTap(bucket: CaptureBucket): void {
+    if (bucket === this.bucket()) return;
+    if (this.bucketSwitchEnabled()) {
+      this.selectBucket(bucket);
+    } else {
+      this.pendingBucket = bucket;
+      this.bucketChangeConfirmOpen.set(true);
+    }
+  }
+
+  confirmBucketChange(): void {
+    this.bucketChangeConfirmOpen.set(false);
+    const bucket = this.pendingBucket;
+    this.pendingBucket = null;
+    if (bucket) this.selectBucket(bucket);
+  }
+
+  cancelBucketChange(): void {
+    this.bucketChangeConfirmOpen.set(false);
+    this.pendingBucket = null;
+  }
+
+  /** Resolves the bucket to a concrete type, persists the preference, restarts the capture
+   *  session for the new type, and retargets detection without restarting the camera. */
+  private selectBucket(bucket: CaptureBucket): void {
+    const allowed = this.propertyConfig.scanDocTypes() as DocumentTypeId[];
+    const type = resolveScanEntryType(bucket, allowed);
+    void this.capturePreference.setBucket(bucket);
+    this.selectedType.set(type);
+    this.session.start(type);
+    this.currentSideIndex.set(0);
+    this.detection.retarget({
+      targetRatio: type.guideRatio,
+      extractWidth: type.extractWidth,
+      extractHeight: type.extractHeight,
+      tuning: { ...DETECTION_TUNING, ...(type.tuning ?? {}) },
+      captureMode: type.captureMode,
+      tuningProfiles: type.id === 'passport' ? undefined : CARD_TUNING_PROFILES,
+    });
   }
 
   /** Terminates the scan: releases the camera, wipes the in-progress capture session, and
@@ -224,6 +328,7 @@ export class IdscanScanPage implements OnDestroy {
       extractHeight: type.extractHeight,
       tuning: { ...DETECTION_TUNING, ...(type.tuning ?? {}) },
       captureMode: type.captureMode,
+      tuningProfiles: type.id === 'passport' ? undefined : CARD_TUNING_PROFILES,
       getGuideEl: () => this.guide()?.nativeElement ?? null,
       debugCanvas: this.debugCanvas()?.nativeElement,
       onCapture: (full, quality, source) => this.onCaptured(full, quality, source),
@@ -242,10 +347,15 @@ export class IdscanScanPage implements OnDestroy {
   }
 
   private onCaptured(full: HTMLCanvasElement, quality: CaptureQuality, source: CaptureSource): void {
+    // Independent, unthrottled: a lighting problem is a live actionable fact and shouldn't be
+    // throttled the way the infrequent UX nag below is. Restricting this to 'manual' is not a
+    // narrowing — a badly-lit auto-capture cannot exist in the first place (tick() already
+    // blocks capture('auto') while lighting fails).
+    const lightingIssue = source === 'manual' && (!quality.wellLit || !quality.glareFree);
     const nagDue = source === 'manual' && this.autoCaptureOn() && isManualCaptureNagDue();
-    if (nagDue) {
-      markManualCaptureNagShown();
-      this.pendingManualCapture.set({ full, quality });
+    if (lightingIssue || nagDue) {
+      if (nagDue) markManualCaptureNagShown();
+      this.pendingManualCapture.set({ full, quality, reason: lightingIssue ? 'lighting' : 'nag' });
       return;
     }
     this.commitCapture(full, quality, source);

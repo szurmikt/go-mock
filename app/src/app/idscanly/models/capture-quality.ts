@@ -13,15 +13,21 @@ export interface CaptureQuality {
   /** Clipped (near-white) pixel fraction is below the glare threshold. */
   glareFree: boolean;
   /**
-   * The whole document was visible when the shot was taken: a 4-corner quad was found on the FULL
-   * pre-crop camera frame (not the saved capture — warp/crop leave no card edges inside that image),
-   * its aspect ratio matches the known document type, it covers most of the guide box, and it doesn't
-   * run off the analyzed region. Catches an occlusion (finger/hand over the card) or a badly placed
-   * card that would otherwise still read as "sharp" — see
+   * Best-effort signal that the whole document was visible when the shot was taken: a 4-corner
+   * quad was found on the FULL pre-crop camera frame (not the saved capture — warp/crop leave no
+   * card edges inside that image), its aspect ratio matches the known document type, it covers
+   * most of the guide box, and it doesn't run off the analyzed region — see
    * `DocumentDetectionService.analyzeCompletenessOnFrame`.
+   *
+   * Deliberately NOT part of `verdict`/`summary` (see `buildQuality`) — it's a geometric proxy
+   * on a re-detection pass, not a measurement of the actual image content, and produced enough
+   * false positives on genuinely fully-captured documents (flagging "Recheck" on an obviously
+   * complete photo) to undermine trust in the verdict. Still computed and surfaced here for
+   * diagnostics/telemetry (Mixpanel's `complete` field, the "Show debug" readout) and future
+   * threshold tuning, just not shown to the user or used to gate anything.
    */
   complete: boolean;
-  /** `good` only when all four checks pass; otherwise `recheck`. */
+  /** `good` only when sharp, well-lit, and glare-free; otherwise `recheck`. */
   verdict: 'good' | 'recheck';
   /** Short human-readable line, e.g. "Sharp, well-lit, glare-free" or "Could be sharper · glare detected". */
   summary: string;

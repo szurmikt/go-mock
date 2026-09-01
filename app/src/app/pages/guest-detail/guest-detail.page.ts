@@ -10,7 +10,8 @@ import { MixpanelService } from '../../services/mixpanel';
 import { PropertyConfigService } from '../../services/property-config.service';
 import { CaptureSessionService } from '../../idscanly/services/capture-session.service';
 import { ExternalResultService } from '../../idscanly/services/external-result.service';
-import { DOCUMENT_TYPES, DocumentTypeConfig } from '../../idscanly/models/document-type';
+import { DocumentTypeId, resolveScanEntryType } from '../../idscanly/models/document-type';
+import { CapturePreferenceService } from '../../idscanly/services/capture-preference.service';
 import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
@@ -62,7 +63,6 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
   scanSheetMode = signal<ScanSheetMode>('loading');
   scanSaving = signal(false);
   scanSaveError = signal<string | null>(null);
-  docTypeSheetOpen = signal(false);
   private _previewScanResult = signal<ScanResultInterface | null>(null);
   private _idscanlyResult = signal<ScanResultInterface | null>(null);
 
@@ -73,15 +73,8 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
 
   readonly scanResult = computed(() => this._idscanlyResult() ?? this._previewScanResult());
 
-  readonly availableDocTypes = computed(() => {
-    const allowed = this.propertyConfig.scanDocTypes();
-    if (!allowed.length) return DOCUMENT_TYPES;
-    return DOCUMENT_TYPES.filter(t => allowed.includes(t.id));
-  });
-
   private reservationCode!: string;
   private guestId!: string;
-  private scanSource: 'guest_card' | 'fab_menu' = 'fab_menu';
 
   private timeouts: ReturnType<typeof setTimeout>[] = [];
   private t(fn: () => void, ms: number) { this.timeouts.push(setTimeout(fn, ms)); }
@@ -97,6 +90,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     public propertyConfig: PropertyConfigService,
     private captureSession: CaptureSessionService,
     private externalResult: ExternalResultService,
+    private capturePreference: CapturePreferenceService,
   ) {}
 
   ngOnInit() {
@@ -176,21 +170,20 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     this._idscanlyResult.set(null);
   }
 
-  /** Open the scan document flow — opens the IDScanly doc-type picker. */
+  /**
+   * Opens the scan document flow — resolves straight to the camera via the remembered
+   * Card/Passport bucket, with no intermediate document-type picker screen.
+   */
   openScanDocument(source: 'guest_card' | 'fab_menu' = 'fab_menu') {
-    this.scanSource = source;
     this.menuOpen.set(false);
-    this.docTypeSheetOpen.set(true);
-  }
-
-  startIdscanly(type: DocumentTypeConfig) {
-    this.docTypeSheetOpen.set(false);
+    const allowed = this.propertyConfig.scanDocTypes() as DocumentTypeId[];
+    const type = resolveScanEntryType(this.capturePreference.bucket(), allowed);
     this.captureSession.start(type);
     this.captureSession.context.set({ reservationCode: this.reservationCode, guestId: this.guestId });
     this.mixpanel.trackScanStarted({
       vendor: 'idscanly',
       document_type: type.id,
-      source: this.scanSource,
+      source,
     });
     void this.router.navigate(['/idscanly/scan']);
   }
