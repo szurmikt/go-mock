@@ -14,9 +14,18 @@ import { AppVersionService } from './app-version';
 import {
   AuthState,
   ApiResponse,
+  MeResponse,
   MfaTokenResponse,
   TokenResponse,
 } from '../models/auth.interfaces';
+
+export const GO_SUBSCRIPTION_MODULE = 'sabeeapp_go';
+
+/** Verdict from AuthService.selectProperty() — the single eligibility chokepoint for both the
+ * post-login property pick and the in-app switcher. */
+export type PropertyEligibility = 'ok' | 'ineligible' | 'unverified';
+
+export type FetchUserResult = { ok: true; subscription: string[] } | { ok: false };
 import { PropertyInterface } from '../models/property.interface';
 
 /** Discriminates refreshAccessToken() failures for the interceptor's force-logout decision. */
@@ -68,8 +77,6 @@ export class AuthService {
   private _selectedProperty = signal<PropertyInterface | null>(null);
   private _properties = signal<PropertyInterface[]>([]);
   private _deviceId = signal<string>('');
-  /** Rollout allowlist resolved once at login/session-restore (see PropertyGatingService) — reused by the in-app switcher, not re-fetched per switch. */
-  private _goEnabledPropertyIds = signal<Set<number> | null>(null);
 
   readonly isAuthenticated = computed(() => !!this._auth()?.accessToken);
   readonly accessToken = computed(() => this._auth()?.accessToken ?? null);
@@ -81,7 +88,6 @@ export class AuthService {
   readonly selectedProperty = computed(() => this._selectedProperty());
   readonly properties = computed(() => this._properties());
   readonly deviceId = computed(() => this._deviceId());
-  readonly goEnabledPropertyIds = computed(() => this._goEnabledPropertyIds());
 
   constructor(
     private http: HttpClient,
@@ -235,25 +241,42 @@ export class AuthService {
       email,
       name: '',
       userId: '',
+      subscription: [],
     });
     this.refreshTranslations();
     this.mixpanel.trackLogin();
   }
 
-  async fetchUser(): Promise<void> {
+  /**
+   * GET /users/me. Also doubles as the Go-eligibility read (subscription field) — see
+   * selectProperty() and app.component.ts's boot-restore path, both of which call this
+   * unconditionally and inspect the returned subscription list. The `{ ok }` result lets those
+   * callers distinguish "verified, no access" from "couldn't verify" (network/API failure).
+   * Callers that only want the name/email/userId backfill (loadStoredAuth's conditional call)
+   * can ignore the return value — that behavior is unchanged.
+   */
+  async fetchUser(): Promise<FetchUserResult> {
     try {
       const res = await firstValueFrom(
-        this.http.get<ApiResponse<{ user_id: string; name: string; email: string; role: string }[]>>(
-          `${this.env.apiUrl()}/users/me`,
-        ),
+        this.http.get<ApiResponse<MeResponse[]>>(`${this.env.apiUrl()}/users/me`),
       );
       const user = res.data?.[0];
       if (res.success && user?.name) {
-        await this.setAuth({ ...this._auth()!, name: user.name, email: user.email, userId: user.user_id });
+        const subscription = user.subscription ?? [];
+        await this.setAuth({
+          ...this._auth()!,
+          name: user.name,
+          email: user.email,
+          userId: user.user_id,
+          subscription,
+        });
         this.identifyToMixpanel();
+        return { ok: true, subscription };
       }
+      return { ok: false };
     } catch {
-      // Non-fatal — email is already stored, name stays empty
+      // Non-fatal for the name/email backfill use — email is already stored, name stays empty.
+      return { ok: false };
     }
   }
 
@@ -377,18 +400,21 @@ export class AuthService {
     return sorted;
   }
 
-  /** Set by the property-gating check at login / boot session-restore — see PropertyGatingService. */
-  setGoEnabledPropertyIds(ids: Set<number>): void {
-    this._goEnabledPropertyIds.set(ids);
-  }
-
-  /** Evicts just the active property, keeping the session authenticated — used when the boot-time property-gating check finds the restored property no longer allowed. */
+  /** Evicts just the active property, keeping the session authenticated — used when the boot-time eligibility re-check finds the restored property no longer listed. */
   async clearSelectedProperty(): Promise<void> {
     this._selectedProperty.set(null);
     await this.storage.remove(Config.STORAGE_PROPERTY_KEY);
   }
 
-  async selectProperty(property: PropertyInterface): Promise<void> {
+  /**
+   * The single Go-eligibility chokepoint — called for both the post-login property pick
+   * (PropertySelectPage.select()) and every in-app switch (HomePage.selectProperty()), so a
+   * property can never be entered without a fresh /me subscription read. Unlike the old
+   * PropertyGatingService allowlist (resolved once and cached for the session), this always
+   * hits the network: subscription is a live, user-level fact that can change between switches.
+   * Fail-closed on a fetchUser() failure, matching the previous gating service's philosophy.
+   */
+  async selectProperty(property: PropertyInterface): Promise<PropertyEligibility> {
     // Switching to a different property must not carry over the previous
     // property's reservations/guests (would otherwise survive the 60s fetch
     // staleness window and render under the new property).
@@ -397,8 +423,10 @@ export class AuthService {
     }
     this._selectedProperty.set(property);
     await this.storage.set(Config.STORAGE_PROPERTY_KEY, property);
-    if (!this._auth()?.name || !this._auth()?.userId) await this.fetchUser();
+    const result = await this.fetchUser();
     this.identifyToMixpanel();
+    if (!result.ok) return 'unverified';
+    if (!result.subscription.includes(GO_SUBSCRIPTION_MODULE)) return 'ineligible';
     // Corrects the channel if this property's differs from the one the installed bundle came
     // from. Reload is safe here, unlike at boot or on a short resume: the session is already
     // persisted above, so a reload's fresh boot restores straight through to this same property
@@ -411,6 +439,7 @@ export class AuthService {
     // property, and every selection at all for the overwhelming majority on `production`. The
     // pre-login setup gate has usually already fetched the right bundle by this point.
     await this.loadPropertyConfig(property.property_id, true);
+    return 'ok';
   }
 
   async logout(): Promise<void> {
@@ -419,7 +448,6 @@ export class AuthService {
     this._auth.set(null);
     this._selectedProperty.set(null);
     this._properties.set([]);
-    this._goEnabledPropertyIds.set(null);
     await this.storage.remove(Config.STORAGE_AUTH_KEY);
     await this.storage.remove(Config.STORAGE_PROPERTY_KEY);
     await this.storage.remove(Config.STORAGE_PROPERTIES_KEY);

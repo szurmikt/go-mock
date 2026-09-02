@@ -14,6 +14,15 @@ const DOC_TYPE_MAP: Record<DbDocType, string> = {
 };
 
 /**
+ * App-side default when property_config has no usable restriction (unreachable Supabase, no
+ * row, or a row with scan_doc_types missing/empty) — all four types allowed. Supabase is now an
+ * OVERRIDE on top of this default, not the sole source of truth: an empty/missing value must
+ * never resolve to "nothing allowed", since that's how a scan-doc-type picker with no allowed
+ * types is silently emptied out.
+ */
+const DEFAULT_SCAN_DOC_TYPES = Object.values(DOC_TYPE_MAP);
+
+/**
  * Channels that exist in Capawesome Cloud. Anything else is treated as unset.
  * dev = internal testing, early = early adopters, prod = everyone else (renamed 2026-08-31 from
  * dev/beta/production — see the CLAUDE.md changelog entry for the full list of touched files).
@@ -23,7 +32,7 @@ const DEFAULT_LIVE_UPDATE_CHANNEL = 'prod';
 
 @Injectable({ providedIn: 'root' })
 export class PropertyConfigService {
-  scanDocTypes = signal<string[]>([]);
+  scanDocTypes = signal<string[]>(DEFAULT_SCAN_DOC_TYPES);
   /** Per-property opt-in to send full scan responses to Sentry — see review.page.ts submit(). */
   extendedLogging = signal<boolean>(false);
   /**
@@ -67,9 +76,11 @@ export class PropertyConfigService {
       }
 
       const row = rows[0];
-      this.scanDocTypes.set(
-        (row.scan_doc_types ?? []).map(t => DOC_TYPE_MAP[t]).filter(Boolean),
-      );
+      // A present row with scan_doc_types missing/empty falls back to the default (all types) —
+      // only a real, non-empty restriction overrides. A genuinely-intended empty restriction
+      // isn't a supported state (there's no UI for "no scanning allowed at all" today).
+      const mappedDocTypes = (row.scan_doc_types ?? []).map(t => DOC_TYPE_MAP[t]).filter(Boolean);
+      this.scanDocTypes.set(mappedDocTypes.length ? mappedDocTypes : DEFAULT_SCAN_DOC_TYPES);
       this.extendedLogging.set(!!row.extended_logging);
       // Trimmed before comparison: this table has had a value with a trailing newline before
       // (scan_vendor: "idscanly\n"), which a strict comparison would silently reject.
@@ -90,7 +101,7 @@ export class PropertyConfigService {
   }
 
   clear(): void {
-    this.scanDocTypes.set([]);
+    this.scanDocTypes.set(DEFAULT_SCAN_DOC_TYPES);
     this.extendedLogging.set(false);
     this.liveUpdateChannel.set(DEFAULT_LIVE_UPDATE_CHANNEL);
   }

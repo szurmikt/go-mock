@@ -48,11 +48,9 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
 
   readonly filteredProperties = computed(() => {
     const q = this.propertyQuery().trim().toLowerCase();
-    // Switcher reuses the allowlist resolved at login/session-restore (see
-    // PropertyGatingService) rather than re-checking Supabase on every open.
-    // A missing allowlist (shouldn't happen once home is reachable) fails closed.
-    const allowed = this.auth.goEnabledPropertyIds();
-    const all = this.auth.properties().filter(p => allowed?.has(p.property_id) ?? false);
+    // auth.properties() is already eligibility-filtered at the source — the API
+    // excludes ineligible PIDs from /properties entirely.
+    const all = this.auth.properties();
     if (!q) return all;
     return all.filter(p =>
       (p.property_name ?? '').toLowerCase().includes(q) ||
@@ -188,8 +186,16 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
         from_property_id: fromId,
       });
     }
-    await this.auth.selectProperty(p);
+    const eligibility = await this.auth.selectProperty(p);
     this.closeSwitch();
+    if (eligibility === 'ineligible') {
+      await this.router.navigate(['/go-unavailable'], { replaceUrl: true });
+      return;
+    }
+    if (eligibility === 'unverified') {
+      await this.router.navigate(['/service-unavailable'], { replaceUrl: true });
+      return;
+    }
     await Promise.all([
       this.res.fetchReservations(),
       this.options.countries().length === 0 ? this.options.load().catch(() => {}) : Promise.resolve(),

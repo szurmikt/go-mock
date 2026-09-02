@@ -239,6 +239,7 @@
   "goGating": {
     "unavailableTitle": "A SabeeApp Go még nem érhető el számodra",
     "unavailableMessage": "A hozzáférésért kérjük, vedd fel a kapcsolatot a SabeeApp ügyfélszolgálatával.",
+    "backToLogin": "Vissza a bejelentkezéshez",
     "serviceErrorTitle": "A hozzáférés nem ellenőrizhető",
     "serviceErrorMessage": "Kérjük, ellenőrizd az internetkapcsolatot, és próbáld újra."
   },
