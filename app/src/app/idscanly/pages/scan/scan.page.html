@@ -11,6 +11,45 @@
       </button>
     </header>
 
+    <div class="scan-divider"></div>
+
+    @if (selectedType() && showBucketToggle()) {
+      <div class="bucket-toggle">
+        <div class="bucket-toggle__label">{{ 'idscanly.documentFormLabel' | tr }}</div>
+        <div class="bucket-toggle__track">
+          <button
+            class="bucket-toggle__seg"
+            [class.bucket-toggle__seg--active]="bucket() === 'card'"
+            [attr.aria-label]="'idscanly.bucketCard' | tr"
+            (click)="onBucketTap('card')"
+          >
+            <svg width="44" height="30" viewBox="0 0 44 30" fill="none" stroke="currentColor" stroke-width="1.4">
+              <rect x="1" y="1" width="42" height="28" rx="4"/>
+              <circle cx="12" cy="15" r="5.4"/>
+              <line x1="22" y1="10.5" x2="37" y2="10.5"/>
+              <line x1="22" y1="15" x2="37" y2="15"/>
+              <line x1="22" y1="19.5" x2="32" y2="19.5"/>
+            </svg>
+          </button>
+          <button
+            class="bucket-toggle__seg"
+            [class.bucket-toggle__seg--active]="bucket() === 'passport'"
+            [attr.aria-label]="'idscanly.bucketPassport' | tr"
+            (click)="onBucketTap('passport')"
+          >
+            <svg width="33" height="43" viewBox="0 0 26 34" fill="none" stroke="currentColor" stroke-width="1.4">
+              <rect x="1" y="1" width="24" height="32" rx="3"/>
+              <circle cx="13" cy="14" r="5.4"/>
+              <line x1="13" y1="8.6" x2="13" y2="19.4"/>
+              <line x1="7.6" y1="14" x2="18.4" y2="14"/>
+              <line x1="8" y1="24" x2="18" y2="24"/>
+              <line x1="9.5" y1="27.5" x2="16.5" y2="27.5"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    }
+
     <p class="scan-message">{{ message() }}</p>
 
     <section class="viewfinder-wrap">
@@ -171,7 +210,7 @@
     <div class="nag-dialog">
       <div class="nag-dialog__card">
         <p class="nag-dialog__message">
-          {{ 'idscanly.nagMessage' | tr }}
+          {{ nagDialogMessageKey() | tr }}
         </p>
         <div class="nag-dialog__actions">
           <button
@@ -179,7 +218,7 @@
             type="button"
             (click)="retakeWithAutoCapture()"
           >
-            {{ 'idscanly.nagRetake' | tr }}
+            {{ nagDialogRetakeKey() | tr }}
           </button>
           <button
             class="nag-dialog__btn nag-dialog__btn--primary"
@@ -187,6 +226,32 @@
             (click)="useTakenPhoto()"
           >
             {{ 'idscanly.nagUseTaken' | tr }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (bucketChangeConfirmOpen()) {
+    <div class="nag-dialog">
+      <div class="nag-dialog__card">
+        <p class="nag-dialog__message">
+          {{ 'idscanly.bucketChangeConfirm' | tr }}
+        </p>
+        <div class="nag-dialog__actions">
+          <button
+            class="nag-dialog__btn nag-dialog__btn--secondary"
+            type="button"
+            (click)="cancelBucketChange()"
+          >
+            {{ 'common.cancel' | tr }}
+          </button>
+          <button
+            class="nag-dialog__btn nag-dialog__btn--primary"
+            type="button"
+            (click)="confirmBucketChange()"
+          >
+            {{ 'idscanly.discardConfirm' | tr }}
           </button>
         </div>
       </div>

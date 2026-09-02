@@ -85,8 +85,13 @@ export const DETECTION_TUNING = {
    * geometry checks; failing one shows the amber "bad light" state instead. STARTING GUESSES — tune
    * against real device footage (see README open question #6).
    */
-  /** Mean grayscale luminance (0–255) below this → "too dark" (underexposed). */
-  minMeanLuminance: 60,
+  /**
+   * Mean grayscale luminance (0–255) below this → "too dark" (underexposed). Raised from 60 → 70
+   * (~15% stricter) after a real capture scored "well-lit" despite an obvious central glare/blur
+   * defect (see maxClippedFraction below for the fuller story) — a "Recheck" verdict never blocks
+   * submission, only nags, so erring stricter costs little and catches more real problems.
+   */
+  minMeanLuminance: 70,
 
   /** A grayscale pixel at/above this value counts as "clipped"/near-white (used for the glare check). */
   glareClipLevel: 245,
@@ -94,16 +99,28 @@ export const DETECTION_TUNING = {
   /**
    * Fraction of clipped (near-white) pixels above which the frame is flagged as "glare". This is the
    * more important of the two checks — lamination glare on real ID/licence cards also breaks Canny.
+   * Lowered from 0.1 → 0.08 (~20% stricter) together with `analyzeCaptureQuality` now measuring the
+   * captured photo's CENTER region only, not the whole card — a real capture (a heavily glared/
+   * blurry Hungarian driving licence) scored "Sharp, well-lit, glare-free" despite IDScanly's own
+   * extraction confirming it failed (empty document number, no mother's name, no birth place): the
+   * glare blob sat squarely over the data fields but was a small enough fraction of the WHOLE card
+   * to clear the old, more lenient threshold. Center-weighting shrinks the denominator for exactly
+   * the region that determines OCR success, so the same defect now reads as a larger fraction
+   * without needing an even more aggressive threshold that would risk flagging ordinary photos
+   * with a small edge/corner reflection instead.
    */
-  maxClippedFraction: 0.1,
+  maxClippedFraction: 0.08,
 
   /**
    * Sharpness gate for the Review-screen quality verdict (NOT the live loop). Variance of the Laplacian
    * of the captured image, measured at `analysisWidth`; below this the capture reads as blurry/out of
    * focus. This is the only quality check the manual shutter has — auto-capture never reaches it blurry.
-   * STARTING GUESS — tune against real device footage (see README open question #6).
+   * Raised from 120 → 140 (~17% stricter) alongside minMeanLuminance/maxClippedFraction — see the
+   * latter's comment for the real capture that prompted this. A "Recheck" verdict only nags, it never
+   * blocks Submit, so a stricter threshold trades a few more prompts-to-recheck for catching more
+   * real failures.
    */
-  minSharpnessVar: 120,
+  minSharpnessVar: 140,
 
   /**
    * Completeness gate for the Review-screen quality verdict — the document quad detected on the FULL
@@ -168,6 +185,14 @@ export const DETECTION_TUNING = {
 
   /** Longest edge (px) of the small tray thumbnail generated from each capture. */
   thumbnailMaxEdge: 280,
+
+  /**
+   * Adaptive tuning-profile hunt (Card bucket only, see CARD_TUNING_PROFILES): how long to let a
+   * newly-rotated profile's card settle into frame before the hunt judges whether it worked. Added
+   * to dwellMs to form the per-profile window in DocumentDetectionService.profileWindowTicks().
+   * STARTING GUESS — tune against real device footage.
+   */
+  tuningHuntSettlingMs: 1000,
 };
 
 /** Shape of a detection profile — so per-document overrides are type-checked. */
@@ -208,3 +233,25 @@ export const DRIVING_LICENCE_TUNING: Partial<DetectionTuning> = {
   cannyLow: 30,
   cannyHigh: 120,
 };
+
+/** One named entry in the adaptive tuning-profile hunt's rotation list — see CARD_TUNING_PROFILES. */
+export interface TuningProfile {
+  id: string;
+  tuning: Partial<DetectionTuning>;
+}
+
+/**
+ * Rotation list for the Card bucket's adaptive tuning hunt (DocumentDetectionService). When the
+ * live loop finds no candidate contour at all for several consecutive ticks, it rotates through
+ * this list looking for a profile that closes a rectangle on the card's border — recovering from
+ * poor detection conditions (e.g. a low-contrast card) automatically instead of silently failing.
+ *
+ * Deliberately open-ended (no hardcoded cap) but seeded with only the 2 profiles that already
+ * exist — adding a future profile is just appending an entry, no service code change required.
+ * True continuous parameter search is explicitly out of scope: it needs a well-defined,
+ * reliably-climbable fitness metric this codebase doesn't have.
+ */
+export const CARD_TUNING_PROFILES: TuningProfile[] = [
+  { id: 'default', tuning: {} },
+  { id: 'driving-licence-contrast', tuning: DRIVING_LICENCE_TUNING },
+];

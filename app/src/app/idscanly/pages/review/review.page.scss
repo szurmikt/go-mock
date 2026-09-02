@@ -18,7 +18,14 @@
   // treatment.
   .sub-header {
     height: auto;
-    padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 10px;
+    // max() guards against a real-device report of the header rendering under the status bar
+    // right after leaving the Scan screen's camera — env(safe-area-inset-top) came back
+    // insufficient there even though this is the same pattern used successfully elsewhere in the
+    // app. 54px is a safe floor for a notched/Dynamic-Island iPhone's status bar; on a real safe
+    // area that reports correctly (or a non-notched device, where the true value is smaller),
+    // max() still uses whichever is larger, so this only ever adds height, never removes needed
+    // clearance elsewhere.
+    padding: max(54px, calc(14px + env(safe-area-inset-top, 0px))) 16px 10px;
     gap: 8px;
     justify-content: space-between;
 
@@ -86,7 +93,8 @@
   background: #0d0d0c;
 
   .side-card__img-btn {
-    display: block;
+    display: flex;
+    justify-content: center;
     width: 100%;
     padding: 8px;
     border: none;
@@ -96,6 +104,7 @@
     img {
       display: block;
       width: 100%;
+      max-width: 280px;
       border-radius: var(--radius-sm);
     }
   }
@@ -111,27 +120,6 @@
   color: #ffffff;
   font-size: var(--font-xs);
   font-weight: 600;
-}
-
-.side-card__quality-pill {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--font-xs);
-  font-weight: 700;
-
-  &.quality-good {
-    background: var(--success-soft);
-    color: var(--success);
-  }
-
-  &.quality-recheck {
-    background: var(--warn-soft);
-    color: var(--warn);
-  }
 }
 
 .side-card__status {
@@ -151,13 +139,13 @@
   flex-shrink: 0;
 
   &.status-good {
-    background: var(--success-soft);
-    color: var(--success);
+    background: var(--success);
+    color: #fff;
   }
 
   &.status-recheck {
-    background: var(--warn-soft);
-    color: var(--warn);
+    background: var(--warn);
+    color: #fff;
   }
 
   &.status-skipped {
@@ -172,8 +160,6 @@
   gap: 2px;
   flex: 1;
   min-width: 0;
-
-  .detail-label { color: #b4b2a9; }
 }
 
 .side-card__status-line {
@@ -221,20 +207,7 @@
   &:active { background: #1f1f1d; }
 }
 
-/* ---- Quality warning / submit error — rendered inside .sticky-btn-bar, above the button ---- */
-.review-footer__note {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin: 0 0 8px;
-  font-size: var(--font-sm);
-  color: var(--success);
-
-  svg { flex-shrink: 0; margin-top: 1px; }
-
-  &.note-warn { color: var(--warn); }
-}
-
+/* ---- Submit error — rendered inside .sticky-btn-bar, above the button ---- */
 .review-error {
   font-size: var(--font-sm);
   color: #ffe7e7;

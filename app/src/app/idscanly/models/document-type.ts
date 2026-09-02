@@ -127,3 +127,45 @@ export function getDocumentType(id: DocumentTypeId): DocumentTypeConfig {
   }
   return config;
 }
+
+/**
+ * The two-way Card/Passport toggle shown on the live capture screen — replaces the old
+ * pre-camera 4-way document-type picker. "Card" covers id-card/driving-licence/address-card,
+ * which share identical capture geometry (guide ratio, extract size, warp mode); only sides
+ * (2 vs 1) and detection tuning differ between them, and sides must be known before the camera
+ * can start capturing, so "Card" always resolves to the id-card config (2-sided) — the tuning
+ * difference is instead handled live by the adaptive tuning hunt (see capture-tuning.ts).
+ */
+export type CaptureBucket = 'card' | 'passport';
+
+/** True when the property's scan_doc_types restriction (empty = no restriction) allows at
+ *  least one of the card-family types. */
+export function isCardBucketAllowed(allowedIds: DocumentTypeId[]): boolean {
+  if (!allowedIds.length) return true;
+  return allowedIds.some((id) => id === 'id-card' || id === 'driving-licence' || id === 'address-card');
+}
+
+/** True when the property's scan_doc_types restriction (empty = no restriction) allows passport. */
+export function isPassportBucketAllowed(allowedIds: DocumentTypeId[]): boolean {
+  if (!allowedIds.length) return true;
+  return allowedIds.includes('passport');
+}
+
+/**
+ * Resolves a bucket to the concrete DocumentTypeConfig used for capture geometry. Respects the
+ * property's scan_doc_types restriction — if the requested bucket isn't allowed, falls back to
+ * whichever bucket the property actually allows (never throws; a property is assumed to allow
+ * at least one of the two).
+ */
+export function resolveScanEntryType(
+  bucket: CaptureBucket,
+  allowedIds: DocumentTypeId[],
+): DocumentTypeConfig {
+  const wantPassport = bucket === 'passport';
+  if (wantPassport && isPassportBucketAllowed(allowedIds)) return getDocumentType('passport');
+  if (!wantPassport && isCardBucketAllowed(allowedIds)) return getDocumentType('id-card');
+  // Requested bucket isn't allowed for this property — fall back to whichever is.
+  if (isCardBucketAllowed(allowedIds)) return getDocumentType('id-card');
+  if (isPassportBucketAllowed(allowedIds)) return getDocumentType('passport');
+  return getDocumentType('id-card');
+}

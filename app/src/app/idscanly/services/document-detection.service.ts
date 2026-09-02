@@ -1,7 +1,7 @@
 import { Injectable, NgZone, signal } from '@angular/core';
 import * as Sentry from '@sentry/angular';
 import type { CornerPoints } from 'jscanify/client';
-import { DETECTION_TUNING, DetectionTuning } from '../capture-tuning';
+import { DETECTION_TUNING, DetectionTuning, TuningProfile } from '../capture-tuning';
 import { CaptureQuality } from '../models/capture-quality';
 import { OpenCvLoaderService } from './opencv-loader.service';
 import { LanguageService } from '../../services/language.service';
@@ -52,6 +52,12 @@ export interface DetectionStartOptions {
   onError?: (error: unknown) => void;
   /** Optional canvas — when supplied, each tick draws the analysis frame + detected quad into it. */
   debugCanvas?: HTMLCanvasElement;
+  /**
+   * Open-ended rotation list for the adaptive tuning-profile hunt (Card bucket only — see
+   * CARD_TUNING_PROFILES). Omitted, or a single-entry list, disables rotation entirely (used for
+   * the passport type, whose difficulty is booklet geometry/hand-jitter, not border contrast).
+   */
+  tuningProfiles?: TuningProfile[];
 }
 
 /** Live per-frame detection diagnostics (for tuning / on-screen debug readout). */
@@ -123,6 +129,30 @@ export class DocumentDetectionService {
   readonly awaitingExit = signal(false);
   private notAlignedStreak = 0;
 
+  /**
+   * Adaptive tuning-profile hunt (Card bucket only) — see capture-tuning.ts CARD_TUNING_PROFILES.
+   * `activeProfileIndex` always starts at 0 (the known-good default) on every `start()`/
+   * `retarget()` — i.e. every NEW scan session (a fresh document, or a Card↔Passport bucket
+   * switch) begins at default, never at whatever a PREVIOUS, unrelated scan happened to rotate
+   * to. It is NOT reset by `arm()`, so a profile the hunt rotates to for one side of a document
+   * carries forward to that document's other sides (front→back, retakes) without re-hunting.
+   *
+   * An earlier version instead remembered the last-winning profile indefinitely (reset only on
+   * app restart) so it could resume across entirely separate scans too. That was found, via real-
+   * device testing, to be actively harmful: a single noisy rotation — e.g. ~1.6s with no candidate
+   * contour while the user was still positioning the card, which is completely normal and not
+   * evidence the card needs a different profile — could permanently pin every LATER scan in the
+   * app session onto the driving-licence-contrast profile if it ever fluke-aligned even once,
+   * silently breaking auto-capture for a perfectly normal ID card with no recovery short of an
+   * app restart. Resetting per scan session trades a small amount of re-hunting efficiency across
+   * guests for never getting stuck.
+   */
+  private tuningProfiles: TuningProfile[] = [];
+  private activeProfileIndex = 0;
+  private noCandidateStreak = 0;
+  /** True while the hunt is actively rotating profiles — surfaced on the Scan page's message. */
+  readonly huntActive = signal(false);
+
   constructor(
     private readonly cvLoader: OpenCvLoaderService,
     private readonly zone: NgZone,
@@ -141,8 +171,14 @@ export class DocumentDetectionService {
 
   async start(opts: DetectionStartOptions): Promise<void> {
     this.opts = opts;
-    // Set before requestCamera() — it reads cameraIdeal* from the active profile.
-    this.tuning = opts.tuning;
+    this.tuningProfiles = opts.tuningProfiles ?? [];
+    // A new scan session always starts at the known-good default profile (index 0) — see
+    // tuningProfiles' declaration for why this matters.
+    this.activeProfileIndex = 0;
+    // Set before requestCamera() — it reads cameraIdeal* from the active profile. Neither
+    // PASSPORT_TUNING nor DRIVING_LICENCE_TUNING override cameraIdealWidth/Height or
+    // loopIntervalMs, so an active tuning-profile override never affects the camera request.
+    this.tuning = this.effectiveTuning(opts.tuning);
     this.loggedFirstTick = false;
     this.autoCaptureEnabled = true;
     this.pushLog('start: requesting camera');
@@ -288,7 +324,84 @@ export class DocumentDetectionService {
     this.setAwaitingExit(requireExit);
     this.notAlignedStreak = 0;
     this.setLightingIssue(null);
+    // Resets the hunt streak/indicator but NOT activeProfileIndex — continuity across sides of
+    // the same document (front→back) keeps whichever profile most recently worked rather than
+    // restarting the hunt every side.
+    this.noCandidateStreak = 0;
+    this.setHuntActive(false);
     this.setStatus('searching');
+  }
+
+  /**
+   * Re-arm detection for a different document type WITHOUT restarting the camera — the Card/
+   * Passport toggle's switch path. Neither PASSPORT_TUNING nor DRIVING_LICENCE_TUNING override
+   * cameraIdealWidth/Height (baked into the stream once, at start()'s requestCamera()) or
+   * loopIntervalMs (baked into the running interval, also start()-only) — every other
+   * tuning/geometry field is read fresh per tick, so switching types never needs a new
+   * getUserMedia call.
+   */
+  retarget(opts: {
+    targetRatio: number;
+    extractWidth: number;
+    extractHeight: number;
+    tuning: DetectionTuning;
+    captureMode: 'warp' | 'frame';
+    tuningProfiles?: TuningProfile[];
+  }): void {
+    if (!this.opts) {
+      return;
+    }
+    this.opts = {
+      ...this.opts,
+      targetRatio: opts.targetRatio,
+      extractWidth: opts.extractWidth,
+      extractHeight: opts.extractHeight,
+      tuning: opts.tuning,
+      captureMode: opts.captureMode,
+      tuningProfiles: opts.tuningProfiles,
+    };
+    this.tuningProfiles = opts.tuningProfiles ?? [];
+    // Same reasoning as start() — a bucket switch is a fresh detection cycle for a new type/
+    // geometry, not a continuation, so it starts at the default profile too.
+    this.activeProfileIndex = 0;
+    this.tuning = this.effectiveTuning(opts.tuning);
+    this.arm();
+  }
+
+  /** Merges the active tuning profile's overrides over `base` — always from the pristine base
+   *  (never from `this.tuning`), so rotating AWAY from a profile correctly resets the fields it
+   *  had overridden back to base rather than compounding across rotations. */
+  private effectiveTuning(base: DetectionTuning): DetectionTuning {
+    if (this.tuningProfiles.length <= 1) {
+      return base;
+    }
+    return { ...base, ...this.tuningProfiles[this.activeProfileIndex].tuning };
+  }
+
+  private setHuntActive(value: boolean): void {
+    if (this.huntActive() === value) {
+      return;
+    }
+    this.zone.run(() => this.huntActive.set(value));
+  }
+
+  /** Ticks required for one profile's "did it work" window: enough time to let a newly-rotated
+   *  profile's card settle into frame (tuningHuntSettlingMs) plus the normal dwell window,
+   *  converted to a tick count via the loop's own real cadence. */
+  private profileWindowTicks(): number {
+    const windowMs = this.tuning.tuningHuntSettlingMs + this.tuning.dwellMs;
+    return Math.max(1, Math.round(windowMs / this.tuning.loopIntervalMs));
+  }
+
+  /** Rotates to the next profile in the list, re-merged from the pristine base tuning. */
+  private rotateTuningProfile(): void {
+    if (!this.opts || this.tuningProfiles.length <= 1) {
+      return;
+    }
+    this.activeProfileIndex = (this.activeProfileIndex + 1) % this.tuningProfiles.length;
+    this.tuning = this.effectiveTuning(this.opts.tuning);
+    this.setHuntActive(true);
+    this.pushLog(`tuning hunt: rotated to '${this.tuningProfiles[this.activeProfileIndex].id}'`);
   }
 
   /** Fully tear down: stop the loop and release the camera. */
@@ -305,6 +418,10 @@ export class DocumentDetectionService {
     this.setAwaitingExit(false);
     this.notAlignedStreak = 0;
     this.autoCaptureEnabled = true;
+    this.tuningProfiles = [];
+    this.activeProfileIndex = 0;
+    this.noCandidateStreak = 0;
+    this.setHuntActive(false);
     if (this.opts) {
       this.opts.video.srcObject = null;
     }
@@ -419,6 +536,23 @@ export class DocumentDetectionService {
       // it's irrelevant until awaitingExit clears.
       const light = aligned && corners && !this.awaitingExit() ? this.analyzeLighting(mat, cv) : null;
 
+      // Adaptive tuning hunt (Card bucket only — tuningProfiles.length > 1): rotate through
+      // CARD_TUNING_PROFILES when the live loop finds no candidate contour AT ALL for several
+      // consecutive ticks. Deliberately NOT triggered by "found but misaligned" — a found-but-
+      // rejected candidate is a framing problem the rotation can't fix, and rotating on it risks
+      // masking a real framing issue. Gated on !awaitingExit(), mirroring the lighting-check skip.
+      if (this.tuningProfiles.length > 1 && !this.awaitingExit()) {
+        if (!corners) {
+          this.noCandidateStreak += 1;
+          if (this.noCandidateStreak >= this.profileWindowTicks()) {
+            this.rotateTuningProfile();
+            this.noCandidateStreak = 0;
+          }
+        } else {
+          this.noCandidateStreak = 0;
+        }
+      }
+
       this.publishDebug(corners, metrics, stable, light, width, height);
 
       const now = performance.now();
@@ -470,6 +604,12 @@ export class DocumentDetectionService {
 
       if (this.alignedSince === 0) {
         this.alignedSince = performance.now();
+        // Clears the "still searching" hunt indicator the moment real alignment is found,
+        // regardless of which profile is active — activeProfileIndex itself (not touched by
+        // arm()) already carries a working profile forward across sides of the same document.
+        if (this.tuningProfiles.length > 1) {
+          this.setHuntActive(false);
+        }
       }
       this.setStatus('aligned');
       if (this.autoCaptureEnabled && performance.now() - this.alignedSince >= this.tuning.dwellMs) {
@@ -842,6 +982,7 @@ export class DocumentDetectionService {
     let src: any = null;
     let work: any = null;
     let gray: any = null;
+    let region: any = null;
     try {
       src = cv.imread(canvas);
       const scale = this.tuning.analysisWidth / src.cols;
@@ -856,17 +997,45 @@ export class DocumentDetectionService {
       gray = new cv.Mat();
       cv.cvtColor(work, gray, cv.COLOR_RGBA2GRAY);
 
-      const laplacianVar = this.measureSharpness(gray, cv);
-      const { mean, clipped } = this.measureExposure(gray, cv);
+      // Weight the checks toward the card's central data-field area rather than a uniform
+      // whole-card average — a defect (glare, blur) sitting over the text matters far more than
+      // the same defect near the edges/margins, and a whole-card average can let a locally bad
+      // center pass as "good" (confirmed live: a heavily glared, blurry driving licence scored
+      // "Sharp, well-lit, glare-free" because the glare blob was a small fraction of the WHOLE
+      // card, even though it sat squarely over the data fields — IDScanly's own extraction came
+      // back empty, confirming the capture had actually failed). region === gray (no distinct
+      // ROI) when the region would be degenerate, so the delete below is a safe no-op then.
+      region = this.centerRegion(gray, cv, 0.65, 0.65);
+      const laplacianVar = this.measureSharpness(region, cv);
+      const { mean, clipped } = this.measureExposure(region, cv);
       return this.buildQuality(laplacianVar, mean, clipped, completeness);
     } catch {
       // Couldn't measure → don't block submission on a check we couldn't run.
       return this.buildQuality(Infinity, 255, 0, completeness);
     } finally {
+      if (region && region !== gray) region.delete?.();
       gray?.delete?.();
       work?.delete?.();
       src?.delete?.();
     }
+  }
+
+  /**
+   * Crops a grayscale Mat to its centered rectangular region (as a fraction of width/height) — see
+   * `analyzeCaptureQuality` for why. Returns the same Mat unchanged if the requested region would
+   * be degenerate (e.g. cover the whole frame or more). The returned ROI Mat shares data with
+   * `mat` (standard OpenCV reference-counted semantics) — safe to `.delete()` independently of
+   * `mat`, which callers already do for their own Mats.
+   */
+  private centerRegion(mat: any, cv: any, widthFraction: number, heightFraction: number): any {
+    const w = Math.max(1, Math.round(mat.cols * widthFraction));
+    const h = Math.max(1, Math.round(mat.rows * heightFraction));
+    if (w >= mat.cols && h >= mat.rows) {
+      return mat;
+    }
+    const x = Math.max(0, Math.round((mat.cols - w) / 2));
+    const y = Math.max(0, Math.round((mat.rows - h) / 2));
+    return mat.roi(new cv.Rect(x, y, w, h));
   }
 
   /**
@@ -977,17 +1146,14 @@ export class DocumentDetectionService {
     const sharp = laplacianVar >= this.tuning.minSharpnessVar;
     const wellLit = meanLuminance >= this.tuning.minMeanLuminance;
     const glareFree = clippedFraction <= this.tuning.maxClippedFraction;
+    // `complete` is deliberately NOT part of the verdict (see CaptureQuality.complete's doc
+    // comment) — the geometry re-detection behind it is a heuristic proxy, not a measurement of
+    // the image content, and produced enough visible false positives on genuinely fully-captured
+    // documents to undermine trust in the whole verdict. Still computed and returned for
+    // diagnostics/telemetry (Mixpanel, the "Show debug" readout), just no longer shown or acted on.
     const complete = completeness.complete;
-    const verdict = sharp && wellLit && glareFree && complete ? 'good' : 'recheck';
-    // Completeness first — a covered/cut-off field is unreadable outright, a more actionable problem
-    // than blur/exposure, which might still leave the document legible. 'not-found' gets softer copy:
-    // it's ambiguous between real occlusion and the detector failing on a hard background.
-    const incompleteMsg =
-      completeness.reason === 'not-found'
-        ? this.lang.t('idscanly.qualityIncompleteNotFound')
-        : this.lang.t('idscanly.qualityIncompleteClipped');
+    const verdict = sharp && wellLit && glareFree ? 'good' : 'recheck';
     const issues = [
-      !complete ? incompleteMsg : null,
       !sharp ? this.lang.t('idscanly.qualityBlurry') : null,
       !wellLit ? this.lang.t('idscanly.qualityDark') : null,
       !glareFree ? this.lang.t('idscanly.qualityGlare') : null,

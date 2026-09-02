@@ -11,6 +11,7 @@ import { AppConfigService } from './services/app-config';
 import { AppVersionService } from './services/app-version';
 import { AuthService } from './services/auth';
 import { BiometricService } from './services/biometric';
+import { CapturePreferenceService } from './idscanly/services/capture-preference.service';
 import { LiveUpdateService } from './services/live-update';
 import { MixpanelService } from './services/mixpanel';
 import { OptionsService } from './services/options.service';
@@ -90,6 +91,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private mixpanel = inject(MixpanelService);
   private appVersion = inject(AppVersionService);
   private liveUpdate = inject(LiveUpdateService);
+  private capturePreference = inject(CapturePreferenceService);
 
   constructor(
     readonly auth: AuthService,
@@ -125,6 +127,8 @@ export class AppComponent implements OnInit, OnDestroy {
     // Purely local read (the persisted auto-lock interval) — no network dependency, must resolve
     // before the inactivity timer or biometric.checkAndLock() can fire.
     await this.biometric.init();
+    // Purely local read (the remembered Card/Passport scan toggle) — no network dependency.
+    await this.capturePreference.init();
     await this.apiEnv.init();
     // Which OTA bundle is running — a purely local read, deliberately not gated on any backend
     // call, so bundle_version is correct on the very first event even on a flaky network.

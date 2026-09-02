@@ -8,6 +8,7 @@ import { DocumentTypeConfig, DocumentTypeId } from '../models/document-type';
 import { IdRecognitionFields, IdRecognitionResponse } from './idrecognition.service';
 import { LanguageService } from '../../services/language.service';
 import { toNaturalCase } from '../../utils/natural-case';
+import { isAddressCard } from '../utils/address-card';
 import { isTurkishIdentityCard } from '../utils/turkish-id';
 
 /**
@@ -66,10 +67,14 @@ export class IdscanlyDocuscanService {
   ): ScanResultInterface {
     const f: IdRecognitionFields = response.summary?.fields ?? {};
 
-    // An address card is not an identity document — capture ONLY the address and stop
-    // here: no identity box (name/DOB/etc.) is ever produced for this type, so the shared
-    // fillGuestDataFromScannedData() merge has nothing identity-shaped to write onto the guest.
-    if (documentType.id === 'address-card') {
+    // Classification comes from IDScanly's own response (documentCode === 'AC'), not the
+    // user's pre-scan pick — since the Card/Passport toggle always captures "Card" via the
+    // id-card config, documentType.id can no longer distinguish an address card from an ID/
+    // driving-licence/etc. at all. An address card is not an identity document — capture ONLY
+    // the address and stop here: no identity box (name/DOB/etc.) is ever produced for this
+    // type, so the shared fillGuestDataFromScannedData() merge has nothing identity-shaped to
+    // write onto the guest.
+    if (isAddressCard(f)) {
       return this.mapAddressCard(f, documentType, response.sessionId);
     }
 
