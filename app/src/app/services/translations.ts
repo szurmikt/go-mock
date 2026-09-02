@@ -265,6 +265,7 @@ export const TRANSLATIONS: TranslationMap = {
   goGating: {
     unavailableTitle: "SabeeApp Go isn't available for you yet",
     unavailableMessage: 'Please contact SabeeApp support to get access.',
+    backToLogin: 'Back to login',
     serviceErrorTitle: 'Unable to verify access',
     serviceErrorMessage: 'Please check your connection and try again.',
   },

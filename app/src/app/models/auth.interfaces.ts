@@ -6,6 +6,17 @@ export interface AuthState {
   email: string;
   name: string;
   userId: string;
+  /** Go modules enabled for this user account (e.g. ["sabeeapp_go"]) — from GET /users/me. */
+  subscription: string[];
+}
+
+/** GET /users/me response shape (one element, returned as an array). */
+export interface MeResponse {
+  user_id: string;
+  name: string;
+  email: string;
+  role: string;
+  subscription: string[];
 }
 
 export interface MfaTokenResponse {

@@ -9,13 +9,12 @@ import { LockOverlayComponent } from './components/lock-overlay/lock-overlay.com
 import { ApiEnvironmentService } from './services/api-environment';
 import { AppConfigService } from './services/app-config';
 import { AppVersionService } from './services/app-version';
-import { AuthService } from './services/auth';
+import { AuthService, GO_SUBSCRIPTION_MODULE } from './services/auth';
 import { BiometricService } from './services/biometric';
 import { CapturePreferenceService } from './idscanly/services/capture-preference.service';
 import { LiveUpdateService } from './services/live-update';
 import { MixpanelService } from './services/mixpanel';
 import { OptionsService } from './services/options.service';
-import { PropertyGatingService } from './services/property-gating.service';
 import {
   BOOT_SETUP_BUDGET_NATIVE_MS,
   BOOT_SETUP_BUDGET_OTA_MS,
@@ -87,7 +86,6 @@ export class AppComponent implements OnInit, OnDestroy {
   private options = inject(OptionsService);
   private apiEnv = inject(ApiEnvironmentService);
   private appConfig = inject(AppConfigService);
-  private propertyGating = inject(PropertyGatingService);
   private mixpanel = inject(MixpanelService);
   private appVersion = inject(AppVersionService);
   private liveUpdate = inject(LiveUpdateService);
@@ -282,22 +280,26 @@ export class AppComponent implements OnInit, OnDestroy {
         url = '/property-select';
       } else {
         // A restored session with an active property is the boot-time equivalent of
-        // login — re-verify the property is still Go-enabled before letting it
-        // straight through to /home (see PropertyGatingService; fail-closed by design).
+        // login — re-verify eligibility before letting it straight through to /home:
+        // re-fetch /properties (a PID can drop out of eligibility between sessions,
+        // and the API now excludes ineligible PIDs from this response entirely) and
+        // re-check /me's subscription. Fail-closed on either request failing.
         const selected = this.auth.selectedProperty()!;
-        const allowed = await this.propertyGating.resolveEnabledPropertyIds(
-          this.auth.properties().map(p => p.property_id),
-        );
-        if (allowed === null) {
+        let freshProperties = null as Awaited<ReturnType<AuthService['loadProperties']>> | null;
+        try {
+          freshProperties = await this.auth.loadProperties();
+        } catch {
+          freshProperties = null;
+        }
+        const meResult = await this.auth.fetchUser();
+        if (freshProperties === null || !meResult.ok) {
           url = '/service-unavailable';
-        } else if (allowed.size === 0) {
+        } else if (freshProperties.length === 0 || !meResult.subscription.includes(GO_SUBSCRIPTION_MODULE)) {
           url = '/go-unavailable';
-        } else if (!allowed.has(selected.property_id)) {
+        } else if (!freshProperties.some(p => p.property_id === selected.property_id)) {
           await this.auth.clearSelectedProperty();
-          this.auth.setGoEnabledPropertyIds(allowed);
           url = '/property-select';
         } else {
-          this.auth.setGoEnabledPropertyIds(allowed);
           url = initialUrl && !authlessRoutes.includes(initialUrl.split('?')[0]) ? initialUrl : '/home';
         }
       }
