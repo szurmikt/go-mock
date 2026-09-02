@@ -276,7 +276,9 @@ export class IdscanScanPage implements OnDestroy {
   }
 
   async toggleTorch(): Promise<void> {
-    await this.detection.setTorch(!this.torchOn());
+    const next = !this.torchOn();
+    await this.detection.setTorch(next);
+    if (next) this.session.markFlashUsed();
   }
 
   skipSecondPage(): void {
@@ -375,6 +377,7 @@ export class IdscanScanPage implements OnDestroy {
       fullDataUrl: toDataUrl(full),
       thumbDataUrl: makeThumbnail(full),
       quality,
+      source,
     });
 
     this.mixpanel.trackScanCaptureCompleted({

@@ -3,6 +3,7 @@ import { CaptureQuality } from '../models/capture-quality';
 import { DocumentTypeConfig, Side } from '../models/document-type';
 import { ScanResultInterface } from '../../models/guest.interface';
 import { BusyGuardService } from '../../services/busy-guard';
+import { CaptureSource } from './document-detection.service';
 
 export interface CapturedSide {
   side: Side;
@@ -14,6 +15,9 @@ export interface CapturedSide {
   thumbDataUrl: string;
   /** Quality verdict computed at capture time — drives the Review-screen feedback. */
   quality: CaptureQuality;
+  /** Whether this side was captured via auto-detection or a manual shutter tap — feeds
+   *  scan_succeeded's auto_capture_used at submit time. */
+  source: CaptureSource;
 }
 
 /** Busy-guard key for the whole scan flow — see start()/reset()/clearScanResult(). */
@@ -39,10 +43,35 @@ export class CaptureSessionService {
   /** Pending IDScanly scan result consumed by guest-detail on ionViewWillEnter. */
   readonly scanResult = signal<ScanResultInterface | null>(null);
 
+  /** Whether the torch was turned on at any point this session — feeds scan_succeeded's
+   *  flash_used. Session-scoped (not per-side): a flash toggled on for one side and off for
+   *  the next still counts as "flash was used" for this scan. */
+  private flashUsedInSession = false;
+
+  /** When the current capture attempt started — feeds scan_succeeded's scan_duration_seconds. */
+  private sessionStartedAt: number | null = null;
+
+  markFlashUsed(): void {
+    this.flashUsedInSession = true;
+  }
+
+  get flashUsed(): boolean {
+    return this.flashUsedInSession;
+  }
+
+  /** Elapsed time since start() was last called, in whole seconds, or null if never started. */
+  get elapsedSeconds(): number | null {
+    return this.sessionStartedAt !== null
+      ? Math.round((Date.now() - this.sessionStartedAt) / 1000)
+      : null;
+  }
+
   start(type: DocumentTypeConfig): void {
     this.busyGuard.acquire(SCAN_BUSY_KEY);
     this.documentType.set(type);
     this.captures.set(new Map());
+    this.flashUsedInSession = false;
+    this.sessionStartedAt = Date.now();
   }
 
   setSide(captured: CapturedSide): void {
@@ -77,5 +106,7 @@ export class CaptureSessionService {
     this.captures.set(new Map());
     this.context.set(null);
     this.scanResult.set(null);
+    this.flashUsedInSession = false;
+    this.sessionStartedAt = null;
   }
 }

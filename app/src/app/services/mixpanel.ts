@@ -215,6 +215,20 @@ export class MixpanelService {
     image_count?: number;
     successful_image_count?: number;
     failed_image_count?: number;
+    /** Bucket-level form the user picked on the scan screen — 'id' covers the Card toggle
+     *  (id-card/driving-licence/address-card all share it today), 'passport' the Passport
+     *  toggle. Distinct from document_type — see the call site for why. */
+    document_form: 'id' | 'passport';
+    /** true iff at least one submitted side was actually captured via auto-detection, not
+     *  just whether the auto-capture toggle was left on. */
+    auto_capture_used: boolean;
+    /** true for a 2-sided document type whose back side was skipped (or never captured);
+     *  always false for single-sided types (passport) — nothing to skip. */
+    '2nd_page_skipped': boolean;
+    /** true if the torch was turned on at any point during this scan session. */
+    flash_used: boolean;
+    /** Wall-clock time from starting the capture session to this successful submit. */
+    scan_duration_seconds?: number;
   }): void {
     this.track('scan_succeeded', { ...p });
   }

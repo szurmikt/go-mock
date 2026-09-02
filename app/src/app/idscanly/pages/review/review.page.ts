@@ -189,6 +189,7 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
       fullDataUrl: url,
       thumbDataUrl: url,
       quality: this.mockQuality(verdict),
+      source: 'auto',
     };
   }
 
@@ -380,6 +381,17 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
 
       this.session.scanResult.set(mapped);
 
+      // Card bucket always resolves to docType.id === 'id-card' at scan-entry time today (see
+      // resolveScanEntryType in document-type.ts) — a stable, bucket-level signal kept separate
+      // from document_type in case that field is later updated to reflect IDScanly's post-OCR
+      // reclassification (e.g. address-card), which never feeds back into this event.
+      const documentForm = docType.id === 'passport' ? 'passport' : 'id';
+      const autoCaptureUsed = captures.some((c) => c.source === 'auto');
+      // Reuses missingSides — already [] for single-sided types (nothing to skip).
+      const secondPageSkipped = this.missingSides().length > 0;
+      const flashUsed = this.session.flashUsed;
+      const scanDurationSeconds = this.session.elapsedSeconds ?? undefined;
+
       this.mixpanel.trackScanSucceeded({
         vendor: 'idscanly',
         document_type: docType.id,
@@ -389,6 +401,11 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
         image_count: response.summary.imageCount,
         successful_image_count: response.summary.successfulImageCount,
         failed_image_count: response.summary.failedImageCount,
+        document_form: documentForm,
+        auto_capture_used: autoCaptureUsed,
+        '2nd_page_skipped': secondPageSkipped,
+        flash_used: flashUsed,
+        scan_duration_seconds: scanDurationSeconds,
       });
 
       // Pop the scan flow's single history entry (scan→review navigations use replaceUrl)
