@@ -91,8 +91,10 @@ address, or raw search text.
 | Event | When | Properties |
 |---|---|---|
 | `scan_started` | a document type is picked in the IDScanly doc-type sheet (guest-detail) | `vendor` = `idscanly`, `document_type` (string), `source` = `guest_card` \| `fab_menu` |
-| `scan_succeeded` | a scan produced data | `attempts` (int), `document_type` (string), `document_type_id` (int), `scan_type` = `optical` \| `rfid` |
-| `scan_failed` | scan timed out / cancelled / interrupted / errored, no data | `reason` = `timed_out` \| `cancelled` \| `interrupted` \| `error`, `attempt_number` (int), `scan_type` |
+| `scan_capture_completed` | one side is captured (fires again on a retake's recapture) | `vendor`, `document_type`, `side`, `source` = `auto` \| `manual`, `quality_verdict` = `good` \| `recheck`, `sharp`/`well_lit`/`glare_free`/`complete` (bool) |
+| `scan_succeeded` | a scan produced data | `vendor` = `idscanly`, `document_type` (string), `attempts` (int), `is_complete`/`is_processing` (bool), `image_count`/`successful_image_count`/`failed_image_count` (int), `document_form` = `id` \| `passport`, `auto_capture_used` (bool), `2nd_page_skipped` (bool), `flash_used` (bool), `scan_duration_seconds` (int) |
+| `scan_failed` | submit errored, or the camera failed to start | `vendor`, `document_type`, `reason` = `error` \| `network_error` \| `http_error` \| `empty_response` \| `camera_unavailable`, `attempt_number` (int) |
+| `scan_discarded` | the X is confirmed on the capture or review screen before submit | `vendor`, `document_type`, `stage` = `capture` \| `review`, `sides_captured` (int) |
 | `scan_result_edited` | taps **Edit** on the scan-result sheet (corrects before saving) | `document_type` |
 | `scan_result_saved` | scan result saved to the guest | `document_type` |
 
@@ -104,21 +106,36 @@ address, or raw search text.
   is the "Scan Document" FAB action on guest-detail. Both paths converge on the same doc-type
   picker before this event fires — `source` is captured at the moment each entry point is
   tapped and carried through to here.
-- `document_type` is the Regula document label (e.g. `Hungary - ID Card`, `passport`) —
+- `document_type` is the app's own IDScanly document-type id (e.g. `id-card`, `passport`) —
   categorical, **not** the document number.
-- **Known approximation:** `scan_type` is derived from whether the chip path was attempted
-  (`doRfid`); a scan that falls back from RFID to optical may report `rfid`. An RFID-fallback
-  that still extracts data is counted as success, not failure.
+- **How the capture behaved:** `scan_succeeded.document_form` is the bucket the user picked on
+  the scan screen (`id` covers the Card toggle — id-card/driving-licence/address-card all share
+  it today; `passport` the Passport toggle). It's kept separate from `document_type` because the
+  Card bucket always scans as `document_type: 'id-card'` at capture time — any later
+  id-card/address-card reclassification (from IDScanly's own OCR response) isn't reflected back
+  into this event, so `document_form` stays the more reliable "what did the user select" signal.
+  `auto_capture_used` is `true` only if at least one submitted side was actually produced by
+  auto-detection (not just whether the toggle was left on). `2nd_page_skipped` is `false` for
+  single-sided types (passport) — nothing to skip — and for a 2-sided type it's `true` whenever
+  the back side wasn't captured (via the "Skip scan" button, or otherwise incomplete at submit).
+  `flash_used` is `true` if the torch was switched on at any point during the session, even if
+  later turned back off. `scan_duration_seconds` is wall-clock time from starting the capture
+  session (or from the last Card/Passport bucket switch, which restarts the timer) to this
+  successful submit.
 
 ---
 
 ## Suggested first reports
 
 1. **Activation funnel:** `login_completed` → `scan_succeeded` (or `scan_result_saved`).
-2. **Scan reliability:** `scan_succeeded` vs `scan_failed` (segment by `reason`, `scan_type`,
-   `platform`); average `attempts`.
+2. **Scan reliability:** `scan_succeeded` vs `scan_failed` (segment by `reason`, `platform`);
+   average `attempts`.
 3. **Engagement:** DAU/WAU from `session_started`; median `session_ended.duration_seconds`.
 4. **Feature usage:** `home_segment_changed`, `property_switched`, `search_performed`
    (`from_recent` ratio), `guest_updated` (`from_scan` ratio, `fields_changed` distribution).
+5. **How scanning is actually used:** auto-capture adoption (`scan_succeeded.auto_capture_used`
+   ratio); average `scan_duration_seconds`, overall and split by `document_form`; how often the
+   2nd page is skipped (`2nd_page_skipped` ratio, id-only); flash/torch usage rate — a proxy for
+   how often staff scan in low light.
 
 > Tip: while testing, filter all reports to `environment = production` to exclude dev/serve traffic.
