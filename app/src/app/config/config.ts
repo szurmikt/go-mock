@@ -31,6 +31,10 @@ export const Config = {
   STORAGE_AUTO_LOCK_MINUTES_KEY: 'autoLockMinutes',
   // Remembered Card/Passport IDScanly capture-screen toggle — see capture-preference.service.ts.
   STORAGE_SCAN_BUCKET_KEY: 'scanBucket',
+  // Has this device ever dismissed the first-run Scan-screen walkthrough — see
+  // scan-onboarding.service.ts. A "seen once ever" flag, not a preference — never reset except
+  // by clearing app storage.
+  STORAGE_SCAN_ONBOARDING_SEEN_KEY: 'scanOnboardingSeen',
   // One JSON record (LiveUpdateState, see utils/live-update-state.ts) rather than split keys:
   // it is read once at boot and mutated as a unit, and a reload mid-write across several keys
   // would leave torn state. Deliberately NOT cleared by AuthService.clearSessionData() — most of

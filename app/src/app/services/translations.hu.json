@@ -11,7 +11,9 @@
     "search": "Keresés",
     "submit": "Küldés",
     "done": "Kész",
-    "filterPlaceholder": "Szűrés név vagy azonosító alapján…"
+    "filterPlaceholder": "Szűrés név vagy azonosító alapján…",
+    "next": "Tovább",
+    "close": "Bezárás"
   },
   "login": {
     "appName": "SabeeApp Go",
@@ -149,6 +151,12 @@
     "bucketCard": "Kártya",
     "bucketPassport": "Útlevél",
     "documentFormLabel": "Dokumentum típusa",
+    "onboardingDocFormTitle": "Válassz kártyát vagy útlevelet",
+    "onboardingDocFormBody": "Itt választhatod ki a dokumentum típusát — legközelebb megjegyezzük a választásod. Magát a dokumentum típusát automatikusan felismerjük.",
+    "onboardingAutoCaptureTitle": "Automatikus rögzítés",
+    "onboardingAutoCaptureBody": "Mindig bekapcsolva a legjobb minőségért — bármikor rögzíthetsz manuálisan is az exponáló gombbal.",
+    "onboardingSkipTitle": "Hátoldal kihagyása",
+    "onboardingSkipBody": "Nincs szükség a hátoldalra ennél a kártyánál? Koppints a Kihagyásra a továbblépéshez.",
     "bucketChangeConfirm": "A dokumentumtípus módosítása újraindítja a szkennelést, és törli a már rögzített felvételeket — folytatod?",
     "pageTitleMultiPage": "{{type}}: {{ordinal}} oldal",
     "ordinal1": "1.",

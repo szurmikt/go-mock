@@ -10,6 +10,8 @@ import { LanguageService } from '../../services/language.service';
 import { FeedbackSheetComponent } from '../../components/feedback-sheet/feedback-sheet.component';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { LOCK_DEBUG_PROPERTY_ID } from './lock-debug.const';
+import { ScanOnboardingService } from '../../idscanly/services/scan-onboarding.service';
+import { SCAN_ONBOARDING_DEBUG_PROPERTY_ID } from '../../idscanly/scan-onboarding-debug.const';
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.page.html',
@@ -24,6 +26,8 @@ export class SettingsPage {
   lang = inject(LanguageService);
   biometric = inject(BiometricService);
   private mixpanel = inject(MixpanelService);
+  private scanOnboarding = inject(ScanOnboardingService);
+  scanTourReset = signal(false);
 
   private appVersionService = inject(AppVersionService);
   // Same source AppComponent already resolved at boot (AppVersionService.init()) — read
@@ -53,6 +57,10 @@ export class SettingsPage {
     () => String(this.auth.selectedProperty()?.property_id) === LOCK_DEBUG_PROPERTY_ID,
   );
 
+  readonly scanTourResetEnabled = computed(
+    () => String(this.auth.selectedProperty()?.property_id) === SCAN_ONBOARDING_DEBUG_PROPERTY_ID,
+  );
+
   constructor(
     public auth: AuthService,
     private router: Router,
@@ -79,6 +87,12 @@ export class SettingsPage {
 
   lockNow() {
     this.biometric.lockSession();
+  }
+
+  async resetScanTour() {
+    await this.scanOnboarding.reset();
+    this.scanTourReset.set(true);
+    setTimeout(() => this.scanTourReset.set(false), 2000);
   }
 
   openAutoLockPicker() {

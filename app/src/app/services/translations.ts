@@ -18,6 +18,8 @@ export const TRANSLATIONS: TranslationMap = {
     submit: 'Submit',
     done: 'Done',
     filterPlaceholder: 'Filter by name or ID…',
+    next: 'Next',
+    close: 'Close',
   },
   // PRE-AUTH BUNDLE: `login` is the ONLY namespace the /languages API returns
   // unauthenticated, so it must carry every key reachable before an access token
@@ -172,6 +174,13 @@ export const TRANSLATIONS: TranslationMap = {
     bucketCard: 'Card',
     bucketPassport: 'Passport',
     documentFormLabel: 'Document form',
+    onboardingDocFormTitle: 'Choose Card or Passport',
+    onboardingDocFormBody:
+      "Pick the document form here — we'll remember your choice next time. The document type itself is recognised automatically.",
+    onboardingAutoCaptureTitle: 'Auto-Capture',
+    onboardingAutoCaptureBody: "Always on for the best scan — you can still tap the shutter manually anytime.",
+    onboardingSkipTitle: 'Skip the back side',
+    onboardingSkipBody: "No back side needed for this card? Tap Skip to move on.",
     bucketChangeConfirm:
       "Changing the document type restarts this scan and discards what you've captured — continue?",
     pageTitleMultiPage: '{{type}}: {{ordinal}} Page',
