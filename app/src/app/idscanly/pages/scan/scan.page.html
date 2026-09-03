@@ -284,10 +284,11 @@
 
       @if (onboardingStep() === 'autoCapture' && onboardingAnchorRect(); as anchor) {
         <div
-          class="onboarding-callout onboarding-callout--bottom-left"
+          class="onboarding-callout onboarding-callout--bottom"
           [style.bottom.px]="onboardingViewportHeight() - anchor.top + 9"
+          [style.left.px]="onboardingCardLeft(anchor)"
         >
-          <div class="onboarding-callout__card onboarding-callout__card--arrow-down-left">
+          <div class="onboarding-callout__card onboarding-callout__card--arrow-down">
             <p class="onboarding-callout__title">{{ 'idscanly.onboardingAutoCaptureTitle' | tr }}</p>
             <p class="onboarding-callout__body">{{ 'idscanly.onboardingAutoCaptureBody' | tr }}</p>
             <ng-container [ngTemplateOutlet]="onboardingActions"></ng-container>
@@ -297,10 +298,11 @@
 
       @if (onboardingStep() === 'skip' && onboardingAnchorRect(); as anchor) {
         <div
-          class="onboarding-callout onboarding-callout--bottom-right"
+          class="onboarding-callout onboarding-callout--bottom"
           [style.bottom.px]="onboardingViewportHeight() - anchor.top + 9"
+          [style.left.px]="onboardingCardLeft(anchor)"
         >
-          <div class="onboarding-callout__card onboarding-callout__card--arrow-down-right">
+          <div class="onboarding-callout__card onboarding-callout__card--arrow-down">
             <p class="onboarding-callout__title">{{ 'idscanly.onboardingSkipTitle' | tr }}</p>
             <p class="onboarding-callout__body">{{ 'idscanly.onboardingSkipBody' | tr }}</p>
             <ng-container [ngTemplateOutlet]="onboardingActions"></ng-container>

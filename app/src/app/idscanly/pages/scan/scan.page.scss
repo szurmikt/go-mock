@@ -574,18 +574,14 @@
   flex-direction: column;
   align-items: center;
 
-  &--bottom-right {
-    left: auto;
-    right: 16px;
-    width: 240px;
-    align-items: flex-end;
-  }
-
-  &--bottom-left {
+  /* Bottom-anchored steps (autoCapture, skip) get their `left` set inline from
+     onboardingCardLeft() — centered on the real anchor, clamped to the viewport — rather than a
+     fixed left/right inset, since the button being explained isn't reliably near either screen
+     edge (the auto-capture toggle in particular is one of a *centered* pair, not edge-anchored;
+     an earlier version assumed "near the left edge" and pointed at the wrong place). */
+  &--bottom {
     right: auto;
-    left: 16px;
     width: 240px;
-    align-items: flex-start;
   }
 
   &__card {
@@ -600,13 +596,15 @@
     /* Call-out arrow — a pseudo-element fixed to the card's own edge (not a separately
        positioned sibling) so it can never end up detached from the card or fail to render
        independently of it; the gap between card and anchor is sized to exactly match the arrow's
-       9px height (see the --top/--bottom-left/--bottom-right offsets above), so it always
-       touches both. */
+       9px height (see the --top/--bottom offsets above), so it always touches both. Always
+       centered on the card itself — correct because the card's own position (top's full width,
+       bottom's onboardingCardLeft()) is what's centered on the real anchor, not the arrow. */
     &--arrow-up::before,
-    &--arrow-down-left::after,
-    &--arrow-down-right::after {
+    &--arrow-down::after {
       content: '';
       position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
       width: 0;
       height: 0;
       border-left: 9px solid transparent;
@@ -615,20 +613,11 @@
 
     &--arrow-up::before {
       top: -9px;
-      left: 50%;
-      transform: translateX(-50%);
       border-bottom: 9px solid var(--surface);
     }
 
-    &--arrow-down-left::after {
+    &--arrow-down::after {
       bottom: -9px;
-      left: 28px;
-      border-top: 9px solid var(--surface);
-    }
-
-    &--arrow-down-right::after {
-      bottom: -9px;
-      right: 28px;
       border-top: 9px solid var(--surface);
     }
   }

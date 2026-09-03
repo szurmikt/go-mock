@@ -139,15 +139,33 @@ export class IdscanScanPage implements OnDestroy {
   private readonly autoCaptureAnchor = viewChild<ElementRef<HTMLElement>>('autoCaptureAnchor');
   private readonly skipOnboardingAnchor = viewChild<ElementRef<HTMLElement>>('skipOnboardingAnchor');
 
-  /** Real on-screen vertical position of the current onboarding step's target (the Document
-   *  form track, the auto-capture toggle, or the ghost Skip button), measured via
-   *  getBoundingClientRect() rather than guessed at from the static layout — so the callout
-   *  lands right next to it regardless of screen size. Only top/height are needed: horizontal
-   *  callout placement is fixed per step (top/bottom-left/bottom-right), and the call-out arrow
-   *  is a CSS pseudo-element fixed to the card's own edge, not separately positioned. null until
-   *  the target has actually rendered and been measured. */
-  readonly onboardingAnchorRect = signal<{ top: number; height: number } | null>(null);
+  /** Real on-screen position of the current onboarding step's target (the Document form track,
+   *  the auto-capture toggle, or the ghost Skip button), measured via getBoundingClientRect()
+   *  rather than guessed at from the static layout — so the callout lands right next to it
+   *  regardless of screen size. Horizontal position matters here, not just vertical: the
+   *  auto-capture toggle is one of a *centered* pair of buttons, not flush against a screen
+   *  edge, so a fixed per-step left/right offset (an earlier version of this) pointed at the
+   *  wrong place — see onboardingCardLeft(). null until the target has actually rendered and
+   *  been measured. */
+  readonly onboardingAnchorRect = signal<{ top: number; left: number; width: number; height: number } | null>(
+    null,
+  );
+  readonly onboardingViewportWidth = signal(window.innerWidth);
   readonly onboardingViewportHeight = signal(window.innerHeight);
+
+  /** Bottom-step callout card width — see onboardingCardLeft(). */
+  private static readonly ONBOARDING_CARD_WIDTH = 240;
+
+  /** Where to place a bottom-anchored callout card so it's horizontally centered on the real
+   *  anchor (the toggle/button it's explaining), clamped so it never runs off either edge of
+   *  the viewport. Centering on the *card*, not a fixed per-step arrow offset, is what makes
+   *  this correct regardless of where a given button actually sits in the control bar. */
+  onboardingCardLeft(anchor: { left: number; width: number }): number {
+    const vw = this.onboardingViewportWidth();
+    const width = IdscanScanPage.ONBOARDING_CARD_WIDTH;
+    const center = anchor.left + anchor.width / 2;
+    return Math.min(Math.max(16, center - width / 2), vw - 16 - width);
+  }
 
   readonly currentSide = computed<Side | null>(() => {
     const type = this.selectedType();
@@ -320,9 +338,10 @@ export class IdscanScanPage implements OnDestroy {
       this.onboardingAnchorRect.set(null);
       return;
     }
+    this.onboardingViewportWidth.set(window.innerWidth);
     this.onboardingViewportHeight.set(window.innerHeight);
     const rect = el.getBoundingClientRect();
-    this.onboardingAnchorRect.set({ top: rect.top, height: rect.height });
+    this.onboardingAnchorRect.set({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
   }
 
   /** Tapping the toggle: switches immediately if nothing is captured yet, otherwise opens the
