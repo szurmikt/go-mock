@@ -588,29 +588,49 @@
     align-items: flex-start;
   }
 
-  &__arrow {
-    position: fixed;
-    width: 0;
-    height: 0;
-    border-left: 9px solid transparent;
-    border-right: 9px solid transparent;
-
-    &--up {
-      border-bottom: 9px solid var(--surface);
-    }
-
-    &--down {
-      border-top: 9px solid var(--surface);
-    }
-  }
-
   &__card {
+    position: relative;
     width: 100%;
     max-width: 320px;
     border-radius: var(--radius);
     background: var(--surface);
     border: 1px solid var(--line-strong);
     padding: 18px 20px;
+
+    /* Call-out arrow — a pseudo-element fixed to the card's own edge (not a separately
+       positioned sibling) so it can never end up detached from the card or fail to render
+       independently of it; the gap between card and anchor is sized to exactly match the arrow's
+       9px height (see the --top/--bottom-left/--bottom-right offsets above), so it always
+       touches both. */
+    &--arrow-up::before,
+    &--arrow-down-left::after,
+    &--arrow-down-right::after {
+      content: '';
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-left: 9px solid transparent;
+      border-right: 9px solid transparent;
+    }
+
+    &--arrow-up::before {
+      top: -9px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-bottom: 9px solid var(--surface);
+    }
+
+    &--arrow-down-left::after {
+      bottom: -9px;
+      left: 28px;
+      border-top: 9px solid var(--surface);
+    }
+
+    &--arrow-down-right::after {
+      bottom: -9px;
+      right: 28px;
+      border-top: 9px solid var(--surface);
+    }
   }
 
   &__title {

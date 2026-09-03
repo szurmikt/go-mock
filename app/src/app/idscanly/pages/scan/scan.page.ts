@@ -139,14 +139,14 @@ export class IdscanScanPage implements OnDestroy {
   private readonly autoCaptureAnchor = viewChild<ElementRef<HTMLElement>>('autoCaptureAnchor');
   private readonly skipOnboardingAnchor = viewChild<ElementRef<HTMLElement>>('skipOnboardingAnchor');
 
-  /** Real on-screen position of the current onboarding step's target (the Document form track,
-   *  the auto-capture toggle, or the ghost Skip button), measured via getBoundingClientRect()
-   *  rather than guessed at from the static layout — so the callout/arrow line up exactly
-   *  regardless of screen size. null until the target has actually rendered and been measured. */
-  readonly onboardingAnchorRect = signal<{ top: number; left: number; width: number; height: number } | null>(
-    null,
-  );
-  readonly onboardingViewportWidth = signal(window.innerWidth);
+  /** Real on-screen vertical position of the current onboarding step's target (the Document
+   *  form track, the auto-capture toggle, or the ghost Skip button), measured via
+   *  getBoundingClientRect() rather than guessed at from the static layout — so the callout
+   *  lands right next to it regardless of screen size. Only top/height are needed: horizontal
+   *  callout placement is fixed per step (top/bottom-left/bottom-right), and the call-out arrow
+   *  is a CSS pseudo-element fixed to the card's own edge, not separately positioned. null until
+   *  the target has actually rendered and been measured. */
+  readonly onboardingAnchorRect = signal<{ top: number; height: number } | null>(null);
   readonly onboardingViewportHeight = signal(window.innerHeight);
 
   readonly currentSide = computed<Side | null>(() => {
@@ -320,10 +320,9 @@ export class IdscanScanPage implements OnDestroy {
       this.onboardingAnchorRect.set(null);
       return;
     }
-    this.onboardingViewportWidth.set(window.innerWidth);
     this.onboardingViewportHeight.set(window.innerHeight);
     const rect = el.getBoundingClientRect();
-    this.onboardingAnchorRect.set({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+    this.onboardingAnchorRect.set({ top: rect.top, height: rect.height });
   }
 
   /** Tapping the toggle: switches immediately if nothing is captured yet, otherwise opens the
