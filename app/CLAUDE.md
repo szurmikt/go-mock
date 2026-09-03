@@ -690,7 +690,7 @@ async ionViewWillEnter() {
 
 ### 2026-09-03 — First-run Scan-screen walkthrough (Document form, Auto-Capture, Skip callouts)
 
-> Branch `add-scan-onboarding-walkthrough`. No native build/version bump, no TestFlight upload (web-layer only). **Published OTA to the `dev` channel twice this session** — bundle `20e2af04-a14b-4e25-b292-ada24770bd25` (git `8be49d3`, the walkthrough itself), then bundle `9443975e-88ce-43b8-b227-3319aca0a644` (git `23d84d6`, the call-out-arrow fix below) — see [ReleaseNotes.md](ReleaseNotes.md).
+> Branch `add-scan-onboarding-walkthrough`. No native build/version bump, no TestFlight upload (web-layer only). **Published OTA to the `dev` channel three times this session** — bundle `20e2af04-a14b-4e25-b292-ada24770bd25` (git `8be49d3`, the walkthrough itself), `9443975e-88ce-43b8-b227-3319aca0a644` (git `23d84d6`, the call-out-arrow rendering fix), then `8f21af87-c84b-48b3-8ea2-8acdd66aab30` (git `39a0b17`, the arrow-position fix below) — see [ReleaseNotes.md](ReleaseNotes.md).
 
 Two recently-shipped Scan-screen features had no in-UI explanation: the Card/Passport **Document form** toggle (remembers the last choice per device, see the 2026-09-02 IDScanly redesign entry) and the **Skip** button that appears only on a Card's back-side capture. Added a lightweight, one-time, two-step coach-mark walkthrough shown the first time a device reaches `/idscanly/scan`, dismissed via **Next**/**Close** and never shown again on that device.
 

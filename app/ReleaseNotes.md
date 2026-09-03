@@ -13,6 +13,9 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+### 2026-09-03 — dev — 8f21af87-c84b-48b3-8ea2-8acdd66aab30
+- Fix: the walkthrough's Auto-Capture arrow pointed at empty space left of the actual toggle (it's one of a centered button pair, not edge-anchored) — the callout now centers itself on the real button
+
 ### 2026-09-03 — dev — 9443975e-88ce-43b8-b227-3319aca0a644
 - Fix: the walkthrough's call-out arrow didn't render on the Document form step, and had a visible gap on the other two — now a pseudo-element flush against each card's edge
 
