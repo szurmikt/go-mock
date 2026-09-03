@@ -13,6 +13,11 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+### 2026-09-03 — dev — 20e2af04-a14b-4e25-b292-ada24770bd25
+- First-run Scan-screen walkthrough: explains the Card/Passport Document form toggle, Auto-Capture, and Skip, shown once per device
+- Camera no longer starts until the walkthrough finishes (was running underneath it, could desync the tour); added a persistent close button on the walkthrough overlay
+- Settings gained a "Reset Scan Tour" debug button (property 6250 only) to re-trigger the walkthrough
+
 ### 2026-09-01 — dev — dbdadeff-d4d1-487c-b429-a3b8d3d29a57
 - Mixpanel `scan_started` now carries a `source` (`guest_card` | `fab_menu`), so scan entry point is reportable — no new event, no user-facing change
 
