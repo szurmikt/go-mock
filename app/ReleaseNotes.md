@@ -13,6 +13,15 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+### 2026-09-03 — prod — fd51569d-983c-4d7e-a751-f3bbb3f419f4
+> Promoted from `dev` (build #36, git `b10451a`) — same bytes, no rebuild. First production release of the Scan-screen walkthrough below; content also includes the three `dev`-only fix entries beneath this one, since each `dev` push rebuilds the bundle cumulatively.
+- First-run Scan-screen walkthrough: explains the Card/Passport Document form toggle, Auto-Capture, and Skip, shown once per device, with call-out arrows pointing at each real control
+- Camera no longer starts until the walkthrough finishes; a persistent close button guarantees an exit regardless of tour state
+- Settings gained a "Reset Scan Tour" debug button (property 6250 only)
+
+### 2026-09-03 — early — fd51569d-983c-4d7e-a751-f3bbb3f419f4
+> Promoted from `dev` (build #36, git `b10451a`) — same content as the `prod` entry above.
+
 ### 2026-09-03 — dev — fd51569d-983c-4d7e-a751-f3bbb3f419f4
 - Fix: the walkthrough's Skip arrow drifted from the button when its card had to clamp near the screen edge — the arrow now tracks the real button independently of the card's position
 
