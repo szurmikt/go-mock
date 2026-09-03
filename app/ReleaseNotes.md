@@ -13,6 +13,9 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+### 2026-09-03 — dev — fd51569d-983c-4d7e-a751-f3bbb3f419f4
+- Fix: the walkthrough's Skip arrow drifted from the button when its card had to clamp near the screen edge — the arrow now tracks the real button independently of the card's position
+
 ### 2026-09-03 — dev — 8f21af87-c84b-48b3-8ea2-8acdd66aab30
 - Fix: the walkthrough's Auto-Capture arrow pointed at empty space left of the actual toggle (it's one of a centered button pair, not edge-anchored) — the callout now centers itself on the real button
 
