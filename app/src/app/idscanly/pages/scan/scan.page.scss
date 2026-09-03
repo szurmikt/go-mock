@@ -377,6 +377,14 @@
     cursor: pointer;
 
     &:active { background: #1f1f1d; }
+
+    /* Illustrative-only stand-in shown during the onboarding walkthrough's Skip step, before the
+       real button exists (see scan.page.html) — same look as the real thing, but inert. */
+    &--ghost {
+      cursor: default;
+      pointer-events: none;
+      box-shadow: 0 0 0 4px rgba(0, 142, 255, 0.35);
+    }
   }
 
   &__capture {
@@ -517,6 +525,125 @@
     &--active {
       background: #323236;
       color: #fff;
+    }
+
+    &:active { opacity: 0.85; }
+  }
+}
+
+/* ---- First-run walkthrough (Document form toggle + Skip button callouts) ----
+   Lighter scrim than .nag-dialog/.turn-card (0.45 vs 0.55) so the real camera/toggle/control-bar
+   stay visibly dimmed in the background rather than hidden — this is a guided tour, not a modal
+   the user needs to focus on exclusively. Callout/arrow top|bottom|left|right are set inline from
+   scan.page.ts's getBoundingClientRect() measurement of the real target element (the Document
+   form track, or the ghost Skip button below) — viewport-relative, hence position: fixed here
+   rather than relying on any static guess. */
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  background: rgba(13, 13, 12, 0.45);
+  pointer-events: auto;
+}
+
+.onboarding-close {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  right: 16px;
+  z-index: 26;
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  &:active { background: rgba(0, 0, 0, 0.6); }
+}
+
+.onboarding-callout {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  &--bottom-right {
+    left: auto;
+    right: 16px;
+    width: 240px;
+    align-items: flex-end;
+  }
+
+  &--bottom-left {
+    right: auto;
+    left: 16px;
+    width: 240px;
+    align-items: flex-start;
+  }
+
+  &__arrow {
+    position: fixed;
+    width: 0;
+    height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+
+    &--up {
+      border-bottom: 9px solid var(--surface);
+    }
+
+    &--down {
+      border-top: 9px solid var(--surface);
+    }
+  }
+
+  &__card {
+    width: 100%;
+    max-width: 320px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    padding: 18px 20px;
+  }
+
+  &__title {
+    margin: 0 0 6px;
+    font-size: var(--font-md);
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  &__body {
+    margin: 0 0 16px;
+    font-size: var(--font-sm);
+    line-height: 1.5;
+    color: var(--ink-3);
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  &__btn {
+    appearance: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px 20px;
+    font-size: var(--font-sm);
+    font-weight: 700;
+    cursor: pointer;
+
+    &--primary {
+      background: var(--primary);
+      color: #ffffff;
     }
 
     &:active { opacity: 0.85; }

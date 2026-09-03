@@ -7,7 +7,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { Location } from '@angular/common';
+import { Location, NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { CaptureQuality } from '../../models/capture-quality';
@@ -31,6 +31,7 @@ import { AuthService } from '../../../services/auth';
 import { MixpanelService } from '../../../services/mixpanel';
 import { PropertyConfigService } from '../../../services/property-config.service';
 import { CapturePreferenceService } from '../../services/capture-preference.service';
+import { ScanOnboardingService } from '../../services/scan-onboarding.service';
 import { IDSCANLY_DEBUG_PROPERTY_ID } from '../../idscanly-debug.const';
 
 const ORDINAL_KEYS = ['idscanly.ordinal1', 'idscanly.ordinal2', 'idscanly.ordinal3', 'idscanly.ordinal4'];
@@ -40,7 +41,7 @@ const FLIP_PROMPT_MIN_MS = 3000;
   selector: 'app-idscanly-scan',
   templateUrl: 'scan.page.html',
   styleUrls: ['scan.page.scss'],
-  imports: [IonContent, TranslatePipe],
+  imports: [IonContent, TranslatePipe, NgTemplateOutlet],
 })
 export class IdscanScanPage implements OnDestroy {
   private readonly session = inject(CaptureSessionService);
@@ -52,6 +53,7 @@ export class IdscanScanPage implements OnDestroy {
   private readonly mixpanel = inject(MixpanelService);
   private readonly propertyConfig = inject(PropertyConfigService);
   private readonly capturePreference = inject(CapturePreferenceService);
+  private readonly scanOnboarding = inject(ScanOnboardingService);
 
   readonly selectedType = signal<DocumentTypeConfig | null>(null);
   readonly currentSideIndex = signal(0);
@@ -90,6 +92,22 @@ export class IdscanScanPage implements OnDestroy {
     return isCardBucketAllowed(allowed) && isPassportBucketAllowed(allowed);
   });
 
+  /** First-run walkthrough steps, in the order they're shown. 'none' = hidden. See
+   *  onboardingApplicableSteps() for which of these a given property actually needs. */
+  readonly onboardingStep = signal<'none' | 'docForm' | 'autoCapture' | 'skip'>('none');
+  /** Steps relevant to this property's scan_doc_types restriction, in display order. Recomputed
+   *  each time (not cached at boot) since scan_doc_types can only be known once the property
+   *  config has loaded, same as showBucketToggle above. 'autoCapture' always applies — the
+   *  toggle is unconditional, unlike the doc-form toggle and the card-only Skip button. */
+  private onboardingApplicableSteps(): Array<'docForm' | 'autoCapture' | 'skip'> {
+    const steps: Array<'docForm' | 'autoCapture' | 'skip'> = [];
+    if (this.showBucketToggle()) steps.push('docForm');
+    steps.push('autoCapture');
+    const allowed = this.propertyConfig.scanDocTypes() as DocumentTypeId[];
+    if (isCardBucketAllowed(allowed)) steps.push('skip');
+    return steps;
+  }
+
   readonly autoCaptureOn = signal(true);
   /** `reason` distinguishes the weekly-throttled UX nag from the unthrottled, always-on lighting
    *  gate — see onCaptured(). */
@@ -117,6 +135,19 @@ export class IdscanScanPage implements OnDestroy {
   private readonly video = viewChild<ElementRef<HTMLVideoElement>>('video');
   private readonly debugCanvas = viewChild<ElementRef<HTMLCanvasElement>>('debugCanvas');
   private readonly guide = viewChild<ElementRef<HTMLElement>>('guide');
+  private readonly bucketToggleAnchor = viewChild<ElementRef<HTMLElement>>('bucketToggleAnchor');
+  private readonly autoCaptureAnchor = viewChild<ElementRef<HTMLElement>>('autoCaptureAnchor');
+  private readonly skipOnboardingAnchor = viewChild<ElementRef<HTMLElement>>('skipOnboardingAnchor');
+
+  /** Real on-screen position of the current onboarding step's target (the Document form track,
+   *  the auto-capture toggle, or the ghost Skip button), measured via getBoundingClientRect()
+   *  rather than guessed at from the static layout — so the callout/arrow line up exactly
+   *  regardless of screen size. null until the target has actually rendered and been measured. */
+  readonly onboardingAnchorRect = signal<{ top: number; left: number; width: number; height: number } | null>(
+    null,
+  );
+  readonly onboardingViewportWidth = signal(window.innerWidth);
+  readonly onboardingViewportHeight = signal(window.innerHeight);
 
   readonly currentSide = computed<Side | null>(() => {
     const type = this.selectedType();
@@ -198,7 +229,101 @@ export class IdscanScanPage implements OnDestroy {
     this.autoCaptureOn.set(true);
     const firstMissing = type.sides.findIndex((s) => !this.session.getSide(s));
     this.currentSideIndex.set(firstMissing >= 0 ? firstMissing : 0);
+    // The camera must not run while the walkthrough is up — auto-capture firing mid-tour was
+    // silently advancing currentSideIndex (front → back), which desyncs the tour's Skip step
+    // from reality: the real Skip button replaces the ghost one it was pointing at, that ghost's
+    // anchor ref disappears, and the callout for that step renders nothing at all — leaving just
+    // the dark scrim on screen with no visible way to dismiss it. Deferring the camera start
+    // until the tour actually finishes removes the whole failure class at the source; the
+    // onboarding-close button below is the belt-and-suspenders backstop for any other case.
+    if (!this.maybeShowOnboarding()) {
+      this.beginDetection();
+    }
+  }
+
+  /** Guards against starting the camera twice — ionViewWillEnter defers this call until the
+   *  walkthrough closes (see above), and closeOnboarding() is the other caller. */
+  private detectionStarted = false;
+
+  private beginDetection(): void {
+    if (this.detectionStarted) return;
+    this.detectionStarted = true;
     this.startDetection();
+  }
+
+  /** Steps this run of the walkthrough will actually show, in order — fixed once at trigger
+   *  time so nextOnboardingStep()/onboardingIsLastStep() don't re-derive it mid-tour. */
+  private onboardingSteps: Array<'docForm' | 'autoCapture' | 'skip'> = [];
+
+  /** Returns true when the tour was actually started — ionViewWillEnter uses this to decide
+   *  whether to defer the camera start (see beginDetection()). */
+  private maybeShowOnboarding(): boolean {
+    if (this.scanOnboarding.seen()) return false;
+    const steps = this.onboardingApplicableSteps();
+    if (!steps.length) {
+      // Defensive — 'autoCapture' is unconditional so this can't currently happen, but keeps
+      // the method correct if a future step becomes conditional too.
+      void this.scanOnboarding.markSeen();
+      return false;
+    }
+    this.onboardingSteps = steps;
+    this.onboardingStep.set(steps[0]);
+    this.scheduleOnboardingAnchorMeasure();
+    return true;
+  }
+
+  onboardingIsLastStep(): boolean {
+    const idx = this.onboardingSteps.indexOf(this.onboardingStep() as 'docForm' | 'autoCapture' | 'skip');
+    return idx === this.onboardingSteps.length - 1;
+  }
+
+  nextOnboardingStep(): void {
+    const idx = this.onboardingSteps.indexOf(this.onboardingStep() as 'docForm' | 'autoCapture' | 'skip');
+    const next = this.onboardingSteps[idx + 1];
+    if (next) {
+      this.onboardingStep.set(next);
+      this.scheduleOnboardingAnchorMeasure();
+    } else {
+      this.closeOnboarding();
+    }
+  }
+
+  closeOnboarding(): void {
+    this.onboardingStep.set('none');
+    this.onboardingAnchorRect.set(null);
+    void this.scanOnboarding.markSeen();
+    // The camera was deliberately held off while the tour was up (see ionViewWillEnter) —
+    // start it now, however the tour ended (walked through, or closed early via the X).
+    this.beginDetection();
+  }
+
+  /** Defers the measurement to the next tick — the step's target element (the ghost Skip
+   *  button in particular) is only rendered once Angular flushes the DOM update for the
+   *  onboardingStep signal write above, so reading getBoundingClientRect() synchronously here
+   *  would still see the previous step's layout (or nothing at all, on the very first step). */
+  private scheduleOnboardingAnchorMeasure(): void {
+    this.onboardingAnchorRect.set(null);
+    setTimeout(() => this.measureOnboardingAnchor(), 0);
+  }
+
+  private measureOnboardingAnchor(): void {
+    const step = this.onboardingStep();
+    const el =
+      step === 'docForm'
+        ? this.bucketToggleAnchor()?.nativeElement
+        : step === 'autoCapture'
+          ? this.autoCaptureAnchor()?.nativeElement
+          : step === 'skip'
+            ? this.skipOnboardingAnchor()?.nativeElement
+            : undefined;
+    if (!el) {
+      this.onboardingAnchorRect.set(null);
+      return;
+    }
+    this.onboardingViewportWidth.set(window.innerWidth);
+    this.onboardingViewportHeight.set(window.innerHeight);
+    const rect = el.getBoundingClientRect();
+    this.onboardingAnchorRect.set({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
   }
 
   /** Tapping the toggle: switches immediately if nothing is captured yet, otherwise opens the
@@ -312,6 +437,7 @@ export class IdscanScanPage implements OnDestroy {
 
   ionViewWillLeave(): void {
     this.detection.stop();
+    this.detectionStarted = false;
   }
 
   private ordinal(n: number): string {

@@ -12,6 +12,7 @@ import { AppVersionService } from './services/app-version';
 import { AuthService, GO_SUBSCRIPTION_MODULE } from './services/auth';
 import { BiometricService } from './services/biometric';
 import { CapturePreferenceService } from './idscanly/services/capture-preference.service';
+import { ScanOnboardingService } from './idscanly/services/scan-onboarding.service';
 import { LiveUpdateService } from './services/live-update';
 import { MixpanelService } from './services/mixpanel';
 import { OptionsService } from './services/options.service';
@@ -90,6 +91,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private appVersion = inject(AppVersionService);
   private liveUpdate = inject(LiveUpdateService);
   private capturePreference = inject(CapturePreferenceService);
+  private scanOnboarding = inject(ScanOnboardingService);
 
   constructor(
     readonly auth: AuthService,
@@ -127,6 +129,10 @@ export class AppComponent implements OnInit, OnDestroy {
     await this.biometric.init();
     // Purely local read (the remembered Card/Passport scan toggle) — no network dependency.
     await this.capturePreference.init();
+    // Purely local read (has the Scan-screen walkthrough been dismissed before) — no network
+    // dependency, must resolve before the Scan page's first ionViewWillEnter can decide whether
+    // to show it.
+    await this.scanOnboarding.init();
     await this.apiEnv.init();
     // Which OTA bundle is running — a purely local read, deliberately not gated on any backend
     // call, so bundle_version is correct on the very first event even on a flaky network.
