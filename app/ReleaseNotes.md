@@ -13,6 +13,9 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+### 2026-09-03 — dev — 9443975e-88ce-43b8-b227-3319aca0a644
+- Fix: the walkthrough's call-out arrow didn't render on the Document form step, and had a visible gap on the other two — now a pseudo-element flush against each card's edge
+
 ### 2026-09-03 — dev — 20e2af04-a14b-4e25-b292-ada24770bd25
 - First-run Scan-screen walkthrough: explains the Card/Passport Document form toggle, Auto-Capture, and Skip, shown once per device
 - Camera no longer starts until the walkthrough finishes (was running underneath it, could desync the tour); added a persistent close button on the walkthrough overlay
