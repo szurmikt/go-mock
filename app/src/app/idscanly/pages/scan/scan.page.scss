@@ -596,14 +596,16 @@
     /* Call-out arrow — a pseudo-element fixed to the card's own edge (not a separately
        positioned sibling) so it can never end up detached from the card or fail to render
        independently of it; the gap between card and anchor is sized to exactly match the arrow's
-       9px height (see the --top/--bottom offsets above), so it always touches both. Always
-       centered on the card itself — correct because the card's own position (top's full width,
-       bottom's onboardingCardLeft()) is what's centered on the real anchor, not the arrow. */
+       9px height (see the --top/--bottom offsets above), so it always touches both.
+       --arrow-up (docForm) stays centered on the card — its anchor is nearly as wide as the card
+       itself, so centering is already correct. --arrow-down (autoCapture/skip) instead reads the
+       --arrow-x custom property set inline from onboardingArrowLeft() — the card's own position
+       can get clamped to stay on-screen (see onboardingCardLeft()) without the arrow losing track
+       of the anchor's true center, which a plain 50% would. */
     &--arrow-up::before,
     &--arrow-down::after {
       content: '';
       position: absolute;
-      left: 50%;
       transform: translateX(-50%);
       width: 0;
       height: 0;
@@ -613,11 +615,13 @@
 
     &--arrow-up::before {
       top: -9px;
+      left: 50%;
       border-bottom: 9px solid var(--surface);
     }
 
     &--arrow-down::after {
       bottom: -9px;
+      left: var(--arrow-x, 50%);
       border-top: 9px solid var(--surface);
     }
   }

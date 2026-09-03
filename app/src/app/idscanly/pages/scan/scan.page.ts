@@ -158,13 +158,30 @@ export class IdscanScanPage implements OnDestroy {
 
   /** Where to place a bottom-anchored callout card so it's horizontally centered on the real
    *  anchor (the toggle/button it's explaining), clamped so it never runs off either edge of
-   *  the viewport. Centering on the *card*, not a fixed per-step arrow offset, is what makes
-   *  this correct regardless of where a given button actually sits in the control bar. */
+   *  the viewport. When the anchor sits close enough to an edge that the clamp actually kicks in
+   *  (e.g. the Skip button, near the right edge), the card can no longer fully follow it — see
+   *  onboardingArrowLeft() for how the arrow stays correct anyway. */
   onboardingCardLeft(anchor: { left: number; width: number }): number {
     const vw = this.onboardingViewportWidth();
     const width = IdscanScanPage.ONBOARDING_CARD_WIDTH;
     const center = anchor.left + anchor.width / 2;
     return Math.min(Math.max(16, center - width / 2), vw - 16 - width);
+  }
+
+  /** Horizontal position of the arrow *within* the card (not the viewport) — px from the card's
+   *  own left edge. Deliberately NOT always centered: when onboardingCardLeft()'s clamp prevents
+   *  the card from fully following the anchor to an edge (the Skip button case — a 240px card
+   *  centered on a button 56px from the right edge would run off-screen), the card stops moving
+   *  but the arrow keeps tracking the anchor's true center, sliding toward whichever edge of the
+   *  card is closest to it. Clamped within the card's own bounds (24px margin) so it never pokes
+   *  out past the rounded corners. */
+  onboardingArrowLeft(anchor: { left: number; width: number }): string {
+    const cardWidth = IdscanScanPage.ONBOARDING_CARD_WIDTH;
+    const cardLeft = this.onboardingCardLeft(anchor);
+    const trueCenter = anchor.left + anchor.width / 2;
+    const margin = 24;
+    const x = Math.min(Math.max(trueCenter - cardLeft, margin), cardWidth - margin);
+    return `${x}px`;
   }
 
   readonly currentSide = computed<Side | null>(() => {

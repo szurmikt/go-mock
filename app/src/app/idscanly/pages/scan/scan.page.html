@@ -288,7 +288,10 @@
           [style.bottom.px]="onboardingViewportHeight() - anchor.top + 9"
           [style.left.px]="onboardingCardLeft(anchor)"
         >
-          <div class="onboarding-callout__card onboarding-callout__card--arrow-down">
+          <div
+            class="onboarding-callout__card onboarding-callout__card--arrow-down"
+            [style.--arrow-x]="onboardingArrowLeft(anchor)"
+          >
             <p class="onboarding-callout__title">{{ 'idscanly.onboardingAutoCaptureTitle' | tr }}</p>
             <p class="onboarding-callout__body">{{ 'idscanly.onboardingAutoCaptureBody' | tr }}</p>
             <ng-container [ngTemplateOutlet]="onboardingActions"></ng-container>
@@ -302,7 +305,10 @@
           [style.bottom.px]="onboardingViewportHeight() - anchor.top + 9"
           [style.left.px]="onboardingCardLeft(anchor)"
         >
-          <div class="onboarding-callout__card onboarding-callout__card--arrow-down">
+          <div
+            class="onboarding-callout__card onboarding-callout__card--arrow-down"
+            [style.--arrow-x]="onboardingArrowLeft(anchor)"
+          >
             <p class="onboarding-callout__title">{{ 'idscanly.onboardingSkipTitle' | tr }}</p>
             <p class="onboarding-callout__body">{{ 'idscanly.onboardingSkipBody' | tr }}</p>
             <ng-container [ngTemplateOutlet]="onboardingActions"></ng-container>
