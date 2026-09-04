@@ -1,11 +1,30 @@
 import { Injectable, signal } from '@angular/core';
-import { NativeBiometric } from 'capacitor-native-biometric';
+import { BiometryType, NativeBiometric } from 'capacitor-native-biometric';
 import { Config } from '../config/config';
 import { StorageService } from './storage';
+
+/** What caused the session to lock — carried through to the Mixpanel unlock-result event so it
+ *  doesn't need to be re-derived from timers at the point the overlay resolves. */
+export type LockTrigger = 'inactivity' | 'background' | 'cold_start';
+
+const BIOMETRY_TYPE_NAMES: Record<BiometryType, string> = {
+  [BiometryType.NONE]: 'none',
+  [BiometryType.TOUCH_ID]: 'touch_id',
+  [BiometryType.FACE_ID]: 'face_id',
+  [BiometryType.FINGERPRINT]: 'fingerprint',
+  [BiometryType.FACE_AUTHENTICATION]: 'face_authentication',
+  [BiometryType.IRIS_AUTHENTICATION]: 'iris_authentication',
+  [BiometryType.MULTIPLE]: 'multiple',
+};
 
 @Injectable({ providedIn: 'root' })
 export class BiometricService {
   readonly sessionLocked = signal(false);
+
+  /** Set whenever a lock is triggered; read once by the lock overlay when it reports the
+   *  eventual unlock/abandon outcome. Not cleared on unlock — only ever overwritten by the next
+   *  lock, so it's always defined by the time the overlay needs it. */
+  readonly lastLockTrigger = signal<LockTrigger>('inactivity');
 
   /** User-configurable via Settings; 10 min matches the previous hardcoded default. */
   readonly AUTO_LOCK_OPTIONS: readonly number[] = [10, 30, 60, 90, 120];
@@ -32,16 +51,17 @@ export class BiometricService {
     await this.storage.set(Config.STORAGE_BACKGROUND_AT_KEY, Date.now());
   }
 
-  async checkAndLock(): Promise<void> {
+  async checkAndLock(trigger: LockTrigger): Promise<void> {
     const ts = await this.storage.get<number>(Config.STORAGE_BACKGROUND_AT_KEY);
     if (!ts) return;
     await this.storage.remove(Config.STORAGE_BACKGROUND_AT_KEY);
     if (Date.now() - ts >= this.lockAfterMs) {
-      this.sessionLocked.set(true);
+      this.lockSession(trigger);
     }
   }
 
-  lockSession(): void {
+  lockSession(trigger: LockTrigger = 'inactivity'): void {
+    this.lastLockTrigger.set(trigger);
     this.sessionLocked.set(true);
   }
 
@@ -55,6 +75,22 @@ export class BiometricService {
       return result.isAvailable;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Best-effort label for the enrolled biometric hardware (Face ID / Touch ID / fingerprint /
+   * none) — for the Mixpanel unlock-result event only. This is NOT proof of which method
+   * unlocked a given session: `NativeBiometric.verifyIdentity()` resolves with no payload on
+   * success, so a passcode-fallback unlock is indistinguishable from a biometric one at the JS
+   * level. This just reports what's enrolled on the device.
+   */
+  async getBiometryType(): Promise<string> {
+    try {
+      const result = await NativeBiometric.isAvailable();
+      return BIOMETRY_TYPE_NAMES[result.biometryType] ?? 'unknown';
+    } catch {
+      return 'unknown';
     }
   }
 

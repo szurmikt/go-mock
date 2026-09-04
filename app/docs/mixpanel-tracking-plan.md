@@ -75,6 +75,41 @@ address, or raw search text.
   `from_recent = true`. (`from_recent` = the committed term matches a previously saved
   recent term. The query text itself is never sent.)
 
+### App lock / unlock
+
+The biometric session lock (§14 of `app/CLAUDE.md`) is a local, device-side lock — not a login
+replacement. Its interval is a **people-profile property**, not an event:
+
+| Property | When set | Value |
+|---|---|---|
+| `auto_lock_interval` | user picks a value in the Settings → Auto-Lock sheet | minutes (int) |
+
+Set only on an explicit pick, never on load/default — its mere presence on a profile is the "has
+this user ever touched the setting" signal, so auto-setting it on init would make that signal
+meaningless.
+
+| Event | When | Properties |
+|---|---|---|
+| `session_unlock_result` | a lock episode resolves — either the user gets back in, or gives up after 3 failed attempts and falls back to a full logout+relogin | `outcome` = `unlocked` \| `abandoned_logout`, `trigger` = `inactivity` \| `background` \| `cold_start`, `attempts` (int), `auto_lock_minutes` (int, the value in effect when the lock fired), `biometry_type` = `face_id` \| `touch_id` \| `fingerprint` \| `iris_authentication` \| `face_authentication` \| `multiple` \| `none` \| `unknown` |
+
+- **One event per lock episode**, not per attempt — `attempts` already carries how many tries it
+  took. A separate `session_locked` event was considered and dropped: every lock episode ends in
+  one of the two outcomes anyway, so lock volume is derivable as `unlocked + abandoned_logout`
+  (the only gap is an app force-quit while locked, not worth a dedicated event).
+- **`biometry_type` is not proof of which method unlocked the app.** `capacitor-native-biometric`'s
+  `verifyIdentity()` resolves with no payload on success, so a device-passcode fallback
+  (`useFallback: true`) is indistinguishable from a real Face ID/Touch ID success at the JS level —
+  this plugin cannot report which one actually happened. `biometry_type` only reports what's
+  *enrolled* on the device (from `NativeBiometric.isAvailable()`), as a coarse proxy.
+- **`abandoned_logout` is a real logout**, not a "password unlock" — the "Use password instead"
+  button (shown after 3 failures) calls `auth.logout()` and routes to a full re-login against the
+  API, discarding the session rather than decrypting it.
+- **"What auto-lock interval do people actually use"** → `session_unlock_result.auto_lock_minutes`
+  distribution (point-in-time value at each lock, independent of the `auto_lock_interval` profile
+  property, which only reflects the *current* setting).
+- **"How often do people fail out entirely"** → `session_unlock_result` where
+  `outcome = abandoned_logout`, as a share of all lock episodes.
+
 ### Guest editing
 
 | Event | When | Properties |

@@ -94,6 +94,23 @@ export class MixpanelService {
   }
 
   /**
+   * Fired once per biometric lock episode, when it resolves — either the user got back in, or
+   * gave up after 3 failed attempts and fell back to a full logout+relogin ('abandoned_logout').
+   * `biometry_type` is best-effort: it's what's enrolled on the device, not proof of which method
+   * actually satisfied a given unlock — `NativeBiometric.verifyIdentity()` gives no way to tell
+   * a biometric success from a device-passcode fallback success.
+   */
+  trackSessionUnlockResult(p: {
+    outcome: 'unlocked' | 'abandoned_logout';
+    trigger: 'inactivity' | 'background' | 'cold_start';
+    attempts: number;
+    auto_lock_minutes: number;
+    biometry_type: string;
+  }): void {
+    this.track('session_unlock_result', { ...p });
+  }
+
+  /**
    * Attach the active property to every subsequent event (a Mixpanel super property,
    * distinct from identify()'s People-profile update). Call on session start and on every
    * property switch — mixpanel.register() overwrites the previous value, so a switch

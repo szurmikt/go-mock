@@ -211,7 +211,7 @@ export class AppComponent implements OnInit, OnDestroy {
         await this.biometric.recordBackground();
         clearTimeout(this.inactivityTimer);
       } else {
-        await this.biometric.checkAndLock();
+        await this.biometric.checkAndLock('background');
         if (!this.biometric.sessionLocked()) this.resetInactivityTimer();
       }
     });
@@ -268,7 +268,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.auth.loadStoredAuth().then(async () => {
       if (this.auth.isAuthenticated()) {
-        await this.biometric.checkAndLock();
+        await this.biometric.checkAndLock('cold_start');
         if (this.auth.selectedProperty()) {
           await this.options.load().catch(() => {});
         }
@@ -336,7 +336,7 @@ export class AppComponent implements OnInit, OnDestroy {
     clearTimeout(this.inactivityTimer);
     this.inactivityTimer = setTimeout(
       () => {
-        if (this.auth.isAuthenticated()) this.biometric.lockSession();
+        if (this.auth.isAuthenticated()) this.biometric.lockSession('inactivity');
       },
       this.biometric.autoLockMinutes() * 60 * 1000,
     );

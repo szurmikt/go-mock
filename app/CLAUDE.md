@@ -688,6 +688,56 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-09-05 — Mixpanel: biometric lock outcome (`session_unlock_result`)
+
+> Branch `add-mixpanel-unlock-tracking`. No build/version bump, no TestFlight upload (web-layer only).
+
+The biometric session lock (§14) had an `auto_lock_interval` **people-property** (set only on an
+explicit Settings pick — see the 2026-08-31 entry) but nothing tracking what actually happens once
+a lock fires: how often people get back in vs. give up, or what interval was in effect at the time.
+
+- **New `MixpanelService.trackSessionUnlockResult()`** ([mixpanel.ts](src/app/services/mixpanel.ts))
+  fires **`session_unlock_result`** once per lock episode — `outcome` (`unlocked` |
+  `abandoned_logout`), `trigger` (`inactivity` | `background` | `cold_start`), `attempts` (int),
+  `auto_lock_minutes` (the value in effect when that lock fired, independent of whatever the
+  profile property says *now*), `biometry_type`.
+- **One event, not three.** A per-lock `session_locked` event and a separate
+  `session_unlock_abandoned` event were both considered and dropped: every lock episode ends in one
+  of the two outcomes, so lock volume is just `unlocked + abandoned_logout` — no event needed to
+  count it separately. The only gap is a force-quit while locked (never resolves either way), not
+  worth a dedicated event for.
+- **`biometry_type` is enrolled hardware, not proof of what unlocked the session.** New
+  `BiometricService.getBiometryType()` ([biometric.ts](src/app/services/biometric.ts)) wraps
+  `NativeBiometric.isAvailable()`'s `biometryType` enum. Checked the plugin's type defs directly:
+  `verifyIdentity()` resolves with **no payload at all** on success, so a device-passcode fallback
+  (`useFallback: true`, already in use — see the 2026-08-24 passcode-fallback fix) is
+  indistinguishable from a real Face ID/Touch ID success at the JS level. This is a known,
+  documented plugin limitation (see [mixpanel-tracking-plan.md](docs/mixpanel-tracking-plan.md)),
+  not something this change works around — a real fix would need a native plugin patch, out of
+  scope here.
+- **`trigger` threading**: `BiometricService` gained `lastLockTrigger` (a `LockTrigger` signal,
+  `'inactivity' | 'background' | 'cold_start'`), set by `lockSession(trigger)`. All three existing
+  call sites in [app.component.ts](src/app/app.component.ts) — the inactivity `setTimeout`, the
+  `appStateChange` resume path, and the cold-boot `loadStoredAuth().then()` path — now pass their
+  real trigger through `lockSession()`/`checkAndLock(trigger)` instead of the old no-arg calls.
+- **Wired into [lock-overlay.component.ts](src/app/components/lock-overlay/lock-overlay.component.ts)**,
+  the only place that already tracks `failCount` and the 3-strikes threshold: fires on a successful
+  `tryUnlock()` (`outcome: 'unlocked'`, `attempts = failCount + 1`) and right before `forceLogout()`
+  (`outcome: 'abandoned_logout'`, `attempts = failCount`, already ≥ 3). `forceLogout()` is a real
+  logout + re-login against the API, not a "password unlock" — documented as such in the tracking
+  plan so it isn't misread as a third unlock method.
+- **Docs**: new "App lock / unlock" section in
+  [mixpanel-tracking-plan.md](docs/mixpanel-tracking-plan.md), covering both the pre-existing
+  `auto_lock_interval` profile property and the new event, with the plugin limitation spelled out.
+
+**Verification:** `npx ng build` clean (only the three pre-existing known warnings — two IDScanly
+SCSS budget overages + the `jscanify` CommonJS bailout, none new). **Not yet device-verified** —
+this is native-only (`NativeBiometric` throws on web, so the lock overlay's every unlock attempt
+registers as a failure in-browser per §14's documented in-browser behaviour). Next device/simulator
+pass (the "Lock Now" debug button on property 6250 works for this) should confirm: a first-try
+unlock fires `attempts: 1`, a fail-then-succeed fires the right count, and 3 failures → "Use
+password instead" fires `abandoned_logout` before the logout actually happens.
+
 ### 2026-09-03 — First-run Scan-screen walkthrough (Document form, Auto-Capture, Skip callouts)
 
 > Branch `add-scan-onboarding-walkthrough`. No native build/version bump, no TestFlight upload (web-layer only — the OTA system covers this entirely). **Published OTA to the `dev` channel four times this session**, iterating against real device screenshots — bundle `20e2af04-a14b-4e25-b292-ada24770bd25` (git `8be49d3`, the walkthrough itself), `9443975e-88ce-43b8-b227-3319aca0a644` (git `23d84d6`, the call-out-arrow rendering fix), `8f21af87-c84b-48b3-8ea2-8acdd66aab30` (git `39a0b17`, the Auto-Capture arrow-position fix), `fd51569d-983c-4d7e-a751-f3bbb3f419f4` (git `b10451a`, the Skip arrow-position fix below). **Then promoted that final bundle (build #36) to `early` and `prod`** on the user's explicit request, via `npm run promote:liveupdate` — same bytes, no rebuild, so every property on `prod` gets the walkthrough complete with all four fixes already applied, not an earlier broken intermediate. See [ReleaseNotes.md](ReleaseNotes.md).
