@@ -17,6 +17,7 @@ import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { LanguageService } from '../../services/language.service';
+import * as Sentry from '@sentry/angular';
 
 type ScanSheetMode = 'loading' | 'result';
 
@@ -215,16 +216,51 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     this.docuscan.lastScanResult = result;
 
     if (action === 'edit') {
+      // TEMPORARY diagnostics (2026-09-08) — see matching comment in guest-edit.page.ts.
+      const hasAddress = !!(
+        result?.scannedData?.['address_line']?.['value'] ||
+        result?.scannedData?.['address_country_code']?.['value']
+      );
+      Sentry.addBreadcrumb({
+        category: 'guest_edit',
+        message: 'processScanResult(edit): navigating',
+        level: 'info',
+        data: {
+          isIdentityDocument: result?.documentData?.is_identity_document,
+          hasAddress,
+        },
+      });
       this.mixpanel.trackScanResultEdited({
         document_type: result?.documentData?.document_type ?? undefined,
       });
       this.scanSheetOpen.set(false);
       this.scanSheetMode.set('loading');
       this._idscanlyResult.set(null);
-      this.t(
-        () => this.router.navigate(['/guest', this.reservationCode, this.guestId, 'edit']),
-        300,
-      );
+      this.t(() => {
+        this.router
+          .navigate(['/guest', this.reservationCode, this.guestId, 'edit'])
+          .then(ok => {
+            Sentry.addBreadcrumb({
+              category: 'guest_edit',
+              message: 'processScanResult(edit): navigate() resolved',
+              level: ok ? 'info' : 'warning',
+              data: { ok, hasAddress },
+            });
+            if (!ok) {
+              Sentry.captureMessage('guest-edit navigation returned false', {
+                level: 'warning',
+                tags: { context: 'guest_edit_navigate' },
+                extra: { hasAddress },
+              });
+            }
+          })
+          .catch(err => {
+            Sentry.captureException(err, {
+              tags: { context: 'guest_edit_navigate' },
+              extra: { hasAddress },
+            });
+          });
+      }, 300);
       return;
     }
 

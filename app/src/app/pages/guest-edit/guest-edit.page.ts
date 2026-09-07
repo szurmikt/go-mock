@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import * as Sentry from '@sentry/angular';
 import { IonContent } from '@ionic/angular/standalone';
 import { ReservationService } from '../../services/reservation';
 import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
@@ -117,6 +118,20 @@ export class GuestEditPage implements OnInit, OnDestroy {
         document_number: found.document?.document_number ?? '',
       };
       const last = this.docuscanService.lastScanResult;
+      // TEMPORARY diagnostics (2026-09-08) for a reported "Edit kicks the user to Home"
+      // bug that only reproduces when the scan carried address data, with nothing captured
+      // in Sentry so far — remove once root-caused. Unconditional (not gated on
+      // extendedLogging) so the next repro is guaranteed to leave a trace.
+      Sentry.addBreadcrumb({
+        category: 'guest_edit',
+        message: 'ngOnInit: scan prefill check',
+        level: 'info',
+        data: {
+          hasLastScanResult: last != null,
+          hasScannedData: last?.scannedData != null,
+          isIdentityDocument: last?.documentData?.is_identity_document,
+        },
+      });
       if (last != null && last.scannedData != null) {
         this.fromScan = true;
         const isIdentityDoc = last.documentData?.is_identity_document !== false;
@@ -126,6 +141,12 @@ export class GuestEditPage implements OnInit, OnDestroy {
         const scanned = this.docuscanService.scannedDataToGuestScannedData(
           last.scannedData!,
         );
+        Sentry.addBreadcrumb({
+          category: 'guest_edit',
+          message: 'ngOnInit: scannedDataToGuestScannedData done',
+          level: 'info',
+          data: { hasAddress: scanned.address != null, isIdentityDoc },
+        });
         // Only an identity scan marks the guest as scanned. For an address card we leave
         // found.scanned_data at its fetched value (real ID record or null), so save()'s
         // `...g` spread sends the POST /guest scanned_data section unchanged.
@@ -162,11 +183,28 @@ export class GuestEditPage implements OnInit, OnDestroy {
             this.form.country_code = addr.country_code ?? this.form.country_code;
             this.form.address_line = addr.address_line ?? this.form.address_line;
           }
+          Sentry.addBreadcrumb({
+            category: 'guest_edit',
+            message: 'ngOnInit: form prefilled from scan',
+            level: 'info',
+            data: { hadAddr: !!addr },
+          });
         }
       }
       // Snapshot the (possibly scan-prefilled) form so save() can count changes.
       this.formSnapshot = { ...this.form };
+      Sentry.addBreadcrumb({
+        category: 'guest_edit',
+        message: 'ngOnInit: completed successfully',
+        level: 'info',
+      });
     } catch (e: any) {
+      // Previously local-only (no Sentry visibility at all) — this is a real gap on its
+      // own, independent of the bug above: any exception here was silently invisible.
+      Sentry.captureException(e, {
+        tags: { context: 'guest_edit_ngOnInit' },
+        extra: { reservationCode: this.reservationCode, guestId: this.guestId },
+      });
       this.error.set(e.message ?? this.lang.t('errors.failedLoadGuest'));
     } finally {
       this.loading.set(false);
