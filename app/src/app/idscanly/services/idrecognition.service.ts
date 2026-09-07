@@ -36,6 +36,9 @@ export interface IdRecognitionFields {
   dateOfIssue?: string;
   dateOfExpiry?: string;
   visibleDates?: string[];
+  // A generic embedded address, read on the identity-document path when present (some
+  // national ID cards/passports carry one) — see IdscanlyDocuscanService.mapToScanResult.
+  // Distinct from the address-card-only fields below.
   address?: string;
   // Address-card fields (documentType: 'address_card'). streetAddress is the
   // vendor's pre-combined "<street> <type> <house number>" string; streetName/

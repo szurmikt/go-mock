@@ -150,9 +150,11 @@ export class GuestEditPage implements OnInit, OnDestroy {
           ).toLowerCase();
           this.form.document_number =
             sd.document?.document_number ?? this.form.document_number;
-          // Address card (lakcímkártya): prefill the address fields too. Nested
-          // under scanned_data.address by scannedDataToGuestScannedData; absent
-          // for identity docs, so this keeps the existing values then.
+          // Prefill the address fields too, when the scan carried any — nested under
+          // scanned_data.address by scannedDataToGuestScannedData. Populated for an address
+          // card (lakcímkártya, which captures address only) and optionally for an identity
+          // document that happens to embed one; absent otherwise, so this keeps the existing
+          // values then.
           const addr = sd.address;
           if (addr) {
             this.form.zip = addr.zip ?? this.form.zip;
