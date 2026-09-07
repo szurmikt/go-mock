@@ -89,7 +89,7 @@ function HomeScreen({ go, property, setProperty }) {
         <span style={{ flex: 1, color: "var(--ink-4)", fontSize: 16, fontWeight: 600 }}>Search</span>
       </button>
 
-      <div className="app-scroll" style={{ paddingTop: 12, paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+      <div className="app-scroll" style={{ paddingTop: 12, paddingBottom: "calc(94px + env(safe-area-inset-bottom, 0px))" }}>
         <Segment tabs={["Yesterday", "Today", "Tomorrow"]} value={tab} onChange={setTab} />
 
         <div className="stat-block">

@@ -1,4 +1,6 @@
-/* global React, ReactDOM, I, StatusBar, Toast, LoginScreen, MFAScreen, PropertySelectScreen, HomeScreen, ArrivalsScreen, ReservationDetailScreen, GuestDetailScreen, EditGuestScreen, SearchScreen, IDScanScreen, useTweaks, TweaksPanel, TweakSection, TweakRadio */
+/* global React, ReactDOM, I, StatusBar, Toast, LoginScreen, MFAScreen, PropertySelectScreen, HomeScreen, ArrivalsScreen, CalendarScreen, TasksScreen, BriefingScreen, TASKS, ReservationDetailScreen, GuestDetailScreen, EditGuestScreen, SearchScreen, IDScanScreen, useTweaks, TweaksPanel, TweakSection, TweakRadio */
+
+const ROOT_TABS = ["home", "calendar", "tasks", "ai"];
 
 const { useState, useEffect, useRef } = React;
 
@@ -15,6 +17,10 @@ function App() {
   const [tab, setTab] = useState("home");
   const [toasts, setToasts] = useState([]);
   const [property, setProperty] = useState(null);
+  const [tasks, setTasks] = useState(TASKS);
+
+  const addTask = (task) => setTasks(t => [task, ...t]);
+  const toggleTask = (id) => setTasks(t => t.map(x => x.id === id ? { ...x, done: !x.done } : x));
 
   const top = stack[stack.length - 1];
 
@@ -30,10 +36,7 @@ function App() {
   const setRootTab = (name) => {
     setTab(name);
     setDirection("forward");
-    if (name === "home") setStack([{ name: "home" }]);
-    else if (name === "arrivals") setStack([{ name: "arrivals" }]);
-    else if (name === "search") setStack([{ name: "search" }]);
-    else if (name === "scan") setStack([{ name: "idscan" }]);
+    setStack([{ name }]);
   };
 
   const addToast = (msg) => {
@@ -49,6 +52,10 @@ function App() {
       case "mfa":      return <MFAScreen goHome={() => setStack([{ name: "property" }])} back={back} />;
       case "property": return <PropertySelectScreen onSelect={p => { setProperty(p); setStack([{ name: "home" }]); }} />;
       case "home": return <HomeScreen go={go} property={property} setProperty={setProperty} />;
+      case "calendar": return <CalendarScreen go={go} property={property} setProperty={setProperty} addToast={addToast} />;
+      case "tasks": return <TasksScreen go={go} tasks={tasks} toggleTask={toggleTask} />;
+      case "briefing": return <BriefingScreen back={back} tasks={tasks} addTask={addTask} addToast={addToast} />;
+      case "ai": return <PlaceholderScreen title="Ask Sabee" />;
       case "arrivals": return <ArrivalsScreen go={go} back={back} />;
       case "reservation": return <ReservationDetailScreen id={s.payload} go={go} back={back} addToast={addToast} />;
       case "guest": return <GuestDetailScreen resId={s.payload.resId} guestId={s.payload.guestId} go={go} back={back} />;
@@ -60,8 +67,9 @@ function App() {
     }
   };
 
-  // Bottom nav visibility — hide on full-screen modals like ID scan
-  const showNav = false;
+  // Bottom nav only shows on the 4 root tab screens — hidden once drilled
+  // into a detail/modal screen (reservation, guest, search, ID scan, ...).
+  const showNav = ROOT_TABS.includes(top.name);
 
   return (
     <div className="app-stage">
@@ -141,14 +149,14 @@ function PageHost({ children, direction }) {
 function BottomNav({ active, setRootTab }) {
   const items = [
     { id: "home", label: "Home", Icon: I.Home, IconActive: I.HomeFill },
-    { id: "arrivals", label: "Arrivals", Icon: I.ArrowIn, IconActive: I.ArrowIn },
-    { id: "scan", label: "Scan", Icon: I.Scan, IconActive: I.Scan },
-    { id: "search", label: "Search", Icon: I.Search, IconActive: I.Search },
+    { id: "calendar", label: "Calendar", Icon: I.Calendar, IconActive: I.Calendar },
+    { id: "tasks", label: "Tasks", Icon: I.Tasks, IconActive: I.Tasks },
+    { id: "ai", label: "Ask Sabee", Icon: I.Sparkle, IconActive: I.Sparkle },
   ];
   return (
     <div className="bottom-nav">
       {items.map(it => {
-        const isActive = it.id === active || (it.id === "arrivals" && active === "arrivals");
+        const isActive = it.id === active;
         const Icon = isActive ? it.IconActive : it.Icon;
         return (
           <button key={it.id} className={"nav-item" + (isActive ? " active" : "")} onClick={() => setRootTab(it.id)}>
@@ -157,6 +165,20 @@ function BottomNav({ active, setRootTab }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function PlaceholderScreen({ title }) {
+  return (
+    <div className="page">
+      <div className="page-header" style={{ paddingTop: 16 }}>
+        <h1 style={{ fontSize: 22 }}>{title}</h1>
+      </div>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8, color: "var(--ink-4)", paddingBottom: 78 }}>
+        <I.Sparkle style={{ width: 32, height: 32, color: "var(--primary-soft)" }} />
+        <div style={{ fontSize: 16, fontWeight: 700 }}>Coming soon</div>
+      </div>
     </div>
   );
 }

@@ -1,13 +1,57 @@
 /* global React, I, StatusBar, Pill, Toast */
 
+// Relative-to-today ISO date helper, so the calendar prototype always shows
+// a populated view around "today" no matter which day it's opened.
+// Builds the string from local date parts — NOT toISOString(), which
+// converts to UTC first and silently shifts the date by a day in any
+// timezone ahead of UTC (e.g. CEST).
+function relDate(offsetDays) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + offsetDays);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 const RESERVATIONS = [
-  { id: "34MRK211", name: "Emma Williams", email: "e.williams@email.com", room: "Junior Suit", roomNo: "201", date: "Dec 18, 2025", guests: 2, nights: 2, status: "onboard", source: "Booking.com", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Booking.com", composition: "2 (2/0/0)" },
-  { id: "34MXK25",  name: "Michael Antonio Franklin Correro", email: "m.antonio@email.com", room: "Luxury Suit", roomNo: "412", date: "Dec 18, 2025", guests: 2, nights: 2, status: "check-in", source: "Direct", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Direct", composition: "2 (2/0/0)" },
-  { id: "68CXK25",  name: "Emma Williams", email: "e.williams@email.com", room: "Junior Suit", roomNo: "203", date: "Dec 18, 2025", guests: 4, nights: 2, status: "onboard", source: "Booking.com", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Booking.com", composition: "4 (2/1/1)" },
-  { id: "47XK911",  name: "Rose Shepard", email: "r.shepard@email.com", room: "Junior Suit", roomNo: "115", date: "Dec 18, 2025", guests: 1, nights: 3, status: "check-out", source: "Expedia", checkIn: "25/04/2025  14:00", checkOut: "28/04/2025  10:00", partner: "Expedia", composition: "1 (1/0/0)" },
-  { id: "82PLK48",  name: "Franklin Williams Jr", email: "f.williams@email.com", room: "Junior Suit", roomNo: "302", date: "Dec 18, 2025", guests: 3, nights: 2, status: "confirmed", source: "Direct", checkIn: "26/04/2025  16:00", checkOut: "28/04/2025  11:00", partner: "Direct", composition: "3 (2/0/1)" },
-  { id: "13QXC76",  name: "Olivia Schmidt", email: "o.schmidt@email.com", room: "Junior Suit", roomNo: "108", date: "Dec 18, 2025", guests: 2, nights: 4, status: "check-in", source: "Booking.com", checkIn: "26/04/2025  15:00", checkOut: "30/04/2025  11:00", partner: "Booking.com", composition: "2 (2/0/0)" },
-  { id: "55ABK29",  name: "Lukas Hofer", email: "l.hofer@email.com", room: "Standard Double", roomNo: "210", date: "Dec 18, 2025", guests: 2, nights: 1, status: "open", source: "Direct", checkIn: "26/04/2025  17:30", checkOut: "27/04/2025  10:30", partner: "Direct", composition: "2 (2/0/0)" },
+  { id: "34MRK211", name: "Emma Williams", email: "e.williams@email.com", room: "Junior Suit", roomNo: "201", date: "Dec 18, 2025", guests: 2, nights: 2, status: "onboard", source: "Booking.com", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Booking.com", composition: "2 (2/0/0)", roomId: "106", startDate: relDate(-2), endDate: relDate(2) },
+  { id: "34MXK25",  name: "Michael Antonio Franklin Correro", email: "m.antonio@email.com", room: "Luxury Suit", roomNo: "412", date: "Dec 18, 2025", guests: 2, nights: 2, status: "check-in", source: "Direct", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Direct", composition: "2 (2/0/0)", roomId: "107", startDate: relDate(0), endDate: relDate(2) },
+  { id: "68CXK25",  name: "Emma Williams", email: "e.williams@email.com", room: "Junior Suit", roomNo: "203", date: "Dec 18, 2025", guests: 4, nights: 2, status: "onboard", source: "Booking.com", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Booking.com", composition: "4 (2/1/1)", roomId: "201", startDate: relDate(-4), endDate: relDate(1) },
+  { id: "47XK911",  name: "Rose Shepard", email: "r.shepard@email.com", room: "Junior Suit", roomNo: "115", date: "Dec 18, 2025", guests: 1, nights: 3, status: "check-out", source: "Expedia", checkIn: "25/04/2025  14:00", checkOut: "28/04/2025  10:00", partner: "Expedia", composition: "1 (1/0/0)", roomId: "108", startDate: relDate(-3), endDate: relDate(0) },
+  { id: "82PLK48",  name: "Franklin Williams Jr", email: "f.williams@email.com", room: "Junior Suit", roomNo: "302", date: "Dec 18, 2025", guests: 3, nights: 2, status: "confirmed", source: "Direct", checkIn: "26/04/2025  16:00", checkOut: "28/04/2025  11:00", partner: "Direct", composition: "3 (2/0/1)", roomId: "115", startDate: relDate(3), endDate: relDate(5) },
+  { id: "13QXC76",  name: "Olivia Schmidt", email: "o.schmidt@email.com", room: "Junior Suit", roomNo: "108", date: "Dec 18, 2025", guests: 2, nights: 4, status: "check-in", source: "Booking.com", checkIn: "26/04/2025  15:00", checkOut: "30/04/2025  11:00", partner: "Booking.com", composition: "2 (2/0/0)", roomId: "116", startDate: relDate(0), endDate: relDate(4) },
+  { id: "55ABK29",  name: "Lukas Hofer", email: "l.hofer@email.com", room: "Standard Double", roomNo: "210", date: "Dec 18, 2025", guests: 2, nights: 1, status: "open", source: "Direct", checkIn: "26/04/2025  17:30", checkOut: "27/04/2025  10:30", partner: "Direct", composition: "2 (2/0/0)", roomId: "117", startDate: relDate(1), endDate: relDate(2) },
+];
+
+// Flat room list, mirroring what the real API is expected to return:
+// room_id, room_type (the calendar's group header), room_name, max_occupancy.
+// `housekeeping`: clean | dirty | progress | supervision
+const ROOMS = [
+  { id: "la1", type: "Luxury Apartment", name: "Garden View Apartment — West Wing", maxOccupancy: 8, housekeeping: "clean" },
+  { id: "la2", type: "Luxury Apartment", name: "Rooftop Apartment", maxOccupancy: 8, housekeeping: "dirty" },
+  { id: "106", type: "Standard Twin Room", name: "106", maxOccupancy: 3, housekeeping: "supervision" },
+  { id: "107", type: "Standard Twin Room", name: "107", maxOccupancy: 3, housekeeping: "clean" },
+  { id: "108", type: "Standard Twin Room", name: "108", maxOccupancy: 3, housekeeping: "dirty" },
+  { id: "115", type: "Standard Twin Room", name: "115", maxOccupancy: 3, housekeeping: "clean" },
+  { id: "116", type: "Standard Twin Room", name: "116", maxOccupancy: 3, housekeeping: "progress" },
+  { id: "117", type: "Standard Twin Room", name: "117", maxOccupancy: 3, housekeeping: "dirty" },
+  { id: "101", type: "Honeymoon Suite", name: "Serenity Suite", maxOccupancy: 3, housekeeping: "clean" },
+  { id: "103", type: "Honeymoon Suite", name: "Tranquility Suite", maxOccupancy: 3, housekeeping: "clean" },
+  { id: "201", type: "Honeymoon Suite", name: "Sunset Suite", maxOccupancy: 3, housekeeping: "supervision" },
+  { id: "10",  type: "Honeymoon Suite", name: "Moonlight Suite", maxOccupancy: 3, housekeeping: "dirty" },
+  // Parking spaces are service rooms — no cleaning, so no housekeeping status.
+  { id: "p1",  type: "Parking", name: "Underground Parking Space 1", maxOccupancy: 1 },
+  { id: "p2",  type: "Parking", name: "Underground Parking Space 2", maxOccupancy: 1 },
+  { id: "p3",  type: "Parking", name: "Underground Parking Space 3", maxOccupancy: 1 },
+  { id: "p4",  type: "Parking", name: "Underground Parking Space 4", maxOccupancy: 1 },
+  { id: "p5",  type: "Parking", name: "Outdoor Parking Space 1", maxOccupancy: 1 },
+];
+
+// Blocked date ranges per room (owner-created maintenance/closure blocks).
+const BLOCKS = [
+  { id: "blk1", roomId: "la2", startDate: relDate(5), endDate: relDate(9) },
+  { id: "blk2", roomId: "10",  startDate: relDate(1), endDate: relDate(3) },
 ];
 
 const GUESTS = {
@@ -56,7 +100,31 @@ const PROPERTIES = [
   { id: "lake",     name: "Lake Salt Hotel",              type: "Hotel" },
 ];
 
+// The 4 "needs attention" items surfaced on the Tasks tab's briefing card.
+// `icon` is a string key into the `I` icon set (data.js stays framework-agnostic).
+const BRIEFING_ITEMS = [
+  { id: "b1", icon: "IDCard", title: "3 guests haven't completed ID scan", detail: "Required before check-in completes for today's arrivals." },
+  { id: "b2", icon: "Door", title: "Room 117 checkout — key not returned", detail: "Guest checked out this morning; front desk should follow up." },
+  { id: "b3", icon: "Briefcase", title: "Invoice overdue — reservation 82PLK48", detail: "Franklin Williams Jr, balance €280.00 outstanding." },
+  { id: "b4", icon: "Grid", title: "Low stock: breakfast supplies", detail: "Kitchen flagged low pastry & juice stock for tomorrow." },
+];
+
+// Seed to-do list for the Tasks tab. `assignee` is "you" or "team";
+// `who` is only shown for team tasks. `fromBriefingId` links a task back
+// to the briefing item it was created from, so it can't be added twice.
+const TASKS = [
+  { id: "t1", title: "Call Olivia Schmidt about early check-in", assignee: "you", done: false },
+  { id: "t2", title: "Prep welcome basket for the Sunset Suite", assignee: "team", who: "Housekeeping", done: false },
+  { id: "t3", title: "Follow up on overdue invoice — 82PLK48", assignee: "you", done: false, fromBriefingId: "b3" },
+  { id: "t4", title: "Restock minibar — Room 106", assignee: "team", who: "Housekeeping", done: true },
+  { id: "t5", title: "Confirm airport transfer for Michael Correro", assignee: "you", done: true },
+];
+
 window.RESERVATIONS = RESERVATIONS;
+window.ROOMS = ROOMS;
+window.BLOCKS = BLOCKS;
+window.BRIEFING_ITEMS = BRIEFING_ITEMS;
+window.TASKS = TASKS;
 window.GUESTS = GUESTS;
 window.SERVICES = SERVICES;
 window.FINANCES = FINANCES;

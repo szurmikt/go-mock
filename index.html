@@ -57,6 +57,15 @@ const I = {
       <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
     </svg>
   ),
+  // Apple/Google "calendar_today" pattern: the frame always reads as a
+  // calendar, and the digit inside tracks the real date instead of a
+  // generic dot — pass today's day-of-month via the `day` prop.
+  Today: ({ day, ...p }) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4" />
+      <text x="12" y="16.5" textAnchor="middle" fontSize="10" fontWeight="800" fontFamily="Nunito, sans-serif" stroke="none" fill="currentColor">{day}</text>
+    </svg>
+  ),
   ArrowIn: (p) => (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <path d="M3 12h13" /><path d="m12 7 5 5-5 5" /><path d="M21 4v16" />
@@ -164,6 +173,19 @@ const I = {
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
     </svg>
   ),
+  Tasks: (p) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="m3.5 6 1.5 1.5L7.5 5" /><path d="M11 6h10" />
+      <path d="m3.5 13 1.5 1.5L7.5 12" /><path d="M11 13h10" />
+      <path d="m3.5 20 1.5 1.5L7.5 19" /><path d="M11 20h10" />
+    </svg>
+  ),
+  Sparkle: (p) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" {...p}>
+      <path d="M12 2c.6 3.6 1.9 5.9 4.5 7.5-2.6 1.6-3.9 3.9-4.5 7.5-.6-3.6-1.9-5.9-4.5-7.5C10.1 7.9 11.4 5.6 12 2z" />
+      <path d="M19 14c.3 1.8.9 2.9 2.2 3.7-1.3.8-1.9 1.9-2.2 3.7-.3-1.8-.9-2.9-2.2-3.7 1.3-.8 1.9-1.9 2.2-3.7z" />
+    </svg>
+  ),
 };
 
 function StatusBar({ time = "9:27" }) {
@@ -198,14 +220,58 @@ window.Toast = Toast;
   <script type="text/babel">
 /* global React, I, StatusBar, Pill, Toast */
 
+// Relative-to-today ISO date helper, so the calendar prototype always shows
+// a populated view around "today" no matter which day it's opened.
+// Builds the string from local date parts — NOT toISOString(), which
+// converts to UTC first and silently shifts the date by a day in any
+// timezone ahead of UTC (e.g. CEST).
+function relDate(offsetDays) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + offsetDays);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 const RESERVATIONS = [
-  { id: "34MRK211", name: "Emma Williams", email: "e.williams@email.com", room: "Junior Suit", roomNo: "201", date: "Dec 18, 2025", guests: 2, nights: 2, status: "onboard", source: "Booking.com", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Booking.com", composition: "2 (2/0/0)" },
-  { id: "34MXK25",  name: "Michael Antonio Franklin Correro", email: "m.antonio@email.com", room: "Luxury Suit", roomNo: "412", date: "Dec 18, 2025", guests: 2, nights: 2, status: "check-in", source: "Direct", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Direct", composition: "2 (2/0/0)" },
-  { id: "68CXK25",  name: "Emma Williams", email: "e.williams@email.com", room: "Junior Suit", roomNo: "203", date: "Dec 18, 2025", guests: 4, nights: 2, status: "onboard", source: "Booking.com", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Booking.com", composition: "4 (2/1/1)" },
-  { id: "47XK911",  name: "Rose Shepard", email: "r.shepard@email.com", room: "Junior Suit", roomNo: "115", date: "Dec 18, 2025", guests: 1, nights: 3, status: "check-out", source: "Expedia", checkIn: "25/04/2025  14:00", checkOut: "28/04/2025  10:00", partner: "Expedia", composition: "1 (1/0/0)" },
-  { id: "82PLK48",  name: "Franklin Williams Jr", email: "f.williams@email.com", room: "Junior Suit", roomNo: "302", date: "Dec 18, 2025", guests: 3, nights: 2, status: "confirmed", source: "Direct", checkIn: "26/04/2025  16:00", checkOut: "28/04/2025  11:00", partner: "Direct", composition: "3 (2/0/1)" },
-  { id: "13QXC76",  name: "Olivia Schmidt", email: "o.schmidt@email.com", room: "Junior Suit", roomNo: "108", date: "Dec 18, 2025", guests: 2, nights: 4, status: "check-in", source: "Booking.com", checkIn: "26/04/2025  15:00", checkOut: "30/04/2025  11:00", partner: "Booking.com", composition: "2 (2/0/0)" },
-  { id: "55ABK29",  name: "Lukas Hofer", email: "l.hofer@email.com", room: "Standard Double", roomNo: "210", date: "Dec 18, 2025", guests: 2, nights: 1, status: "open", source: "Direct", checkIn: "26/04/2025  17:30", checkOut: "27/04/2025  10:30", partner: "Direct", composition: "2 (2/0/0)" },
+  { id: "34MRK211", name: "Emma Williams", email: "e.williams@email.com", room: "Junior Suit", roomNo: "201", date: "Dec 18, 2025", guests: 2, nights: 2, status: "onboard", source: "Booking.com", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Booking.com", composition: "2 (2/0/0)", roomId: "106", startDate: relDate(-2), endDate: relDate(2) },
+  { id: "34MXK25",  name: "Michael Antonio Franklin Correro", email: "m.antonio@email.com", room: "Luxury Suit", roomNo: "412", date: "Dec 18, 2025", guests: 2, nights: 2, status: "check-in", source: "Direct", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Direct", composition: "2 (2/0/0)", roomId: "107", startDate: relDate(0), endDate: relDate(2) },
+  { id: "68CXK25",  name: "Emma Williams", email: "e.williams@email.com", room: "Junior Suit", roomNo: "203", date: "Dec 18, 2025", guests: 4, nights: 2, status: "onboard", source: "Booking.com", checkIn: "26/04/2025  15:30", checkOut: "28/04/2025  11:30", partner: "Booking.com", composition: "4 (2/1/1)", roomId: "201", startDate: relDate(-4), endDate: relDate(1) },
+  { id: "47XK911",  name: "Rose Shepard", email: "r.shepard@email.com", room: "Junior Suit", roomNo: "115", date: "Dec 18, 2025", guests: 1, nights: 3, status: "check-out", source: "Expedia", checkIn: "25/04/2025  14:00", checkOut: "28/04/2025  10:00", partner: "Expedia", composition: "1 (1/0/0)", roomId: "108", startDate: relDate(-3), endDate: relDate(0) },
+  { id: "82PLK48",  name: "Franklin Williams Jr", email: "f.williams@email.com", room: "Junior Suit", roomNo: "302", date: "Dec 18, 2025", guests: 3, nights: 2, status: "confirmed", source: "Direct", checkIn: "26/04/2025  16:00", checkOut: "28/04/2025  11:00", partner: "Direct", composition: "3 (2/0/1)", roomId: "115", startDate: relDate(3), endDate: relDate(5) },
+  { id: "13QXC76",  name: "Olivia Schmidt", email: "o.schmidt@email.com", room: "Junior Suit", roomNo: "108", date: "Dec 18, 2025", guests: 2, nights: 4, status: "check-in", source: "Booking.com", checkIn: "26/04/2025  15:00", checkOut: "30/04/2025  11:00", partner: "Booking.com", composition: "2 (2/0/0)", roomId: "116", startDate: relDate(0), endDate: relDate(4) },
+  { id: "55ABK29",  name: "Lukas Hofer", email: "l.hofer@email.com", room: "Standard Double", roomNo: "210", date: "Dec 18, 2025", guests: 2, nights: 1, status: "open", source: "Direct", checkIn: "26/04/2025  17:30", checkOut: "27/04/2025  10:30", partner: "Direct", composition: "2 (2/0/0)", roomId: "117", startDate: relDate(1), endDate: relDate(2) },
+];
+
+// Flat room list, mirroring what the real API is expected to return:
+// room_id, room_type (the calendar's group header), room_name, max_occupancy.
+// `housekeeping`: clean | dirty | progress | supervision
+const ROOMS = [
+  { id: "la1", type: "Luxury Apartment", name: "Garden View Apartment — West Wing", maxOccupancy: 8, housekeeping: "clean" },
+  { id: "la2", type: "Luxury Apartment", name: "Rooftop Apartment", maxOccupancy: 8, housekeeping: "dirty" },
+  { id: "106", type: "Standard Twin Room", name: "106", maxOccupancy: 3, housekeeping: "supervision" },
+  { id: "107", type: "Standard Twin Room", name: "107", maxOccupancy: 3, housekeeping: "clean" },
+  { id: "108", type: "Standard Twin Room", name: "108", maxOccupancy: 3, housekeeping: "dirty" },
+  { id: "115", type: "Standard Twin Room", name: "115", maxOccupancy: 3, housekeeping: "clean" },
+  { id: "116", type: "Standard Twin Room", name: "116", maxOccupancy: 3, housekeeping: "progress" },
+  { id: "117", type: "Standard Twin Room", name: "117", maxOccupancy: 3, housekeeping: "dirty" },
+  { id: "101", type: "Honeymoon Suite", name: "Serenity Suite", maxOccupancy: 3, housekeeping: "clean" },
+  { id: "103", type: "Honeymoon Suite", name: "Tranquility Suite", maxOccupancy: 3, housekeeping: "clean" },
+  { id: "201", type: "Honeymoon Suite", name: "Sunset Suite", maxOccupancy: 3, housekeeping: "supervision" },
+  { id: "10",  type: "Honeymoon Suite", name: "Moonlight Suite", maxOccupancy: 3, housekeeping: "dirty" },
+  // Parking spaces are service rooms — no cleaning, so no housekeeping status.
+  { id: "p1",  type: "Parking", name: "Underground Parking Space 1", maxOccupancy: 1 },
+  { id: "p2",  type: "Parking", name: "Underground Parking Space 2", maxOccupancy: 1 },
+  { id: "p3",  type: "Parking", name: "Underground Parking Space 3", maxOccupancy: 1 },
+  { id: "p4",  type: "Parking", name: "Underground Parking Space 4", maxOccupancy: 1 },
+  { id: "p5",  type: "Parking", name: "Outdoor Parking Space 1", maxOccupancy: 1 },
+];
+
+// Blocked date ranges per room (owner-created maintenance/closure blocks).
+const BLOCKS = [
+  { id: "blk1", roomId: "la2", startDate: relDate(5), endDate: relDate(9) },
+  { id: "blk2", roomId: "10",  startDate: relDate(1), endDate: relDate(3) },
 ];
 
 const GUESTS = {
@@ -254,7 +320,31 @@ const PROPERTIES = [
   { id: "lake",     name: "Lake Salt Hotel",              type: "Hotel" },
 ];
 
+// The 4 "needs attention" items surfaced on the Tasks tab's briefing card.
+// `icon` is a string key into the `I` icon set (data.js stays framework-agnostic).
+const BRIEFING_ITEMS = [
+  { id: "b1", icon: "IDCard", title: "3 guests haven't completed ID scan", detail: "Required before check-in completes for today's arrivals." },
+  { id: "b2", icon: "Door", title: "Room 117 checkout — key not returned", detail: "Guest checked out this morning; front desk should follow up." },
+  { id: "b3", icon: "Briefcase", title: "Invoice overdue — reservation 82PLK48", detail: "Franklin Williams Jr, balance €280.00 outstanding." },
+  { id: "b4", icon: "Grid", title: "Low stock: breakfast supplies", detail: "Kitchen flagged low pastry & juice stock for tomorrow." },
+];
+
+// Seed to-do list for the Tasks tab. `assignee` is "you" or "team";
+// `who` is only shown for team tasks. `fromBriefingId` links a task back
+// to the briefing item it was created from, so it can't be added twice.
+const TASKS = [
+  { id: "t1", title: "Call Olivia Schmidt about early check-in", assignee: "you", done: false },
+  { id: "t2", title: "Prep welcome basket for the Sunset Suite", assignee: "team", who: "Housekeeping", done: false },
+  { id: "t3", title: "Follow up on overdue invoice — 82PLK48", assignee: "you", done: false, fromBriefingId: "b3" },
+  { id: "t4", title: "Restock minibar — Room 106", assignee: "team", who: "Housekeeping", done: true },
+  { id: "t5", title: "Confirm airport transfer for Michael Correro", assignee: "you", done: true },
+];
+
 window.RESERVATIONS = RESERVATIONS;
+window.ROOMS = ROOMS;
+window.BLOCKS = BLOCKS;
+window.BRIEFING_ITEMS = BRIEFING_ITEMS;
+window.TASKS = TASKS;
 window.GUESTS = GUESTS;
 window.SERVICES = SERVICES;
 window.FINANCES = FINANCES;
@@ -652,7 +742,7 @@ function HomeScreen({ go, property, setProperty }) {
         <span style={{ flex: 1, color: "var(--ink-4)", fontSize: 16, fontWeight: 600 }}>Search</span>
       </button>
 
-      <div className="app-scroll" style={{ paddingTop: 12, paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+      <div className="app-scroll" style={{ paddingTop: 12, paddingBottom: "calc(94px + env(safe-area-inset-bottom, 0px))" }}>
         <Segment tabs={["Yesterday", "Today", "Tomorrow"]} value={tab} onChange={setTab} />
 
         <div className="stat-block">
@@ -811,6 +901,609 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
 
 window.ArrivalsScreen = ArrivalsScreen;
 window.ReservationDetailScreen = ReservationDetailScreen;
+
+  </script>
+
+  <script type="text/babel">
+/* global React, I, ROOMS, RESERVATIONS, BLOCKS, PROPERTIES */
+
+const { useState, useRef, useLayoutEffect, useEffect, useMemo } = React;
+
+const CAL_DAY_COL = 46;
+const CAL_ROOM_COL = 64;
+const CAL_HEADER_H = 34;
+const CAL_GROUP_H = 28;
+const CAL_ROW_H = 44;
+const CAL_DAYS_BEFORE = 14;
+const CAL_DAYS_AFTER = 45;
+const CAL_TOTAL_DAYS = CAL_DAYS_BEFORE + CAL_DAYS_AFTER + 1;
+const CAL_DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const CAL_TAP_SLOP = 6;
+
+// Local date parts — NOT toISOString(), which converts to UTC first and
+// silently shifts the date by a day in any timezone ahead of UTC.
+function calIso(d) {
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+function calAddDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function calParseISO(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
+function calDayIndex(windowStart, iso) { return Math.round((calParseISO(iso) - windowStart) / 86400000); }
+// Shared by both the tap-to-select flow and the confirm sheet's own date
+// inputs, so editing the dates after the sheet is open is checked exactly
+// the same way as the initial two-tap selection.
+function calRangeConflict(roomId, startIso, endIso) {
+  if (RESERVATIONS.some(r => r.roomId === roomId && startIso < r.endDate && r.startDate < endIso)) {
+    return "Can't block — an existing reservation falls in that range";
+  }
+  if (BLOCKS.some(b => b.roomId === roomId && startIso < b.endDate && b.startDate < endIso)) {
+    return "Can't block — part of that range is already blocked";
+  }
+  return null;
+}
+function calClamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function calFormat(iso) { return calParseISO(iso).toLocaleDateString(undefined, { day: "2-digit", month: "short" }); }
+
+// Interleaves room-type header rows with room rows (skipping rooms whose
+// type is collapsed), each carrying its cumulative vertical offset — this
+// is the single source of truth for where every row sits in the grid.
+function calBuildRows(rooms, collapsed) {
+  const list = [];
+  let y = 0;
+  let lastType = null;
+  for (const room of rooms) {
+    if (room.type !== lastType) {
+      list.push({ kind: "header", type: room.type, y, height: CAL_GROUP_H });
+      y += CAL_GROUP_H;
+      lastType = room.type;
+    }
+    if (!collapsed.has(room.type)) {
+      list.push({ kind: "room", room, y, height: CAL_ROW_H });
+      y += CAL_ROW_H;
+    }
+  }
+  return list;
+}
+function calRowAt(rowList, y) {
+  for (const row of rowList) if (y >= row.y && y < row.y + row.height) return row;
+  return null;
+}
+
+function CalendarScreen({ go, property, setProperty, addToast }) {
+  const [switchOpen, setSwitchOpen] = useState(false);
+  const [roomPickerOpen, setRoomPickerOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [animate, setAnimate] = useState(false);
+  const [pending, setPending] = useState(null); // { roomId, roomName, iso }
+  const [confirm, setConfirm] = useState(null); // { roomId, roomName, startIso, endIso }
+  const [expandedRoom, setExpandedRoom] = useState(null); // roomId
+
+  const wrapRef = useRef(null);
+  const drag = useRef(null);
+  const expandTimer = useRef(null);
+  const anchored = useRef(false);
+
+  const propName = property?.name || "Sunshine Hotel & Apartments";
+  const rooms = ROOMS;
+
+  const windowStart = useRef(calAddDays(new Date(new Date().setHours(0, 0, 0, 0)), -CAL_DAYS_BEFORE)).current;
+
+  const dates = useMemo(() => {
+    const arr = [];
+    for (let i = 0; i < CAL_TOTAL_DAYS; i++) {
+      const d = calAddDays(windowStart, i);
+      arr.push({ iso: calIso(d), dow: CAL_DOW[d.getDay()], num: d.getDate(), isToday: i === CAL_DAYS_BEFORE });
+    }
+    return arr;
+  }, []);
+
+  const rowList = useMemo(() => calBuildRows(rooms, collapsed), [rooms, collapsed]);
+  const roomRowY = {};
+  for (const row of rowList) if (row.kind === "room") roomRowY[row.room.id] = row.y;
+  const headers = rowList.filter(r => r.kind === "header");
+
+  const gridWidth = CAL_TOTAL_DAYS * CAL_DAY_COL;
+  const gridHeight = rowList.length ? rowList[rowList.length - 1].y + rowList[rowList.length - 1].height : 0;
+
+  useEffect(() => () => { if (expandTimer.current) clearTimeout(expandTimer.current); }, []);
+
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.clientWidth, h = el.clientHeight;
+      setSize({ w, h });
+      if (!anchored.current && w > 0) {
+        anchored.current = true;
+        const initialMaxPanX = Math.max(0, gridWidth - Math.max(0, w - CAL_ROOM_COL));
+        setPanX(calClamp(CAL_DAYS_BEFORE * CAL_DAY_COL, 0, initialMaxPanX));
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const areaW = Math.max(0, size.w - CAL_ROOM_COL);
+  const areaH = Math.max(0, size.h - CAL_HEADER_H);
+  const maxPanX = Math.max(0, gridWidth - areaW);
+  const maxPanY = Math.max(0, gridHeight - areaH);
+
+  // Sticky-with-push header: pinned at the top of the content unless the
+  // next section's header is close enough to shove it out of the way.
+  let activeIdx = 0;
+  for (let i = 0; i < headers.length; i++) { if (headers[i].y <= panY) activeIdx = i; else break; }
+  const activeHeader = headers[activeIdx];
+  const nextHeader = headers[activeIdx + 1];
+  let pinnedOffset = 0;
+  if (nextHeader) {
+    const gap = (nextHeader.y - panY) - CAL_GROUP_H;
+    if (gap < 0) pinnedOffset = gap;
+  }
+
+  const toggleCollapse = (type) => {
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      return next;
+    });
+  };
+
+  const goToday = () => {
+    setAnimate(true);
+    setPanX(calClamp(CAL_DAYS_BEFORE * CAL_DAY_COL, 0, maxPanX));
+    setPanY(0);
+    setTimeout(() => setAnimate(false), 340);
+  };
+
+  const startBlockFromPicker = (room) => {
+    setRoomPickerOpen(false);
+    let nextCollapsed = collapsed;
+    if (collapsed.has(room.type)) {
+      nextCollapsed = new Set(collapsed);
+      nextCollapsed.delete(room.type);
+      setCollapsed(nextCollapsed);
+    }
+    const rows = calBuildRows(rooms, nextCollapsed);
+    const targetRow = rows.find(r => r.kind === "room" && r.room.id === room.id);
+    const newGridHeight = rows.length ? rows[rows.length - 1].y + rows[rows.length - 1].height : 0;
+    const newAreaH = Math.max(0, size.h - CAL_HEADER_H);
+    const newMaxPanY = Math.max(0, newGridHeight - newAreaH);
+
+    setPending({ roomId: room.id, roomName: room.name, iso: dates[CAL_DAYS_BEFORE].iso });
+    setAnimate(true);
+    setPanX(calClamp(CAL_DAYS_BEFORE * CAL_DAY_COL, 0, maxPanX));
+    if (targetRow) {
+      const centered = targetRow.y - newAreaH / 2 + CAL_ROW_H / 2;
+      setPanY(calClamp(centered, 0, newMaxPanY));
+    }
+    setTimeout(() => setAnimate(false), 340);
+    addToast(`Tap an end date for ${room.name}`);
+  };
+
+  const expandRoomLabel = (roomId) => {
+    if (expandTimer.current) clearTimeout(expandTimer.current);
+    setExpandedRoom(roomId);
+    expandTimer.current = setTimeout(() => setExpandedRoom(null), 2500);
+  };
+
+  const handleTap = (localX, localY, panXAtDown, panYAtDown) => {
+    if (expandedRoom) {
+      if (expandTimer.current) clearTimeout(expandTimer.current);
+      setExpandedRoom(null);
+    }
+
+    // The pinned sticky header spans the full width — it always wins.
+    if (localY >= CAL_HEADER_H && localY < CAL_HEADER_H + CAL_GROUP_H) {
+      if (activeHeader) toggleCollapse(activeHeader.type);
+      return;
+    }
+    if (localY < CAL_HEADER_H) return;
+
+    const gy = localY - CAL_HEADER_H + panYAtDown;
+    const row = calRowAt(rowList, gy);
+    if (!row) return;
+
+    if (row.kind === "header") { toggleCollapse(row.type); return; }
+
+    const room = row.room;
+    if (localX < CAL_ROOM_COL) { expandRoomLabel(room.id); return; }
+
+    const gx = localX - CAL_ROOM_COL + panXAtDown;
+    const dateIdx = Math.floor(gx / CAL_DAY_COL);
+    const date = dates[dateIdx];
+    if (!date) return;
+
+    const res = RESERVATIONS.find(r => r.roomId === room.id && date.iso >= r.startDate && date.iso < r.endDate);
+    if (res) { go("reservation", res.id); return; }
+
+    const blk = BLOCKS.find(b => b.roomId === room.id && date.iso >= b.startDate && date.iso < b.endDate);
+    if (blk) { addToast("This date is blocked"); return; }
+
+    if (!pending || pending.roomId !== room.id) {
+      setPending({ roomId: room.id, roomName: room.name, iso: date.iso });
+      return;
+    }
+
+    // Both tapped dates are included in the block — tapping the 7th then
+    // the 10th blocks the 7th, 8th, 9th and 10th (checkout the 11th).
+    const startIso = pending.iso < date.iso ? pending.iso : date.iso;
+    const lastIso = pending.iso < date.iso ? date.iso : pending.iso;
+    const endIso = calIso(calAddDays(calParseISO(lastIso), 1));
+
+    // Check the whole range, not just the two tapped endpoints — a
+    // reservation or existing block can sit entirely between them.
+    const conflict = calRangeConflict(room.id, startIso, endIso);
+    if (conflict) {
+      addToast(conflict);
+      setPending(null);
+      return;
+    }
+
+    setConfirm({ roomId: room.id, roomName: room.name, startIso, endIso, comment: "" });
+    setPending(null);
+  };
+
+  const onPointerDown = (e) => {
+    setAnimate(false);
+    const rect = wrapRef.current.getBoundingClientRect();
+    drag.current = {
+      x0: e.clientX, y0: e.clientY,
+      panX0: panX, panY0: panY,
+      moved: false,
+      localX: e.clientX - rect.left,
+      localY: e.clientY - rect.top,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+    if (!d.moved && Math.hypot(dx, dy) > CAL_TAP_SLOP) d.moved = true;
+    if (d.moved) {
+      setPanX(calClamp(d.panX0 - dx, 0, maxPanX));
+      setPanY(calClamp(d.panY0 - dy, 0, maxPanY));
+    }
+  };
+  const onPointerUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || d.moved) return;
+    handleTap(d.localX, d.localY, d.panX0, d.panY0);
+  };
+
+  const todayIdx = CAL_DAYS_BEFORE;
+  const leftDate = dates[calClamp(Math.round(panX / CAL_DAY_COL), 0, dates.length - 1)];
+  const cornerLabel = leftDate ? calParseISO(leftDate.iso).toLocaleDateString(undefined, { month: "short" }) : "";
+
+  // Bars run from the midpoint of the check-in day's column to the midpoint
+  // of the checkout day's column (arrival/departure happen midday), matching
+  // the desktop PMS calendar's convention — not the day-column edges.
+  const bars = RESERVATIONS.map(r => {
+    const y = roomRowY[r.roomId];
+    if (y === undefined) return null;
+    const startIdx = calClamp(calDayIndex(windowStart, r.startDate), 0, CAL_TOTAL_DAYS);
+    const endIdx = calClamp(calDayIndex(windowStart, r.endDate), 0, CAL_TOTAL_DAYS);
+    if (endIdx <= startIdx) return null;
+    return (
+      <div key={r.id} className="cal-bar" data-status={r.status}
+        style={{ left: startIdx * CAL_DAY_COL + CAL_DAY_COL / 2, top: y + 4, width: (endIdx - startIdx) * CAL_DAY_COL, height: CAL_ROW_H - 8 }}>
+        {r.name}
+      </div>
+    );
+  });
+
+  const blockBars = BLOCKS.map(b => {
+    const y = roomRowY[b.roomId];
+    if (y === undefined) return null;
+    const startIdx = calClamp(calDayIndex(windowStart, b.startDate), 0, CAL_TOTAL_DAYS);
+    const endIdx = calClamp(calDayIndex(windowStart, b.endDate), 0, CAL_TOTAL_DAYS);
+    if (endIdx <= startIdx) return null;
+    return (
+      <div key={b.id} className="cal-bar cal-bar-blocked"
+        style={{ left: startIdx * CAL_DAY_COL + CAL_DAY_COL / 2, top: y + 4, width: (endIdx - startIdx) * CAL_DAY_COL, height: CAL_ROW_H - 8 }}>
+        Blocked
+      </div>
+    );
+  });
+
+  let pendingMark = null;
+  if (pending) {
+    const y = roomRowY[pending.roomId];
+    const idx = calDayIndex(windowStart, pending.iso);
+    if (y !== undefined && idx >= 0 && idx < CAL_TOTAL_DAYS) {
+      pendingMark = <div className="cal-pending" style={{ left: idx * CAL_DAY_COL + 2, top: y + 2, width: CAL_DAY_COL - 4, height: CAL_ROW_H - 4 }} />;
+    }
+  } else if (confirm) {
+    // Highlights exactly the nights that will be blocked (startDate up to,
+    // but not including, the checkout date) — stays on screen behind the
+    // confirm sheet so the selected range is still visible, not just named.
+    const y = roomRowY[confirm.roomId];
+    const startIdx = calClamp(calDayIndex(windowStart, confirm.startIso), 0, CAL_TOTAL_DAYS);
+    const endIdx = calClamp(calDayIndex(windowStart, confirm.endIso), 0, CAL_TOTAL_DAYS);
+    if (y !== undefined && endIdx > startIdx) {
+      pendingMark = <div className="cal-pending" style={{ left: startIdx * CAL_DAY_COL + 2, top: y + 2, width: (endIdx - startIdx) * CAL_DAY_COL - 4, height: CAL_ROW_H - 4 }} />;
+    }
+  }
+
+  let expandedLabel = null;
+  if (expandedRoom) {
+    const y = roomRowY[expandedRoom];
+    const room = rooms.find(r => r.id === expandedRoom);
+    if (y !== undefined && room) {
+      expandedLabel = (
+        <div className="cal-room-expanded" style={{ top: CAL_HEADER_H + y - panY, height: CAL_ROW_H }}>
+          <span>{room.name}</span>
+          {room.housekeeping && <span className="cal-room-dot" data-hk={room.housekeeping} />}
+        </div>
+      );
+    }
+  }
+
+  return (
+    <div className="page">
+      <div className="page-header" style={{ paddingTop: 16 }}>
+        <button className="title-row" onClick={() => setSwitchOpen(true)}
+          style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, textAlign: "left" }}>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--ink)", lineHeight: 1.2, flex: 1, minWidth: 0 }}>{propName}</h1>
+          <I.ChevronDown style={{ color: "var(--primary)", width: 22, height: 22, flexShrink: 0 }} />
+        </button>
+        <div className="actions">
+          <button className="icon-btn" onClick={goToday} aria-label="Jump to today" style={{ width: 36, height: 36 }}><I.Today day={dates[todayIdx].num} style={{ width: 36, height: 36 }} /></button>
+          <button className="cal-add-btn" onClick={() => setRoomPickerOpen(true)} aria-label="Block a date"><I.Plus style={{ width: 14, height: 14 }} /></button>
+        </div>
+      </div>
+
+      {roomPickerOpen && (
+        <div className="sheet-backdrop" onClick={() => setRoomPickerOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>Block a Date</h3>
+              <button className="icon-btn" onClick={() => setRoomPickerOpen(false)}><I.X /></button>
+            </div>
+            <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: "var(--ink-4)", padding: "8px 4px 4px" }}>Select a room</div>
+            <div>
+              {rooms.map(r => (
+                <button key={r.id} className="action-item" onClick={() => startBlockFromPicker(r)}>
+                  <span className="action-icon"><I.Door /></span>
+                  <span style={{ flex: 1, textAlign: "left" }}>
+                    <div>{r.name}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-4)", marginTop: 2 }}>{r.type}</div>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {switchOpen && (
+        <div className="sheet-backdrop" onClick={() => setSwitchOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>Switch Property</h3>
+              <button className="icon-btn" onClick={() => setSwitchOpen(false)}><I.X /></button>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              {PROPERTIES.map(p => (
+                <button key={p.id} className="action-item" onClick={() => { setProperty(p); setSwitchOpen(false); }}>
+                  <span className="action-icon"><I.Home /></span>
+                  <span style={{ flex: 1, textAlign: "left" }}>
+                    <div>{p.name}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-4)", marginTop: 2 }}>{p.type}</div>
+                  </span>
+                  {property?.id === p.id && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--primary)", flexShrink: 0 }} />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="cal-wrap" ref={wrapRef}
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+
+        <div className="cal-corner" style={{ width: CAL_ROOM_COL, height: CAL_HEADER_H }}>
+          <span className="dow">&nbsp;</span>
+          <span className="num">{cornerLabel}</span>
+        </div>
+
+        <div className="cal-dates" style={{ left: CAL_ROOM_COL, height: CAL_HEADER_H }}>
+          <div className={"cal-dates-inner" + (animate ? " cal-animated" : "")} style={{ width: gridWidth, transform: `translateX(${-panX}px)` }}>
+            {dates.map((d, i) => (
+              <div key={d.iso} className={"cal-date-cell" + (d.isToday ? " today" : "")} style={{ left: i * CAL_DAY_COL, width: CAL_DAY_COL }}>
+                <span className="dow">{d.dow}</span>
+                <span className="num">{d.num}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="cal-rooms" style={{ top: CAL_HEADER_H, width: CAL_ROOM_COL }}>
+          <div className={"cal-rooms-inner" + (animate ? " cal-animated" : "")} style={{ height: gridHeight, transform: `translateY(${-panY}px)` }}>
+            {rowList.filter(r => r.kind === "room").map(row => (
+              <div key={row.room.id} className="cal-room-cell" style={{ top: row.y, height: row.height }}>
+                <span className="cal-room-name">{row.room.name}</span>
+                {row.room.housekeeping && <span className="cal-room-dot" data-hk={row.room.housekeeping} />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="cal-body" style={{ top: CAL_HEADER_H, left: CAL_ROOM_COL }}>
+          <div className={"cal-body-inner" + (animate ? " cal-animated" : "")}
+            style={{ width: gridWidth, height: gridHeight, transform: `translate(${-panX}px, ${-panY}px)`, backgroundSize: `${CAL_DAY_COL}px 100%` }}>
+            <div className="cal-today-col" style={{ left: todayIdx * CAL_DAY_COL, width: CAL_DAY_COL, height: gridHeight }} />
+            {rowList.filter(r => r.kind === "room").map(row => (
+              <div key={"rb-" + row.room.id} className="cal-room-band" style={{ top: row.y, height: row.height, width: gridWidth }} />
+            ))}
+            {blockBars}
+            {bars}
+            {pendingMark}
+          </div>
+        </div>
+
+        {/* Full-width, edge-to-edge — spans past the frozen room column's
+            border, unlike the old split room-column/grid pair it replaces. */}
+        {headers.map(row => (
+          <div key={"h-" + row.type} className="cal-type-row"
+            style={{ top: CAL_HEADER_H + row.y - panY, height: row.height, transition: animate ? "top 0.34s cubic-bezier(0.32, 0.72, 0, 1)" : "none" }}>
+            <I.ChevronRight className={"cal-type-chevron" + (collapsed.has(row.type) ? "" : " open")} />
+            <span>{row.type}</span>
+          </div>
+        ))}
+
+        {activeHeader && (
+          <div className="cal-sticky-header" style={{ top: CAL_HEADER_H + pinnedOffset, height: CAL_GROUP_H }}>
+            <I.ChevronRight className={"cal-type-chevron" + (collapsed.has(activeHeader.type) ? "" : " open")} />
+            <span>{activeHeader.type}</span>
+          </div>
+        )}
+
+        {expandedLabel}
+      </div>
+
+      {confirm && (
+        <div className="sheet-backdrop" onClick={() => setConfirm(null)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>Block Date</h3>
+              <button className="icon-btn" onClick={() => setConfirm(null)}><I.X /></button>
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <div className="field" style={{ marginBottom: 14 }}>
+                <div className="l">Room</div>
+                <div className="v">{confirm.roomName}</div>
+              </div>
+              <div className="grid-2">
+                <div className="field">
+                  <div className="l">From</div>
+                  <input type="date" className="v-input" value={confirm.startIso}
+                    max={calIso(calAddDays(calParseISO(confirm.endIso), -1))}
+                    onChange={e => e.target.value && setConfirm(c => ({ ...c, startIso: e.target.value }))} />
+                </div>
+                <div className="field">
+                  <div className="l">To (last night)</div>
+                  <input type="date" className="v-input" value={calIso(calAddDays(calParseISO(confirm.endIso), -1))}
+                    min={confirm.startIso}
+                    onChange={e => e.target.value && setConfirm(c => ({ ...c, endIso: calIso(calAddDays(calParseISO(e.target.value), 1)) }))} />
+                </div>
+              </div>
+              <div style={{ marginTop: 10, fontSize: 13, fontWeight: 700, color: "var(--ink-4)" }}>
+                {calDayIndex(calParseISO(confirm.startIso), confirm.endIso)} night{calDayIndex(calParseISO(confirm.startIso), confirm.endIso) === 1 ? "" : "s"} blocked · checkout {calFormat(confirm.endIso)}
+              </div>
+              <div className="comment-field">
+                <label>Comment</label>
+                <textarea rows={2} placeholder="Add a note for this block…" value={confirm.comment}
+                  onChange={e => setConfirm(c => ({ ...c, comment: e.target.value }))} />
+              </div>
+            </div>
+            <button className="btn" style={{ marginTop: 20 }} onClick={() => {
+              const conflict = calRangeConflict(confirm.roomId, confirm.startIso, confirm.endIso);
+              if (conflict) { addToast(conflict); return; }
+              addToast("Date blocked"); setConfirm(null);
+            }}>Block selected dates</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+window.CalendarScreen = CalendarScreen;
+
+  </script>
+
+  <script type="text/babel">
+/* global React, I, Segment, BRIEFING_ITEMS */
+
+const { useState } = React;
+
+function TasksScreen({ go, tasks, toggleTask }) {
+  const [scope, setScope] = useState("Your");
+  const filtered = tasks.filter(t => t.assignee === (scope === "Your" ? "you" : "team"));
+
+  return (
+    <div className="page">
+      <div className="page-header" style={{ paddingTop: 16 }}>
+        <h1 style={{ fontSize: 22 }}>Tasks</h1>
+      </div>
+
+      <div className="app-scroll" style={{ paddingTop: 4, paddingBottom: "calc(94px + env(safe-area-inset-bottom, 0px))" }}>
+        <div className="card tap-anim tappable" onClick={() => go("briefing")}
+          style={{ margin: "0 var(--pad) 20px", display: "flex", alignItems: "center", gap: 14 }}>
+          <span className="action-icon"><I.Bell /></span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "var(--ink)" }}>Good morning, Tamas</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-3)", marginTop: 2 }}>{BRIEFING_ITEMS.length} things need attention</div>
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 2, color: "var(--primary)", fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+            Open briefing <I.ChevronRight style={{ width: 14, height: 14 }} />
+          </span>
+        </div>
+
+        <div className="section-title"><h2>Tasks</h2></div>
+
+        <Segment tabs={["Your", "Team"]} value={scope} onChange={setScope} />
+
+        <div className="stagger" style={{ marginTop: 16 }}>
+          {filtered.length === 0 && <div className="empty">No {scope.toLowerCase()} tasks</div>}
+          {filtered.map(t => (
+            <div key={t.id} className="task-item tap-anim" onClick={() => toggleTask(t.id)}>
+              <span className={"task-check" + (t.done ? " done" : "")}>{t.done && <I.Check style={{ width: 12, height: 12 }} />}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <div className={"task-title" + (t.done ? " done" : "")}>{t.title}</div>
+                {t.who && <div className="task-who">{t.who}</div>}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BriefingScreen({ back, tasks, addTask, addToast }) {
+  return (
+    <div className="page">
+      <div className="sub-header">
+        <button className="back" onClick={back}><I.ChevronBack /></button>
+        <span className="title">Today's Briefing</span>
+      </div>
+      <div className="app-scroll" style={{ paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+        <div className="stagger" style={{ padding: "8px var(--pad) 0" }}>
+          {BRIEFING_ITEMS.map(item => {
+            const Icon = I[item.icon];
+            const added = tasks.some(t => t.fromBriefingId === item.id);
+            return (
+              <div key={item.id} className="card" style={{ marginBottom: 12, display: "flex", gap: 14, alignItems: "flex-start" }}>
+                <span className="action-icon"><Icon /></span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "var(--ink)", lineHeight: 1.3 }}>{item.title}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-3)", marginTop: 4, lineHeight: 1.4 }}>{item.detail}</div>
+                  <button className={added ? "btn secondary" : "btn"} disabled={added}
+                    style={{ marginTop: 12, height: 38, fontSize: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                    onClick={() => { addTask({ id: `t-${Date.now()}`, title: item.title, assignee: "you", done: false, fromBriefingId: item.id }); addToast("Added to your tasks"); }}>
+                    {added ? (<><I.Check style={{ width: 14, height: 14 }} /> Added</>) : "Add as task"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.TasksScreen = TasksScreen;
+window.BriefingScreen = BriefingScreen;
 
   </script>
 
@@ -1585,7 +2278,9 @@ Object.assign(window, {
   </script>
 
   <script type="text/babel">
-/* global React, ReactDOM, I, StatusBar, Toast, LoginScreen, MFAScreen, PropertySelectScreen, HomeScreen, ArrivalsScreen, ReservationDetailScreen, GuestDetailScreen, EditGuestScreen, SearchScreen, IDScanScreen, useTweaks, TweaksPanel, TweakSection, TweakRadio */
+/* global React, ReactDOM, I, StatusBar, Toast, LoginScreen, MFAScreen, PropertySelectScreen, HomeScreen, ArrivalsScreen, CalendarScreen, TasksScreen, BriefingScreen, TASKS, ReservationDetailScreen, GuestDetailScreen, EditGuestScreen, SearchScreen, IDScanScreen, useTweaks, TweaksPanel, TweakSection, TweakRadio */
+
+const ROOT_TABS = ["home", "calendar", "tasks", "ai"];
 
 const { useState, useEffect, useRef } = React;
 
@@ -1602,6 +2297,10 @@ function App() {
   const [tab, setTab] = useState("home");
   const [toasts, setToasts] = useState([]);
   const [property, setProperty] = useState(null);
+  const [tasks, setTasks] = useState(TASKS);
+
+  const addTask = (task) => setTasks(t => [task, ...t]);
+  const toggleTask = (id) => setTasks(t => t.map(x => x.id === id ? { ...x, done: !x.done } : x));
 
   const top = stack[stack.length - 1];
 
@@ -1617,10 +2316,7 @@ function App() {
   const setRootTab = (name) => {
     setTab(name);
     setDirection("forward");
-    if (name === "home") setStack([{ name: "home" }]);
-    else if (name === "arrivals") setStack([{ name: "arrivals" }]);
-    else if (name === "search") setStack([{ name: "search" }]);
-    else if (name === "scan") setStack([{ name: "idscan" }]);
+    setStack([{ name }]);
   };
 
   const addToast = (msg) => {
@@ -1636,6 +2332,10 @@ function App() {
       case "mfa":      return <MFAScreen goHome={() => setStack([{ name: "property" }])} back={back} />;
       case "property": return <PropertySelectScreen onSelect={p => { setProperty(p); setStack([{ name: "home" }]); }} />;
       case "home": return <HomeScreen go={go} property={property} setProperty={setProperty} />;
+      case "calendar": return <CalendarScreen go={go} property={property} setProperty={setProperty} addToast={addToast} />;
+      case "tasks": return <TasksScreen go={go} tasks={tasks} toggleTask={toggleTask} />;
+      case "briefing": return <BriefingScreen back={back} tasks={tasks} addTask={addTask} addToast={addToast} />;
+      case "ai": return <PlaceholderScreen title="Ask Sabee" />;
       case "arrivals": return <ArrivalsScreen go={go} back={back} />;
       case "reservation": return <ReservationDetailScreen id={s.payload} go={go} back={back} addToast={addToast} />;
       case "guest": return <GuestDetailScreen resId={s.payload.resId} guestId={s.payload.guestId} go={go} back={back} />;
@@ -1647,8 +2347,9 @@ function App() {
     }
   };
 
-  // Bottom nav visibility — hide on full-screen modals like ID scan
-  const showNav = false;
+  // Bottom nav only shows on the 4 root tab screens — hidden once drilled
+  // into a detail/modal screen (reservation, guest, search, ID scan, ...).
+  const showNav = ROOT_TABS.includes(top.name);
 
   return (
     <div className="app-stage">
@@ -1728,14 +2429,14 @@ function PageHost({ children, direction }) {
 function BottomNav({ active, setRootTab }) {
   const items = [
     { id: "home", label: "Home", Icon: I.Home, IconActive: I.HomeFill },
-    { id: "arrivals", label: "Arrivals", Icon: I.ArrowIn, IconActive: I.ArrowIn },
-    { id: "scan", label: "Scan", Icon: I.Scan, IconActive: I.Scan },
-    { id: "search", label: "Search", Icon: I.Search, IconActive: I.Search },
+    { id: "calendar", label: "Calendar", Icon: I.Calendar, IconActive: I.Calendar },
+    { id: "tasks", label: "Tasks", Icon: I.Tasks, IconActive: I.Tasks },
+    { id: "ai", label: "Ask Sabee", Icon: I.Sparkle, IconActive: I.Sparkle },
   ];
   return (
     <div className="bottom-nav">
       {items.map(it => {
-        const isActive = it.id === active || (it.id === "arrivals" && active === "arrivals");
+        const isActive = it.id === active;
         const Icon = isActive ? it.IconActive : it.Icon;
         return (
           <button key={it.id} className={"nav-item" + (isActive ? " active" : "")} onClick={() => setRootTab(it.id)}>
@@ -1744,6 +2445,20 @@ function BottomNav({ active, setRootTab }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function PlaceholderScreen({ title }) {
+  return (
+    <div className="page">
+      <div className="page-header" style={{ paddingTop: 16 }}>
+        <h1 style={{ fontSize: 22 }}>{title}</h1>
+      </div>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8, color: "var(--ink-4)", paddingBottom: 78 }}>
+        <I.Sparkle style={{ width: 32, height: 32, color: "var(--primary-soft)" }} />
+        <div style={{ fontSize: 16, fontWeight: 700 }}>Coming soon</div>
+      </div>
     </div>
   );
 }

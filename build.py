@@ -17,6 +17,8 @@ SCRIPT_ORDER = [
     "property-screen.js",
     "home-screen.js",
     "arrivals-screen.js",
+    "calendar-screen.js",
+    "tasks-screen.js",
     "detail-screens.js",
     "tweaks-panel.jsx",
     "app.js",

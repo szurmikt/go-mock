@@ -33,6 +33,15 @@ const I = {
       <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
     </svg>
   ),
+  // Apple/Google "calendar_today" pattern: the frame always reads as a
+  // calendar, and the digit inside tracks the real date instead of a
+  // generic dot — pass today's day-of-month via the `day` prop.
+  Today: ({ day, ...p }) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4" />
+      <text x="12" y="16.5" textAnchor="middle" fontSize="10" fontWeight="800" fontFamily="Nunito, sans-serif" stroke="none" fill="currentColor">{day}</text>
+    </svg>
+  ),
   ArrowIn: (p) => (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <path d="M3 12h13" /><path d="m12 7 5 5-5 5" /><path d="M21 4v16" />
@@ -138,6 +147,19 @@ const I = {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  ),
+  Tasks: (p) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="m3.5 6 1.5 1.5L7.5 5" /><path d="M11 6h10" />
+      <path d="m3.5 13 1.5 1.5L7.5 12" /><path d="M11 13h10" />
+      <path d="m3.5 20 1.5 1.5L7.5 19" /><path d="M11 20h10" />
+    </svg>
+  ),
+  Sparkle: (p) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" {...p}>
+      <path d="M12 2c.6 3.6 1.9 5.9 4.5 7.5-2.6 1.6-3.9 3.9-4.5 7.5-.6-3.6-1.9-5.9-4.5-7.5C10.1 7.9 11.4 5.6 12 2z" />
+      <path d="M19 14c.3 1.8.9 2.9 2.2 3.7-1.3.8-1.9 1.9-2.2 3.7-.3-1.8-.9-2.9-2.2-3.7 1.3-.8 1.9-1.9 2.2-3.7z" />
     </svg>
   ),
 };

@@ -166,7 +166,7 @@ html, body {
 /* Header */
 .page-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   padding: 8px var(--pad) 0;
   gap: 12px;
@@ -330,35 +330,40 @@ html, body {
 .pill[data-status="confirmed"] { --pill-color: rgb(120,90,255);  --pill-soft: rgb(238,233,255); }
 .pill[data-status="open"]      { --pill-color: rgb(108,117,125); --pill-soft: rgb(238,240,242); }
 
-/* Bottom nav */
+/* Bottom nav — floating pill, overlays page content */
 .bottom-nav {
-  flex-shrink: 0;
+  position: absolute;
+  left: 16px; right: 16px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   display: flex;
-  background: rgba(255,255,255,0.95);
+  background: rgba(255,255,255,0.96);
   backdrop-filter: blur(20px) saturate(150%);
-  border-top: 1px solid var(--line);
-  padding: 6px 8px 18px;
-  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px;
+  box-shadow: var(--shadow-lg);
+  z-index: 40;
 }
 .nav-item {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   padding: 8px 4px;
   border: 0;
+  border-radius: 999px;
   background: transparent;
   cursor: pointer;
   color: var(--ink-4);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.02em;
   transition: color 0.2s;
 }
 .nav-item.active { color: var(--primary); }
-.nav-item .nav-icon { width: 24px; height: 24px; }
+.nav-item .nav-icon { width: 22px; height: 22px; }
 
 /* Reservation card */
 .res-card {
@@ -447,7 +452,6 @@ html, body {
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  will-change: transform;
   padding-top: env(safe-area-inset-top, 0px);
 }
 
@@ -725,7 +729,7 @@ html, body {
 .sheet-backdrop {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.5);
-  z-index: 30;
+  z-index: 50;
   display: flex; align-items: flex-end;
   animation: backdrop-in 0.25s ease;
 }
@@ -757,6 +761,38 @@ html, body {
 }
 .sheet .field .l { font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; }
 .sheet .field .v { font-size: var(--font-lg); color: var(--ink); font-weight: 700; margin-top: 2px; }
+.sheet .field .v-input {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: var(--font-lg);
+  font-weight: 700;
+  color: var(--ink);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.sheet .field .v-input:focus { outline: none; color: var(--primary); }
+
+.sheet .comment-field { margin-top: 14px; }
+.sheet .comment-field label { display: block; font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; margin-bottom: 6px; }
+.sheet .comment-field textarea {
+  width: 100%;
+  resize: none;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: var(--font-base);
+  color: var(--ink);
+  background: var(--surface);
+  line-height: 1.35;
+  transition: border-color 0.18s;
+}
+.sheet .comment-field textarea:focus { outline: none; border-color: var(--primary); }
 
 .sheet .actions { display: flex; gap: 12px; margin-top: 28px; }
 .btn {
@@ -912,6 +948,51 @@ html, body {
   font-weight: 600;
 }
 
+/* Task list */
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 var(--pad) 10px;
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--card-shadow);
+  padding: var(--card-pad);
+  cursor: pointer;
+}
+.task-check {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: background 0.15s, border-color 0.15s;
+}
+.task-check.done {
+  background: var(--success);
+  border-color: var(--success);
+}
+.task-title {
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--ink);
+}
+.task-title.done {
+  color: var(--ink-4);
+  text-decoration: line-through;
+}
+.task-who {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
 /* Tappable feedback for cards */
 .tap-anim {
   transition: transform 0.12s;
@@ -993,4 +1074,231 @@ html, body {
   font-weight: 600;
   color: var(--ink-4);
   flex-shrink: 0;
+}
+
+/* Calendar screen — full-bleed frozen-pane grid, panned via drag */
+.cal-add-btn {
+  width: 28px; height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: center;
+  transition: transform 0.15s;
+  background: var(--ink);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+.cal-add-btn:active { transform: scale(0.92); }
+.cal-icon-btn:active { transform: scale(0.92); }
+
+.cal-wrap {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  touch-action: none;
+  background: var(--surface);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cal-corner {
+  position: absolute;
+  top: 0; left: 0;
+  z-index: 6;
+  display: grid;
+  grid-template-rows: 12px 1fr;
+  justify-items: center;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.cal-dates {
+  position: absolute;
+  top: 0; right: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  z-index: 4;
+}
+.cal-dates-inner, .cal-rooms-inner, .cal-body-inner { position: relative; }
+.cal-dates-inner.cal-animated,
+.cal-rooms-inner.cal-animated,
+.cal-body-inner.cal-animated {
+  transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.cal-date-cell {
+  position: absolute;
+  top: 0; bottom: 0;
+  display: grid;
+  grid-template-rows: 12px 1fr;
+  justify-items: center;
+  border-right: 1px solid var(--line);
+}
+.cal-date-cell .dow, .cal-corner .dow { align-self: center; font-size: 9px; font-weight: 800; letter-spacing: 0.04em; color: var(--ink-4); text-transform: uppercase; }
+.cal-date-cell .num, .cal-corner .num { align-self: start; font-size: 14px; font-weight: 800; color: var(--ink-2); }
+.cal-corner .num { letter-spacing: 0.04em; text-transform: uppercase; }
+.cal-date-cell.today { background: var(--primary-soft-bg); }
+.cal-date-cell.today .num { color: var(--primary); }
+
+/* Room-type header rows: inline copies scroll with the content (.cal-type-row
+   in the room column, .cal-type-band as the matching full-width strip behind
+   the grid); .cal-sticky-header is the floating pinned copy that stays put
+   until the next section's header pushes it out of the way. */
+.cal-type-row, .cal-sticky-header {
+  background: rgb(246,247,251);
+  border-bottom: 1px solid var(--line);
+  position: absolute;
+  left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.cal-type-row { z-index: 5; }
+.cal-sticky-header { z-index: 7; pointer-events: none; }
+.cal-type-row span, .cal-sticky-header span {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-type-chevron {
+  width: 14px; height: 14px;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.cal-type-chevron.open { transform: rotate(90deg); }
+
+.cal-rooms {
+  position: absolute;
+  left: 0; bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  z-index: 3;
+}
+.cal-room-cell {
+  position: absolute;
+  left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
+}
+.cal-room-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+/* Housekeeping status: clean, dirty, being cleaned, under supervision. */
+.cal-room-dot[data-hk="clean"]       { background: var(--success); }
+.cal-room-dot[data-hk="dirty"]       { background: var(--warn); }
+.cal-room-dot[data-hk="progress"]    { background: rgb(245,166,35); }
+.cal-room-dot[data-hk="supervision"] { background: var(--primary); }
+.cal-room-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-room-expanded {
+  position: absolute;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  width: max-content;
+  max-width: calc(100% - 8px);
+  background: var(--surface);
+  border-right: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: cal-expand-in 0.18s ease;
+}
+@keyframes cal-expand-in {
+  from { opacity: 0; transform: scaleX(0.9); transform-origin: left center; }
+}
+
+.cal-body {
+  position: absolute;
+  right: 0; bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
+}
+.cal-body-inner {
+  background-image: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 100%);
+  background-repeat: repeat;
+}
+.cal-room-band {
+  position: absolute;
+  left: 0;
+  border-bottom: 1px solid var(--line);
+  pointer-events: none;
+}
+.cal-today-col {
+  position: absolute;
+  top: 0;
+  background: var(--primary-soft-bg);
+  pointer-events: none;
+}
+.cal-bar {
+  position: absolute;
+  /* Notch cut into the left edge, point protruding on the right — both
+     "arrows" point rightward, so adjacent guests' bars interlock like the
+     desktop PMS calendar's arrival/departure convention. */
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%, 9px 50%);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+/* Palette follows the PMS desktop calendar's legend:
+   onboard = checked-in/onboard, check-in = checked-in online,
+   confirmed = future arrival, open = optional reservation. */
+.cal-bar[data-status="onboard"]   { background: rgb(35,99,181); }
+.cal-bar[data-status="check-in"]  { background: rgb(150,199,235); color: rgb(20,55,90); }
+.cal-bar[data-status="check-out"] { background: rgb(214,193,144); color: rgb(76,62,20); }
+.cal-bar[data-status="confirmed"] { background: rgb(32,42,74); }
+.cal-bar[data-status="open"]      { background: rgb(222,120,101); }
+.cal-bar-blocked {
+  background: repeating-linear-gradient(45deg, rgb(200,196,182) 0 6px, rgb(184,179,163) 6px 12px);
+  color: rgb(90,84,66);
+}
+.cal-pending {
+  position: absolute;
+  border: 1.5px solid rgba(108,117,125,0.7);
+  border-radius: 6px;
+  background: rgba(108,117,125,0.35);
+  pointer-events: none;
 }
