@@ -690,7 +690,7 @@ async ionViewWillEnter() {
 
 ### 2026-09-07 — IDScanly: identity-document scans now capture an embedded address, when present
 
-> Branch `idscanly-identity-doc-address`. No build/version bump, no TestFlight upload (local verification only — `npx ng build` clean, unit spec green).
+> Branch `idscanly-identity-doc-address`. No build/version bump, no TestFlight upload. Published OTA to the `dev` channel (bundle `7c64a1af-a9f8-46b4-8883-37c2a305069c`, git `242e615`) — `dev` is internal testing only (8 devices, no live properties).
 
 **Checked, confirmed already correct (no change needed):** whether an address-card (lakcímkártya) scan ever counts as a "document ID scanned" action. It does not — `IdscanlyDocuscanService.mapAddressCard()` sets `documentData.is_identity_document = false`, and both save sites (`guest-detail.page.ts` `processScanResult('save')`, `guest-edit.page.ts` `ngOnInit`) explicitly skip writing `guest.scanned_data` when that flag is `false`, so `ReservationService.hasScanRecord()` — the sole gate behind the "Scanned: Yes/No" row and the reservation-detail scan-icon — never lights up from an address-card-only scan.
 
