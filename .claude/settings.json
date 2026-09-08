@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status *)",
+      "Bash(node -e ' *)",
+      "Bash(git pull *)",
+      "Bash(grep -n \"^> Branch \\\\`add-scan-onboarding-walkthrough\\\\`\" /Users/tamas/SabeeAppGO/app/CLAUDE.md)",
+      "Bash(grep -n \"> Branch \\\\`add-scan-onboarding-walkthrough\\\\`\" /Users/tamas/SabeeAppGO/app/CLAUDE.md)"
+    ]
+  }
+}

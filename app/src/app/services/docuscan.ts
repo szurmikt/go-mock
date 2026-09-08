@@ -19,8 +19,9 @@ export class DocuscanService {
       'document_number',
       'date_of_issue_of_the_document',
     ]);
-    // Address-card fields (captured under address_* keys by the scan loop) are
-    // nested into a single `address` object and kept out of the flat top level.
+    // Address fields (captured under address_* keys — from an address-card scan, or from
+    // an identity document that happens to embed one) are nested into a single `address`
+    // object and kept out of the flat top level.
     const addressKeyMap: Record<string, string> = {
       address_country_code: 'country_code',
       address_zip: 'zip',

@@ -124,6 +124,23 @@ export class IdscanlyDocuscanService {
       doc_reader_scanned_document_id: box(null),
     };
 
+    // Some national ID cards/passports embed a residence address alongside the identity
+    // fields (distinct from the dedicated address-card/lakcímkártya document type, which
+    // captures ONLY an address via mapAddressCard() above and never reaches this branch).
+    // Only add these boxes when the OCR actually returned one, so an address-less scan
+    // (the common case) produces no address_* keys at all — the result sheet's address
+    // section is gated on those keys being present, so it stays hidden rather than
+    // showing an empty section. is_identity_document stays true either way: this is
+    // still a genuine ID scan, not an address-card scan.
+    if (f.address?.trim()) {
+      scannedData['address_line'] = box(toNaturalCase(f.address));
+      // Same fallback chain mapAddressCard() uses for its own country_code — the
+      // document's issuing country is the address's country in the overwhelming case.
+      // zip/city are deliberately left unset: f.city/f.postalCode are documented as
+      // address-card-only fields, not a general-purpose address breakdown.
+      scannedData['address_country_code'] = box(f.documentCountry ?? f.issuingCountry);
+    }
+
     const documentData: DocumentData = {
       scan_type: 'idscanly',
       // documentType.label is a translation KEY (see document-type.ts) — resolve it before use,

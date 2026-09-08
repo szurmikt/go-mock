@@ -47,7 +47,8 @@ export interface ScannedDataInterface {
     document_number: string;
     date_of_issue_of_the_document: string;
   } | null;
-  // Populated only when an address card (lakcímkártya) is scanned; nested by
+  // Populated when an address card (lakcímkártya) is scanned, or when an identity
+  // document (ID card/passport) happens to embed an address; nested by
   // DocuscanService.scannedDataToGuestScannedData from the scan's address_* keys.
   address?: {
     country_code: string | null;

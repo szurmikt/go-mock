@@ -109,6 +109,26 @@ describe('toIdscanlyFields', () => {
     expect('documentNumber' in result).toBe(false);
   });
 
+  it('merges in address fields for an identity document that embeds an address', () => {
+    const result = toIdscanlyFields(
+      guest({
+        address: {
+          country_code: 'DEU',
+          zip: null,
+          city: null,
+          address_line: 'Musterstrasse 1',
+        },
+      }),
+      true,
+    );
+    expect(result['givenNames']).toBe('János');
+    expect(result['documentNumber']).toBe('AB1234567');
+    expect(result['documentCountry']).toBe('DEU');
+    expect(result['postalCode']).toBeNull();
+    expect(result['city']).toBeNull();
+    expect(result['streetAddress']).toBe('Musterstrasse 1');
+  });
+
   it('handles a missing address object on an address card', () => {
     expect(toIdscanlyFields(guest({ address: null }), false)).toEqual({
       documentCountry: null,

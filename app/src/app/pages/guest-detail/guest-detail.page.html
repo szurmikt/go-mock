@@ -278,8 +278,8 @@
             </div>
           }
 
-          <!-- Address (from an address card / lakcímkártya). Shown only when the
-               scan returned address data; identity docs skip this entirely. -->
+          <!-- Address — from an address card (lakcímkártya), or an identity document that
+               happens to embed one. Shown only when the scan returned address data. -->
           @if (_scannedData?.['address_zip']?.['value'] || _scannedData?.['address_city']?.['value'] || _scannedData?.['address_line']?.['value'] || _scannedData?.['address_country_code']?.['value']) {
             <div style="display: flex; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line)">
               <div style="flex: 1; min-width: 0">

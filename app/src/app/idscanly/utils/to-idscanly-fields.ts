@@ -36,7 +36,7 @@ function identityFields(
 ): Record<string, unknown> {
   const givenNames = clean(g.first_name);
   const surname = clean(g.last_name);
-  return {
+  const fields: Record<string, unknown> = {
     givenNames,
     surname,
     fullName: [givenNames, surname].filter(Boolean).join(' ') || null,
@@ -53,6 +53,20 @@ function identityFields(
     [documentNumberKey]: clean(g.document?.document_number),
     dateOfIssue: clean(g.document?.date_of_issue_of_the_document),
   };
+
+  // An identity document (ID card/passport) can also carry an embedded address — see
+  // IdscanlyDocuscanService.mapToScanResult's address_line/address_country_code handling.
+  // Merge in the same address keys the address-card path reports, so a saved address is
+  // echoed back regardless of which branch of the mapper originally produced it. Only when
+  // the guest actually has address data, so a plain identity scan with no address keeps
+  // reporting exactly the fields it always has (no new null keys for the common case).
+  const hasAddress =
+    g.address?.country_code || g.address?.zip || g.address?.city || g.address?.address_line;
+  if (hasAddress) {
+    Object.assign(fields, addressFields(g));
+  }
+
+  return fields;
 }
 
 /**
