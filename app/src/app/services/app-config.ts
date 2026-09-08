@@ -21,6 +21,16 @@ const REACHABILITY_ATTEMPT_TIMEOUT_MS = 1500;
 const REACHABILITY_RETRY_GAP_MS = 500;
 const CONFIG_FN_URL = `${environment.supabaseUrl}/functions/v1/config`;
 
+/** Why a fetchConfigOnce attempt came back with no usable data — surfaced for diagnostics only;
+ *  every kind is handled identically (fail open) by both callers. */
+type ConfigFetchFailureKind = 'timeout' | 'fetch_error' | 'http_error';
+
+interface ConfigFetchResult {
+  data: { app_config: { minimum_version: string } | null; property_config: unknown } | null;
+  kind?: ConfigFetchFailureKind;
+  status?: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AppConfigService {
   private appVersion = inject(AppVersionService);
@@ -28,17 +38,19 @@ export class AppConfigService {
   private async fetchConfigOnce(
     params: Record<string, string>,
     timeoutMs: number,
-  ): Promise<{ app_config: { minimum_version: string } | null; property_config: unknown } | null> {
-    const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs));
+  ): Promise<ConfigFetchResult> {
+    const timeout = new Promise<ConfigFetchResult>(resolve =>
+      setTimeout(() => resolve({ data: null, kind: 'timeout' }), timeoutMs),
+    );
 
-    const query = (async () => {
+    const query = (async (): Promise<ConfigFetchResult> => {
       const qs = new URLSearchParams(params).toString();
       const res = await fetch(`${CONFIG_FN_URL}?${qs}`, {
         headers: { apikey: environment.supabaseAnonKey },
       });
-      if (!res.ok) return null;
-      return res.json();
-    })().catch(() => null);
+      if (!res.ok) return { data: null, kind: 'http_error', status: res.status };
+      return { data: await res.json() };
+    })().catch((): ConfigFetchResult => ({ data: null, kind: 'fetch_error' }));
 
     return Promise.race([query, timeout]);
   }
@@ -50,11 +62,20 @@ export class AppConfigService {
   async runVersionGate(): Promise<GateResult> {
     const platform = this.platform();
 
-    const result = await this.fetchConfigOnce({ platform }, CONFIG_TIMEOUT_MS);
+    const { data: result, kind, status } = await this.fetchConfigOnce(
+      { platform },
+      CONFIG_TIMEOUT_MS,
+    );
 
     if (!result?.app_config) {
-      Sentry.captureException(new Error('version_gate config unavailable'), {
-        tags: { context: 'version_gate' },
+      // Expected/transient (slow or unreachable network) — the caller already fails open, so this
+      // is a Log for diagnosability, not an Issue requiring triage. Mirrors the token-refresh
+      // precedent in api.interceptor.ts: only a genuinely broken state raises an Issue.
+      Sentry.logger.warn('version_gate config unavailable', {
+        context: 'version_gate',
+        platform,
+        kind: kind ?? 'unknown',
+        status,
       });
       return { blocked: false, reachedBackend: false };
     }
@@ -83,7 +104,7 @@ export class AppConfigService {
 
     while (Date.now() < deadline) {
       const remaining = deadline - Date.now();
-      const result = await this.fetchConfigOnce(
+      const { data: result } = await this.fetchConfigOnce(
         { platform },
         Math.min(REACHABILITY_ATTEMPT_TIMEOUT_MS, remaining),
       );

@@ -690,7 +690,7 @@ async ionViewWillEnter() {
 
 ### 2026-09-05 — Mixpanel: biometric lock outcome (`session_unlock_result`)
 
-> Branch `add-mixpanel-unlock-tracking`. No build/version bump, no TestFlight upload (web-layer only).
+> Branch `add-mixpanel-unlock-tracking`, merged into `main` 2026-09-08. No build/version bump, no TestFlight upload (web-layer only). Already live on the `dev` OTA channel since 2026-09-08 (bundle `32c78152-6ec0-432e-980c-bf1791bfe268`, part of an integration build alongside the `version_gate` fix below).
 
 The biometric session lock (§14) had an `auto_lock_interval` **people-property** (set only on an
 explicit Settings pick — see the 2026-08-31 entry) but nothing tracking what actually happens once
@@ -737,6 +737,19 @@ registers as a failure in-browser per §14's documented in-browser behaviour). N
 pass (the "Lock Now" debug button on property 6250 works for this) should confirm: a first-try
 unlock fires `attempts: 1`, a fail-then-succeed fires the right count, and 3 failures → "Use
 password instead" fires `abandoned_logout` before the logout actually happens.
+
+### 2026-09-05 — Fix: `version_gate config unavailable` no longer raises a Sentry Issue
+
+> Branch `fix/version-gate-log-not-exception`. No build/version bump, no TestFlight upload — service-layer only, ships OTA. `npx ng build --configuration production` clean. Only this fix commit was merged into `main` 2026-09-08 (cherry-picked) — the branch's separate docs reorg and Ionic-scaffolding cleanup were deliberately left out and remain unmerged. Already live on the `dev` OTA channel since 2026-09-08 (bundle `32c78152-6ec0-432e-980c-bf1791bfe268`, part of an integration build alongside the Mixpanel unlock-tracking entry above).
+
+Investigated a live Sentry issue (`SABEEAPPGO-E` — `Error: version_gate config unavailable`, 379 events / 235 users). The issue header's `first_seen` (2026-06-01) turned out to be stale/misleading — querying raw events directly showed real production traffic only starting 2026-08-06, ramping with actual TestFlight tester usage; the June date is likely one early event that's since aged out of Sentry's raw-event retention window while the issue group's cached `first_seen` never recalculated. Compared against other Supabase-hitting calls in the app (`external-result`, the raw `idrecognition` fetch) — those show far fewer failures, but several other Supabase reads (e.g. `PropertyConfigService.load()`) fail completely silently with an empty `catch {}`, so the comparison is incomplete; the likelier explanation is simply that `runVersionGate()` is called far more often than any other Supabase path in the app (every cold boot **and** every foreground resume, for every user), not that this one Edge Function is unusually slow.
+
+Root cause was already handled correctly by design — [app-config.ts](src/app/services/app-config.ts) `runVersionGate()` fails open (`{ blocked: false, reachedBackend: false }`) whenever its Supabase `config` Edge Function call doesn't return `app_config` within `CONFIG_TIMEOUT_MS` (3s, unchanged — raising it would trade boot/resume responsiveness for all users to marginally help borderline-slow ones, re-coupling two concerns `waitForBackendReachable()`'s own doc comment already explains were deliberately kept separate). The only problem was **how the expected/transient failure was reported**: every occurrence — including a plain slow or offline network, which the app already handles gracefully — raised a Sentry **Issue** via `captureException`, indistinguishable from a real regression and requiring ongoing triage for something that isn't one.
+
+- **[app-config.ts](src/app/services/app-config.ts)**: `fetchConfigOnce()` now returns `{ data, kind?, status? }` instead of collapsing every failure into a bare `null` — `kind` is `'timeout' | 'fetch_error' | 'http_error'` (plus the real HTTP status on the latter) — so a future occurrence is diagnosable from the log entry itself instead of needing to re-derive it from source. `runVersionGate()`'s failure branch changed from `Sentry.captureException(new Error(...))` to `Sentry.logger.warn('version_gate config unavailable', { context, platform, kind, status })` — Sentry Logs, not Issues — mirroring the existing token-refresh precedent in [api.interceptor.ts](src/app/interceptors/api.interceptor.ts) ("an occasional dropped connection isn't actionable on its own, but a real pattern is now visible"). `waitForBackendReachable()` updated to the new return shape; its behavior (a bare `data?.app_config` check, silent on failure) is unchanged.
+- Scoped to this one call site only — no other `Sentry.captureException` call in the app (the six OTA-context ones in `live-update.ts`, the one in `external-result.service.ts`) was touched, and no global Sentry config (sampling, `beforeSend`, severity mapping) changed.
+
+**Verification:** `npx ng build --configuration production` clean (only the three pre-existing known warnings — two IDScanly SCSS budget overages + the `jscanify` CommonJS bailout, none new). **Not yet re-confirmed live** — the next real occurrence of this condition should appear in Sentry Logs (not Issues) carrying a `kind`/`status` breakdown instead of a bare exception.
 
 ### 2026-09-03 — First-run Scan-screen walkthrough (Document form, Auto-Capture, Skip callouts)
 
