@@ -13,6 +13,15 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+### 2026-09-08 — dev — 32c78152-6ec0-432e-980c-bf1791bfe268
+> Integration build (git `aab2a3d`, branch `dev-push-2026-09-08`) combining two sibling branches on top of the bundle below, since `dev` rebuilds cumulatively: `add-mixpanel-unlock-tracking` in full, plus just the fix commit from `fix/version-gate-log-not-exception` (its docs reorg and Ionic-scaffolding cleanup were deliberately left out of this push).
+- Mixpanel: new `session_unlock_result` event per biometric-lock episode (`outcome`, `trigger`, `attempts`, `auto_lock_minutes`, `biometry_type`) — no user-facing change
+- Fix: `version_gate config unavailable` now reported as a Sentry Log, not an Issue — no user-facing change
+
+### 2026-09-07 — dev — 7c64a1af-a9f8-46b4-8883-37c2a305069c
+> Retroactively logged — this publish (git `242e615`) was recorded in the CLAUDE.md changelog but missed an entry here at the time.
+- IDScanly: identity-document scans (passport/ID card) now capture an embedded address when the OCR returns one, without affecting the "ID scanned" flag
+
 ### 2026-09-03 — prod — fd51569d-983c-4d7e-a751-f3bbb3f419f4
 > Promoted from `dev` (build #36, git `b10451a`) — same bytes, no rebuild. First production release of the Scan-screen walkthrough below; content also includes the three `dev`-only fix entries beneath this one, since each `dev` push rebuilds the bundle cumulatively.
 - First-run Scan-screen walkthrough: explains the Card/Passport Document form toggle, Auto-Capture, and Skip, shown once per device, with call-out arrows pointing at each real control
