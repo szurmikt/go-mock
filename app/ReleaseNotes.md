@@ -13,6 +13,10 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+### 2026-09-08 — dev — 6e0fefa1-a4a8-409c-a728-2dc78649cdf7
+> Rebuild from `main` (git `b1754b9`) after merging `idscanly-identity-doc-address` in full — same content as the bundle below plus one addition.
+- Debug-only: Sentry breadcrumb instrumentation on the scan-result Edit path (temporary, no user-facing change)
+
 ### 2026-09-08 — dev — 32c78152-6ec0-432e-980c-bf1791bfe268
 > Integration build (git `aab2a3d`, branch `dev-push-2026-09-08`) combining two sibling branches on top of the bundle below, since `dev` rebuilds cumulatively: `add-mixpanel-unlock-tracking` in full, plus just the fix commit from `fix/version-gate-log-not-exception` (its docs reorg and Ionic-scaffolding cleanup were deliberately left out of this push).
 - Mixpanel: new `session_unlock_result` event per biometric-lock episode (`outcome`, `trigger`, `attempts`, `auto_lock_minutes`, `biometry_type`) — no user-facing change
