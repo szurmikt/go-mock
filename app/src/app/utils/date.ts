@@ -43,3 +43,74 @@ function isValid(y: string, m: string, d: string): boolean {
     dt.getUTCDate() === day
   );
 }
+
+let localInstantFormatter: Intl.DateTimeFormat | null = null;
+function getLocalInstantFormatter(): Intl.DateTimeFormat {
+  if (!localInstantFormatter) {
+    localInstantFormatter = new Intl.DateTimeFormat(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+  return localInstantFormatter;
+}
+
+/**
+ * Formats an "instant" timestamp from the API — e.g. a reservation's
+ * `checked_in_time`/`checked_out_time`, or (once it ships) a comment's
+ * created-at — as a 24h `HH:MM` string. Unlike `toInputDate` above, this is for
+ * fields that represent a specific moment in time, not a calendar day.
+ *
+ * The API sends these as naive `"YYYY-MM-DD HH:MM:SS"` strings with no
+ * timezone marker, and — as of this writing — never tells us the property's
+ * timezone. Until it does, `timeZone` should be omitted: the naive string is
+ * read as if it's already in the viewer's own local time (exactly how this
+ * function's predecessor, the inline logic in `LocalizedTimePipe`, has always
+ * behaved). This is NOT a degraded fallback — it's the only path any current
+ * caller exercises, and its behavior must stay byte-for-byte stable except by
+ * a deliberate, reviewed change, since every user sees it today.
+ *
+ * Once the API sends a real property timezone (an IANA name, e.g.
+ * "Europe/Budapest"), pass it as `timeZone` and the value is instead treated
+ * as a UTC instant and converted to that zone for display. ⚠️ That branch is
+ * UNVERIFIED against a real payload — the exact future wire format (a naive
+ * string that's secretly UTC vs. a real ISO string with a `Z`/offset vs. a
+ * Unix epoch) is not yet known. Confirm and adjust this branch against a real
+ * API response before relying on it.
+ */
+export function formatPropertyInstant(
+  value: string | null | undefined,
+  timeZone?: string | null,
+): string {
+  if (value == null || value.trim() === '') return '';
+  const normalized = value.replace(' ', 'T');
+
+  if (!timeZone) {
+    const d = new Date(normalized);
+    if (Number.isNaN(d.getTime())) {
+      const m = value.match(/(\d{1,2}:\d{2})/);
+      return m ? m[1] : '';
+    }
+    return getLocalInstantFormatter().format(d);
+  }
+
+  // Provisional UTC-instant assumption — see the "UNVERIFIED" note above.
+  const d = new Date(`${normalized}Z`);
+  if (Number.isNaN(d.getTime())) {
+    const m = value.match(/(\d{1,2}:\d{2})/);
+    return m ? m[1] : '';
+  }
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone,
+    }).format(d);
+  } catch {
+    // Invalid/garbage IANA string — fall back to the no-timezone rendering
+    // rather than throwing or blanking the UI.
+    return getLocalInstantFormatter().format(d);
+  }
+}

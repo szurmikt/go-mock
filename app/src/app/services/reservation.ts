@@ -16,6 +16,16 @@ function dateStr(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+// Parses a "YYYY-MM-DD" calendar-date string into its integer components without
+// ever constructing a `Date` from it — `new Date("YYYY-MM-DD")` parses as UTC
+// midnight, and reading that back with local getters silently shifts the date by
+// a day for anyone west of UTC. Calendar dates (arrival/departure) have no
+// timezone of their own; this keeps them as pure numbers end to end.
+function parseCalendarDate(s: string): { y: number; m: number; d: number } {
+  const [y, m, d] = s.split('-').map(Number);
+  return { y, m, d };
+}
+
 export function pillStatus(apiStatus: string): string {
   switch (apiStatus) {
     case 'checkin':    return 'check-in';
@@ -295,11 +305,11 @@ export class ReservationService {
   }
 
   private convert(r: any): ReservationInterface {
-    const arrival = new Date(r.arrival_date);
-    const departure = new Date(r.departure_date);
+    const arrival = parseCalendarDate(r.arrival_date);
+    const departure = parseCalendarDate(r.departure_date);
     const nights = Math.round(
-      (Date.UTC(departure.getFullYear(), departure.getMonth(), departure.getDate()) -
-       Date.UTC(arrival.getFullYear(), arrival.getMonth(), arrival.getDate())) /
+      (Date.UTC(departure.y, departure.m - 1, departure.d) -
+       Date.UTC(arrival.y, arrival.m - 1, arrival.d)) /
       86_400_000,
     );
     return {
@@ -312,8 +322,8 @@ export class ReservationService {
         last_name: r.booker.last_name,
         email: r.booker.email,
       },
-      arrival_date: dateStr(arrival),
-      departure_date: dateStr(departure),
+      arrival_date: r.arrival_date ?? '',
+      departure_date: r.departure_date ?? '',
       checked_in_time: r.checked_in_time ?? '',
       checked_out_time: r.checked_out_time ?? '',
       status: r.status ?? '',
