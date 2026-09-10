@@ -21,6 +21,7 @@ SCRIPT_ORDER = [
     "calendar-screen.js",
     "tasks-screen.js",
     "detail-screens.js",
+    "signature-screen.js",
     "tweaks-panel.jsx",
     "app.js",
 ]
@@ -65,6 +66,7 @@ html = f"""<!DOCTYPE html>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/signature_pad@5.1.4/dist/signature_pad.umd.min.js"></script>
 
 {scripts_block}
 </body>

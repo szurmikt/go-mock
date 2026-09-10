@@ -1,4 +1,4 @@
-/* global React, I, Pill, RESERVATIONS, Segment, ReservationCard */
+/* global React, I, Pill, RESERVATIONS, Segment, ReservationCard, CheckinSignScreen */
 
 const { useState, useRef, useEffect } = React;
 
@@ -89,9 +89,35 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [statusSheetOpen, setStatusSheetOpen] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
   const [vizaStatus, setVizaStatus] = useState("idle"); // idle | loading | done
+  const [checkinOpen, setCheckinOpen] = useState(false);
+  const [signed, setSigned] = useState(false);
+  const [commentsSheetOpen, setCommentsSheetOpen] = useState(false);
+  const [comments, setComments] = useState(window.COMMENTS[r.id] || []);
+  const [commentDraft, setCommentDraft] = useState("");
+  const commentsListRef = useRef(null);
   const guests = (window.GUESTS[r.id] || []);
   const statusIndex = Math.max(0, STATUS_STEPS.findIndex(s => s.key === status));
+
+  const scrollCommentsToBottom = () => {
+    const el = commentsListRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  };
+
+  useEffect(() => {
+    if (commentsSheetOpen) setTimeout(scrollCommentsToBottom, 0);
+  }, [commentsSheetOpen]);
+
+  const sendComment = () => {
+    const text = commentDraft.trim();
+    if (!text) return;
+    setComments(prev => [...prev, { id: `local-${Date.now()}`, author: "You", role: "Front Desk", dateTime: "Just now", message: text }]);
+    setCommentDraft("");
+    setTimeout(scrollCommentsToBottom, 0);
+  };
+
+  const initials = (name) => name.split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 
   const cycle = () => {
     const order = ["confirmed", "onboard", "check-in", "check-out"];
@@ -101,15 +127,34 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
     addToast(`Status → ${next === "check-in" ? "Check-in" : next === "check-out" ? "Check-out" : next === "onboard" ? "Onboard" : "Confirmed"}`);
   };
 
-  const advanceStatus = () => {
-    const next = STATUS_STEPS[statusIndex + 1];
-    if (!next || statusUpdating) return;
+  const doAdvance = (next) => {
     setStatusUpdating(true);
     setTimeout(() => {
       setStatus(next.key);
       setStatusUpdating(false);
       addToast(`Status → ${next.label}`);
     }, 1400);
+  };
+
+  // Check-out only ever follows Onboard in STATUS_STEPS, so this is really
+  // "guard the onboard → check-out transition" — going straight to check-out
+  // right after onboarding is an unusual, high-consequence jump (most likely
+  // a mis-tap), so it gets a confirmation instead of advancing immediately
+  // like every other step does.
+  const advanceStatus = () => {
+    const next = STATUS_STEPS[statusIndex + 1];
+    if (!next || statusUpdating) return;
+    if (next.key === "check-out") {
+      setCheckoutConfirmOpen(true);
+      return;
+    }
+    doAdvance(next);
+  };
+
+  const confirmCheckout = () => {
+    setCheckoutConfirmOpen(false);
+    const next = STATUS_STEPS[statusIndex + 1];
+    if (next) doAdvance(next);
   };
 
   const reportToViza = () => {
@@ -180,7 +225,7 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
                 <span className="action-icon"><I.Bolt /></span>
                 Change Status
               </button>
-              <button className="action-item" onClick={() => { setMenuOpen(false); addToast("Coming soon"); }}>
+              <button className="action-item" onClick={() => { setMenuOpen(false); setCommentsSheetOpen(true); }}>
                 <span className="action-icon"><I.Comment /></span>
                 Comments
               </button>
@@ -211,8 +256,13 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
                       <div className="body">
                         <div className="status-actions">
                           {buttons.includes("sign") && (
-                            <button className="status-action-btn" onClick={() => addToast("Coming soon")}>
-                              <I.Edit style={{ width: 16, height: 16 }} /> Sign
+                            <button
+                              className={"status-action-btn" + (signed ? " done" : "")}
+                              onClick={() => setCheckinOpen(true)}
+                              disabled={signed}
+                            >
+                              {signed ? <I.Check style={{ width: 16, height: 16 }} /> : <I.Edit style={{ width: 16, height: 16 }} />}
+                              {signed ? "Signed" : "Sign"}
                             </button>
                           )}
                           {buttons.includes("report") && (
@@ -292,6 +342,80 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
             </div>
           </div>
         </div>
+      )}
+
+      {checkoutConfirmOpen && (
+        <div className="sheet-backdrop" onClick={() => setCheckoutConfirmOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>Check out guest?</h3>
+              <button className="icon-btn" onClick={() => setCheckoutConfirmOpen(false)}><I.X /></button>
+            </div>
+            <div style={{ marginTop: 16, fontSize: "var(--font-base)", color: "var(--ink-2)", lineHeight: 1.5 }}>
+              This guest was only just onboarded. Checking out immediately after onboarding is unusual — are you sure you want to continue?
+            </div>
+            <div className="actions">
+              <button className="btn secondary" onClick={() => setCheckoutConfirmOpen(false)}>Cancel</button>
+              <button className="btn" onClick={confirmCheckout}>Check out</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {commentsSheetOpen && (
+        <div className="sheet-backdrop" onClick={() => setCommentsSheetOpen(false)}>
+          <div className="sheet comments-sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>Comments</h3>
+              <button className="icon-btn" onClick={() => setCommentsSheetOpen(false)}><I.X /></button>
+            </div>
+
+            <div className="comments-list" ref={commentsListRef}>
+              {comments.length === 0 && (
+                <div style={{ padding: "24px 0", textAlign: "center", color: "var(--ink-4)", fontSize: "var(--font-sm)", fontWeight: 600 }}>
+                  No comments yet
+                </div>
+              )}
+              {comments.map(c => (
+                <div key={c.id} className={"comment-row" + (c.role === "Guest" ? " guest" : "")}>
+                  <div className="comment-avatar">{initials(c.author)}</div>
+                  <div className="comment-body">
+                    <div className="comment-meta">
+                      <span className="comment-author">{c.author} <span className="comment-role">· {c.role}</span></span>
+                      <span className="comment-time">{c.dateTime}</span>
+                    </div>
+                    <div className="comment-message">{c.message}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="comments-compose">
+              <textarea
+                rows={1}
+                placeholder="Write a comment…"
+                value={commentDraft}
+                onChange={e => setCommentDraft(e.target.value)}
+              />
+              <button className="comment-send" disabled={!commentDraft.trim()} onClick={sendComment}>
+                <I.Send />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {checkinOpen && (
+        <CheckinSignScreen
+          guestName={r.name}
+          guestEmail={r.email}
+          onClose={() => setCheckinOpen(false)}
+          onConfirm={() => {
+            setSigned(true);
+            setCheckinOpen(false);
+            addToast("T&C accepted — signature saved");
+          }}
+        />
       )}
     </div>
   );

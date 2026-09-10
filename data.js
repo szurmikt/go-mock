@@ -94,6 +94,36 @@ const FINANCES = {
   "55ABK29":  { room: "€140.00", services: "€0.00", total: "€140.00", paid: "€0.00", balance: "€140.00" },
 };
 
+// Comment threads for the Reservation Status sheet's sibling "Comments"
+// action — a running log staff and guests can both post to. `role` is a
+// small label shown next to the author's name (Front Desk, Housekeeping,
+// Guest, ...), not a permissions concept. Only seeded for 34MRK211 so far.
+const COMMENTS = {
+  "34MRK211": [
+    { id: "c1", author: "Anna K.", role: "Front Desk", dateTime: "24 Apr · 09:14", message: "Guest requested a quiet room away from the elevator if possible — noted on the reservation." },
+    { id: "c2", author: "Emma Williams", role: "Guest", dateTime: "24 Apr · 18:47", message: "Hi! Could we also get a late check-out on the 28th? Our flight isn't until the evening, would really help." },
+    { id: "c3", author: "Marco T.", role: "Front Desk", dateTime: "25 Apr · 08:02", message: "Called the guest back to confirm — late check-out until 14:00 approved, no extra charge given her loyalty status." },
+    { id: "c4", author: "Ines P.", role: "Housekeeping", dateTime: "26 Apr · 15:42", message: "Room 201 prepared and inspected ahead of arrival. Welcome amenities placed per the VIP note." },
+    { id: "c5", author: "Anna K.", role: "Front Desk", dateTime: "26 Apr · 16:05", message: "Guest checked in smoothly. She mentioned they'd like an extra towel set for the balcony — passed along to housekeeping." },
+  ],
+};
+
+// Placeholder hotel Terms & Conditions text shown on the Check-in &
+// Accepting T&C screen (see signature-screen.js) — deliberately long, since
+// a real property's T&C + house policy text is expected to run to several
+// paragraphs, not a one-liner the signature field could just sit next to.
+const HOTEL_TERMS = `Check-in is available from 14:00 and check-out until 11:00. Early check-in and late check-out are subject to availability and may incur an additional charge, confirmed by front desk staff at the time of request.
+
+A valid photo ID or passport is required from every guest at check-in. By staying at the property, you consent to your travel document being scanned and the resulting data being processed and, where legally required, reported to local authorities for guest registration purposes.
+
+The total stay amount, including any pre-authorized deposit for incidentals, is charged to the card on file. Cancellations made less than 48 hours before arrival, or no-shows, are charged the full amount of the first night.
+
+Guests are liable for any damage caused to the room or property during their stay, beyond normal wear and tear. Smoking is not permitted inside guest rooms or indoor common areas; a cleaning fee applies where smoking is detected.
+
+Quiet hours are observed between 22:00 and 08:00. Pets are welcome only in designated pet-friendly rooms, subject to prior confirmation with the property.
+
+By signing below, you confirm that you have read, understood, and agree to the above Terms & Conditions and the property's house policies in full.`;
+
 const PROPERTIES = [
   { id: "sunshine", name: "Sunshine Hotel & Apartments", type: "Hotel & Apartments" },
   { id: "cozy",     name: "Cozy Corner Apartments",      type: "Apartments" },
@@ -126,6 +156,8 @@ window.BLOCKS = BLOCKS;
 window.BRIEFING_ITEMS = BRIEFING_ITEMS;
 window.TASKS = TASKS;
 window.GUESTS = GUESTS;
+window.COMMENTS = COMMENTS;
 window.SERVICES = SERVICES;
 window.FINANCES = FINANCES;
 window.PROPERTIES = PROPERTIES;
+window.HOTEL_TERMS = HOTEL_TERMS;

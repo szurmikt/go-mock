@@ -900,10 +900,165 @@ html, body {
 .status-action-btn:disabled { opacity: 1; cursor: default; }
 .status-action-btn.done { border-color: var(--success); color: var(--success); }
 .status-spinner-sm { width: 14px; height: 14px; border-width: 2px; }
+
+/* Comments sheet — same .sheet shell (auto height, 88% max) as the Property
+   Selector / Status sheet, but as a flex column: only .comments-list scrolls
+   internally, while the head and the compose bar stay pinned. */
+.sheet.comments-sheet { display: flex; flex-direction: column; padding-bottom: 0; overflow: hidden; }
+.comments-list { flex: 1; min-height: 0; overflow-y: auto; margin-top: 4px; }
+.comment-row { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.comment-row:last-child { border-bottom: none; }
+.comment-avatar {
+  width: 36px; height: 36px; flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--primary-soft-bg); border: 1px solid var(--primary-soft); color: var(--primary);
+  font-size: 13px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.comment-row.guest .comment-avatar { background: rgb(246,247,251); border-color: var(--line-strong); color: var(--ink-2); }
+.comment-body { flex: 1; min-width: 0; }
+.comment-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.comment-author { font-size: var(--font-base); font-weight: 800; color: var(--ink); }
+.comment-author .comment-role { font-size: var(--font-xs); font-weight: 600; color: var(--ink-4); }
+.comment-time { font-size: var(--font-xs); font-weight: 600; color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
+.comment-message { margin-top: 3px; font-size: var(--font-md); color: var(--ink-2); line-height: 1.4; }
+
+.comments-compose {
+  display: flex; align-items: flex-end; gap: 10px;
+  flex-shrink: 0;
+  /* Bleed horizontally to the sheet's edges (like .sheet .head does) so the
+     top border and background span full width. No negative bottom margin
+     here, unlike .head's top one: .head's cancels .sheet's own (non-zero)
+     top padding, but .sheet.comments-sheet's bottom padding is already 0
+     and the sheet clips overflow — a matching negative bottom margin would
+     shrink this element's contribution to the flex column's auto height,
+     leaving the padding-bottom below clipped away instead of visible. */
+  margin: 0 calc(var(--pad) * -1);
+  padding: 12px var(--pad) calc(12px + env(safe-area-inset-bottom, 8px));
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.comments-compose textarea {
+  flex: 1; resize: none;
+  border: 1.5px solid var(--line-strong); border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font: inherit; font-size: var(--font-base); color: var(--ink);
+  background: var(--bg);
+  line-height: 1.35;
+  max-height: 90px;
+  transition: border-color 0.18s;
+}
+.comments-compose textarea:focus { outline: none; border-color: var(--primary); }
+.comment-send {
+  width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--primary); color: #fff; border: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.comment-send:active { transform: scale(0.94); }
+.comment-send:disabled { opacity: 0.4; cursor: default; }
+
 .btn:hover { background: var(--primary-strong); }
 .btn:active { transform: scale(0.98); }
 .btn.secondary { background: rgb(246,247,251); color: var(--primary); border: 1.5px solid var(--primary); }
 .btn.secondary:hover { background: var(--primary-soft-bg); }
+
+/* Check-in & Accepting T&C / signature capture — full-screen take-overs,
+   not bottom sheets. Escape the page-transition container's overflow:hidden
+   via position:fixed (same trick as .sheet-backdrop), filling the whole
+   screen instead of docking to the bottom; reuses .page's own internals
+   (sub-header, app-scroll, safe-area padding) by nesting a real .page as
+   the flex child, same as .sheet-backdrop nests .sheet. */
+.checkin-sign-backdrop, .sig-capture-backdrop {
+  position: fixed; inset: 0;
+  display: flex;
+  animation: backdrop-in 0.25s ease;
+}
+.checkin-sign-backdrop { z-index: 55; }
+.sig-capture-backdrop { z-index: 60; }
+.checkin-sign-backdrop .page, .sig-capture-backdrop .page {
+  position: static;
+  flex: 1;
+  min-width: 0;
+}
+@media (min-width: 720px) {
+  .checkin-sign-backdrop .page, .sig-capture-backdrop .page {
+    flex: none;
+    width: min(440px, 100%);
+    margin: 0 auto;
+  }
+}
+
+.checkin-terms {
+  white-space: pre-line;
+  font-size: var(--font-base);
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+.checkin-consent-note {
+  font-size: var(--font-sm);
+  color: var(--ink-3);
+  line-height: 1.5;
+  margin: 0 4px 20px;
+}
+.checkin-consent-note strong { color: var(--ink-2); }
+
+.sig-field {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 120px;
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink-4);
+  font: inherit;
+  font-size: var(--font-md);
+  font-weight: 700;
+  padding: 12px;
+  cursor: pointer;
+}
+.sig-field.filled { border-style: solid; padding: 8px; }
+.sig-field img { max-height: 110px; max-width: 100%; }
+
+.sig-capture-bar {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 8px 0 4px;
+  border-bottom: 1px solid var(--line);
+}
+.sig-capture-title { font-size: var(--font-lg); font-weight: 800; color: var(--ink-2); }
+.sig-clear-btn {
+  background: transparent; border: 0;
+  color: var(--primary);
+  font: inherit; font-size: var(--font-base); font-weight: 800;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.sig-clear-btn:disabled { color: var(--ink-4); cursor: default; }
+
+.sig-canvas-wrap {
+  flex: 1;
+  position: relative;
+  margin: 0 16px 16px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+.sig-canvas-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.sig-baseline {
+  position: absolute; left: 24px; right: 24px; bottom: 28%;
+  border-bottom: 2px solid var(--line-strong);
+  pointer-events: none;
+}
+.sig-capture-footer {
+  flex-shrink: 0;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}
 
 /* Toast */
 .toast-stack {

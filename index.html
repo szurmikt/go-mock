@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=5ef8e42c">
+  <link rel="stylesheet" href="styles.css?v=57a8341c">
   <style>
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
@@ -20,6 +20,7 @@
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/signature_pad@5.1.4/dist/signature_pad.umd.min.js"></script>
 
   <script type="text/babel">
 /* global React */
@@ -186,6 +187,11 @@ const I = {
       <path d="m3.5 20 1.5 1.5L7.5 19" /><path d="M11 20h10" />
     </svg>
   ),
+  Send: (p) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M12 19V5" /><path d="m5 12 7-7 7 7" />
+    </svg>
+  ),
   Sparkle: (p) => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" {...p}>
       <path d="M12 2c.6 3.6 1.9 5.9 4.5 7.5-2.6 1.6-3.9 3.9-4.5 7.5-.6-3.6-1.9-5.9-4.5-7.5C10.1 7.9 11.4 5.6 12 2z" />
@@ -320,6 +326,36 @@ const FINANCES = {
   "55ABK29":  { room: "€140.00", services: "€0.00", total: "€140.00", paid: "€0.00", balance: "€140.00" },
 };
 
+// Comment threads for the Reservation Status sheet's sibling "Comments"
+// action — a running log staff and guests can both post to. `role` is a
+// small label shown next to the author's name (Front Desk, Housekeeping,
+// Guest, ...), not a permissions concept. Only seeded for 34MRK211 so far.
+const COMMENTS = {
+  "34MRK211": [
+    { id: "c1", author: "Anna K.", role: "Front Desk", dateTime: "24 Apr · 09:14", message: "Guest requested a quiet room away from the elevator if possible — noted on the reservation." },
+    { id: "c2", author: "Emma Williams", role: "Guest", dateTime: "24 Apr · 18:47", message: "Hi! Could we also get a late check-out on the 28th? Our flight isn't until the evening, would really help." },
+    { id: "c3", author: "Marco T.", role: "Front Desk", dateTime: "25 Apr · 08:02", message: "Called the guest back to confirm — late check-out until 14:00 approved, no extra charge given her loyalty status." },
+    { id: "c4", author: "Ines P.", role: "Housekeeping", dateTime: "26 Apr · 15:42", message: "Room 201 prepared and inspected ahead of arrival. Welcome amenities placed per the VIP note." },
+    { id: "c5", author: "Anna K.", role: "Front Desk", dateTime: "26 Apr · 16:05", message: "Guest checked in smoothly. She mentioned they'd like an extra towel set for the balcony — passed along to housekeeping." },
+  ],
+};
+
+// Placeholder hotel Terms & Conditions text shown on the Check-in &
+// Accepting T&C screen (see signature-screen.js) — deliberately long, since
+// a real property's T&C + house policy text is expected to run to several
+// paragraphs, not a one-liner the signature field could just sit next to.
+const HOTEL_TERMS = `Check-in is available from 14:00 and check-out until 11:00. Early check-in and late check-out are subject to availability and may incur an additional charge, confirmed by front desk staff at the time of request.
+
+A valid photo ID or passport is required from every guest at check-in. By staying at the property, you consent to your travel document being scanned and the resulting data being processed and, where legally required, reported to local authorities for guest registration purposes.
+
+The total stay amount, including any pre-authorized deposit for incidentals, is charged to the card on file. Cancellations made less than 48 hours before arrival, or no-shows, are charged the full amount of the first night.
+
+Guests are liable for any damage caused to the room or property during their stay, beyond normal wear and tear. Smoking is not permitted inside guest rooms or indoor common areas; a cleaning fee applies where smoking is detected.
+
+Quiet hours are observed between 22:00 and 08:00. Pets are welcome only in designated pet-friendly rooms, subject to prior confirmation with the property.
+
+By signing below, you confirm that you have read, understood, and agree to the above Terms & Conditions and the property's house policies in full.`;
+
 const PROPERTIES = [
   { id: "sunshine", name: "Sunshine Hotel & Apartments", type: "Hotel & Apartments" },
   { id: "cozy",     name: "Cozy Corner Apartments",      type: "Apartments" },
@@ -352,9 +388,11 @@ window.BLOCKS = BLOCKS;
 window.BRIEFING_ITEMS = BRIEFING_ITEMS;
 window.TASKS = TASKS;
 window.GUESTS = GUESTS;
+window.COMMENTS = COMMENTS;
 window.SERVICES = SERVICES;
 window.FINANCES = FINANCES;
 window.PROPERTIES = PROPERTIES;
+window.HOTEL_TERMS = HOTEL_TERMS;
 
   </script>
 
@@ -784,7 +822,7 @@ window.HomeScreen = HomeScreen;
   </script>
 
   <script type="text/babel">
-/* global React, I, Pill, RESERVATIONS, Segment, ReservationCard */
+/* global React, I, Pill, RESERVATIONS, Segment, ReservationCard, CheckinSignScreen */
 
 const { useState, useRef, useEffect } = React;
 
@@ -875,9 +913,35 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [statusSheetOpen, setStatusSheetOpen] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
   const [vizaStatus, setVizaStatus] = useState("idle"); // idle | loading | done
+  const [checkinOpen, setCheckinOpen] = useState(false);
+  const [signed, setSigned] = useState(false);
+  const [commentsSheetOpen, setCommentsSheetOpen] = useState(false);
+  const [comments, setComments] = useState(window.COMMENTS[r.id] || []);
+  const [commentDraft, setCommentDraft] = useState("");
+  const commentsListRef = useRef(null);
   const guests = (window.GUESTS[r.id] || []);
   const statusIndex = Math.max(0, STATUS_STEPS.findIndex(s => s.key === status));
+
+  const scrollCommentsToBottom = () => {
+    const el = commentsListRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  };
+
+  useEffect(() => {
+    if (commentsSheetOpen) setTimeout(scrollCommentsToBottom, 0);
+  }, [commentsSheetOpen]);
+
+  const sendComment = () => {
+    const text = commentDraft.trim();
+    if (!text) return;
+    setComments(prev => [...prev, { id: `local-${Date.now()}`, author: "You", role: "Front Desk", dateTime: "Just now", message: text }]);
+    setCommentDraft("");
+    setTimeout(scrollCommentsToBottom, 0);
+  };
+
+  const initials = (name) => name.split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 
   const cycle = () => {
     const order = ["confirmed", "onboard", "check-in", "check-out"];
@@ -887,15 +951,34 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
     addToast(`Status → ${next === "check-in" ? "Check-in" : next === "check-out" ? "Check-out" : next === "onboard" ? "Onboard" : "Confirmed"}`);
   };
 
-  const advanceStatus = () => {
-    const next = STATUS_STEPS[statusIndex + 1];
-    if (!next || statusUpdating) return;
+  const doAdvance = (next) => {
     setStatusUpdating(true);
     setTimeout(() => {
       setStatus(next.key);
       setStatusUpdating(false);
       addToast(`Status → ${next.label}`);
     }, 1400);
+  };
+
+  // Check-out only ever follows Onboard in STATUS_STEPS, so this is really
+  // "guard the onboard → check-out transition" — going straight to check-out
+  // right after onboarding is an unusual, high-consequence jump (most likely
+  // a mis-tap), so it gets a confirmation instead of advancing immediately
+  // like every other step does.
+  const advanceStatus = () => {
+    const next = STATUS_STEPS[statusIndex + 1];
+    if (!next || statusUpdating) return;
+    if (next.key === "check-out") {
+      setCheckoutConfirmOpen(true);
+      return;
+    }
+    doAdvance(next);
+  };
+
+  const confirmCheckout = () => {
+    setCheckoutConfirmOpen(false);
+    const next = STATUS_STEPS[statusIndex + 1];
+    if (next) doAdvance(next);
   };
 
   const reportToViza = () => {
@@ -966,7 +1049,7 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
                 <span className="action-icon"><I.Bolt /></span>
                 Change Status
               </button>
-              <button className="action-item" onClick={() => { setMenuOpen(false); addToast("Coming soon"); }}>
+              <button className="action-item" onClick={() => { setMenuOpen(false); setCommentsSheetOpen(true); }}>
                 <span className="action-icon"><I.Comment /></span>
                 Comments
               </button>
@@ -997,8 +1080,13 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
                       <div className="body">
                         <div className="status-actions">
                           {buttons.includes("sign") && (
-                            <button className="status-action-btn" onClick={() => addToast("Coming soon")}>
-                              <I.Edit style={{ width: 16, height: 16 }} /> Sign
+                            <button
+                              className={"status-action-btn" + (signed ? " done" : "")}
+                              onClick={() => setCheckinOpen(true)}
+                              disabled={signed}
+                            >
+                              {signed ? <I.Check style={{ width: 16, height: 16 }} /> : <I.Edit style={{ width: 16, height: 16 }} />}
+                              {signed ? "Signed" : "Sign"}
                             </button>
                           )}
                           {buttons.includes("report") && (
@@ -1078,6 +1166,80 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
             </div>
           </div>
         </div>
+      )}
+
+      {checkoutConfirmOpen && (
+        <div className="sheet-backdrop" onClick={() => setCheckoutConfirmOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>Check out guest?</h3>
+              <button className="icon-btn" onClick={() => setCheckoutConfirmOpen(false)}><I.X /></button>
+            </div>
+            <div style={{ marginTop: 16, fontSize: "var(--font-base)", color: "var(--ink-2)", lineHeight: 1.5 }}>
+              This guest was only just onboarded. Checking out immediately after onboarding is unusual — are you sure you want to continue?
+            </div>
+            <div className="actions">
+              <button className="btn secondary" onClick={() => setCheckoutConfirmOpen(false)}>Cancel</button>
+              <button className="btn" onClick={confirmCheckout}>Check out</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {commentsSheetOpen && (
+        <div className="sheet-backdrop" onClick={() => setCommentsSheetOpen(false)}>
+          <div className="sheet comments-sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>Comments</h3>
+              <button className="icon-btn" onClick={() => setCommentsSheetOpen(false)}><I.X /></button>
+            </div>
+
+            <div className="comments-list" ref={commentsListRef}>
+              {comments.length === 0 && (
+                <div style={{ padding: "24px 0", textAlign: "center", color: "var(--ink-4)", fontSize: "var(--font-sm)", fontWeight: 600 }}>
+                  No comments yet
+                </div>
+              )}
+              {comments.map(c => (
+                <div key={c.id} className={"comment-row" + (c.role === "Guest" ? " guest" : "")}>
+                  <div className="comment-avatar">{initials(c.author)}</div>
+                  <div className="comment-body">
+                    <div className="comment-meta">
+                      <span className="comment-author">{c.author} <span className="comment-role">· {c.role}</span></span>
+                      <span className="comment-time">{c.dateTime}</span>
+                    </div>
+                    <div className="comment-message">{c.message}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="comments-compose">
+              <textarea
+                rows={1}
+                placeholder="Write a comment…"
+                value={commentDraft}
+                onChange={e => setCommentDraft(e.target.value)}
+              />
+              <button className="comment-send" disabled={!commentDraft.trim()} onClick={sendComment}>
+                <I.Send />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {checkinOpen && (
+        <CheckinSignScreen
+          guestName={r.name}
+          guestEmail={r.email}
+          onClose={() => setCheckinOpen(false)}
+          onConfirm={() => {
+            setSigned(true);
+            setCheckinOpen(false);
+            addToast("T&C accepted — signature saved");
+          }}
+        />
       )}
     </div>
   );
@@ -2029,6 +2191,197 @@ window.GuestDetailScreen = GuestDetailScreen;
 window.EditGuestScreen = EditGuestScreen;
 window.SearchScreen = SearchScreen;
 window.IDScanScreen = IDScanScreen;
+
+  </script>
+
+  <script type="text/babel">
+/* global React, I, SignaturePad, HOTEL_TERMS, PROPERTIES */
+
+const { useState, useRef, useEffect } = React;
+
+// The capture canvas is full-screen, but a signature only ever fills a small
+// part of it — saving the whole canvas as-is gives a tall, mostly-empty PNG
+// that then renders tiny once its full-screen aspect ratio gets squeezed
+// into the check-in page's short, wide signature field. Crop to the actual
+// ink's bounding box (from signature_pad's own point data, padded a bit for
+// stroke width/antialiasing) so the saved image is just the signature.
+function cropSignature(canvas, strokeData) {
+  const ratio = Math.max(window.devicePixelRatio || 1, 1);
+  const margin = 24; // CSS px
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  strokeData.forEach(group => group.points.forEach(pt => {
+    if (pt.x < minX) minX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y > maxY) maxY = pt.y;
+  }));
+  minX = Math.max(0, minX - margin);
+  minY = Math.max(0, minY - margin);
+  maxX = Math.min(canvas.width / ratio, maxX + margin);
+  maxY = Math.min(canvas.height / ratio, maxY + margin);
+
+  const sx = minX * ratio, sy = minY * ratio;
+  const sw = Math.max(1, (maxX - minX) * ratio), sh = Math.max(1, (maxY - minY) * ratio);
+  const out = document.createElement("canvas");
+  out.width = sw;
+  out.height = sh;
+  out.getContext("2d").drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  return out.toDataURL("image/png");
+}
+
+// Check-in & Accepting T&C — a full-screen take-over (not a bottom sheet)
+// pushed from the Reservation Status sheet's "Sign" action. Modeled on a
+// paper hotel registration card: guest/property/date header, the full T&C
+// text, then a signature field at the bottom. Rendered as an overlay from
+// within ReservationDetailScreen rather than through app.js's screen stack,
+// so its state (the in-progress signature) survives opening/closing the
+// nested capture view without being reset by the stack's unmount-on-back
+// behavior (see CLAUDE.md's CalendarScreen "Known Issues" for the same
+// single-active-screen caveat elsewhere in this app).
+function CheckinSignScreen({ guestName, guestEmail, onClose, onConfirm }) {
+  const [signature, setSignature] = useState(null);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const today = new Date().toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+  const property = PROPERTIES[0];
+
+  return (
+    <div className="checkin-sign-backdrop">
+      <div className="page">
+        <div className="sub-header">
+          <button className="back" onClick={onClose}><I.ChevronBack /></button>
+          <span className="title">Check-in &amp; Accepting T&amp;C</span>
+        </div>
+
+        <div className="app-scroll" style={{ padding: "0 16px calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+          <div className="card" style={{ marginTop: 16, marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-4)" }}>Guest</div>
+            <div style={{ fontSize: 19, fontWeight: 800, color: "var(--ink)", marginTop: 2 }}>{guestName}</div>
+            <div style={{ display: "flex", gap: 24, marginTop: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-4)" }}>Property</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)", marginTop: 2 }}>{property.name}</div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-4)" }}>Date</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)", marginTop: 2 }}>{today}</div>
+              </div>
+            </div>
+          </div>
+
+          <h3 className="group-title" style={{ marginTop: 8 }}>Terms &amp; Conditions</h3>
+          <div className="card checkin-terms" style={{ marginBottom: 16 }}>{HOTEL_TERMS}</div>
+
+          <div className="checkin-consent-note">
+            By signing below, <strong>{guestName}</strong> confirms they have read and accept the Terms &amp; Conditions and house policies above. A copy will be emailed to {guestEmail}.
+          </div>
+
+          <h3 className="group-title">Signature</h3>
+          {!signature ? (
+            <button className="sig-field" onClick={() => setCaptureOpen(true)}>
+              <I.Edit style={{ width: 22, height: 22 }} />
+              Tap to sign
+            </button>
+          ) : (
+            <button className="sig-field filled" onClick={() => setCaptureOpen(true)}>
+              <img src={signature.dataUrl} alt="Guest signature" />
+            </button>
+          )}
+        </div>
+
+        <div style={{ padding: "12px 16px calc(16px + env(safe-area-inset-bottom, 0px))", background: "var(--bg)", borderTop: "1px solid var(--line)", flexShrink: 0 }}>
+          <button className="btn" disabled={!signature} style={{ opacity: signature ? 1 : 0.5 }} onClick={() => onConfirm(signature.dataUrl)}>
+            Confirm &amp; Save
+          </button>
+        </div>
+      </div>
+
+      {captureOpen && (
+        <SignatureCaptureScreen
+          initialData={signature ? signature.raw : null}
+          onCancel={() => setCaptureOpen(false)}
+          onDone={(sig) => { setSignature(sig); setCaptureOpen(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Full-screen signature_pad canvas. Always full-screen regardless of the
+// check-in page's own length or the device's orientation — this is what
+// gives the signature the most room in either portrait or landscape without
+// a separate "expand" step: rotating the phone while this is open just gives
+// a wider canvas for free via the resize handler below.
+//
+// `initialData` (when re-opening to redo an existing signature) is the raw
+// signature_pad point data, not the cropped display image — loading the
+// cropped image back in would mean stretching a small, tightly-cropped PNG
+// across the full-screen canvas via fromDataURL's width/height scaling,
+// which distorts it. Point data reloads via fromData() at 1:1 scale instead.
+function SignatureCaptureScreen({ initialData, onCancel, onDone }) {
+  const canvasRef = useRef(null);
+  const padRef = useRef(null);
+  const [isEmpty, setIsEmpty] = useState(!initialData);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const wrap = canvas.parentElement;
+    const pad = new SignaturePad(canvas, { penColor: "#142333", backgroundColor: "rgba(0,0,0,0)" });
+    padRef.current = pad;
+    pad.addEventListener("beginStroke", () => setIsEmpty(false));
+
+    // Resizing a <canvas> element clears it, so on every resize (including a
+    // device rotation) we snapshot whatever's currently drawn as vector point
+    // data — not a bitmap — and redraw it after resizing, instead of just
+    // wiping the signature the moment the phone turns.
+    const resize = () => {
+      const savedData = !pad.isEmpty() ? pad.toData() : null;
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      const { width, height } = wrap.getBoundingClientRect();
+      canvas.width = width * ratio;
+      canvas.height = height * ratio;
+      canvas.getContext("2d").scale(ratio, ratio);
+      if (savedData) pad.fromData(savedData);
+    };
+    resize();
+    if (initialData) pad.fromData(initialData);
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("orientationchange", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("orientationchange", resize);
+      pad.off();
+    };
+  }, []);
+
+  const clear = () => { padRef.current.clear(); setIsEmpty(true); };
+  const done = () => {
+    if (padRef.current.isEmpty()) return;
+    const raw = padRef.current.toData();
+    onDone({ dataUrl: cropSignature(canvasRef.current, raw), raw });
+  };
+
+  return (
+    <div className="sig-capture-backdrop">
+      <div className="page">
+        <div className="sig-capture-bar">
+          <button className="icon-btn" onClick={onCancel}><I.X /></button>
+          <span className="sig-capture-title">Sign here</span>
+          <button className="sig-clear-btn" onClick={clear} disabled={isEmpty}>Clear</button>
+        </div>
+        <div className="sig-canvas-wrap">
+          <canvas ref={canvasRef} />
+          <div className="sig-baseline" />
+        </div>
+        <div className="sig-capture-footer">
+          <button className="btn" disabled={isEmpty} style={{ opacity: isEmpty ? 0.5 : 1 }} onClick={done}>Done</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.CheckinSignScreen = CheckinSignScreen;
 
   </script>
 
