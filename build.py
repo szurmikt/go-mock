@@ -8,6 +8,7 @@ Usage:
     python3 build.py
 """
 
+import hashlib
 import os
 
 SCRIPT_ORDER = [
@@ -35,6 +36,13 @@ for filename in SCRIPT_ORDER:
 
 scripts_block = "\n\n".join(scripts_html)
 
+# Cache-bust styles.css: it's the one asset the browser might not re-fetch on
+# a plain reload (unlike index.html itself, which is rewritten wholesale
+# every build and so is never byte-identical to a cached copy). Without this,
+# CSS-only edits can silently keep showing stale styles until a hard refresh.
+with open(os.path.join(here, "styles.css"), "rb") as f:
+    css_hash = hashlib.md5(f.read()).hexdigest()[:8]
+
 html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,7 +54,7 @@ html = f"""<!DOCTYPE html>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v={css_hash}">
   <style>
     @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
   </style>

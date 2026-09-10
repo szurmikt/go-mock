@@ -808,6 +808,98 @@ html, body {
   transition: background 0.15s, transform 0.15s;
 }
 .sheet .actions .btn { flex: 1; width: auto; }
+
+/* Reservation Status sheet — vertical history timeline */
+.status-timeline { display: flex; flex-direction: column; margin-top: 4px; margin-bottom: 50px; }
+.status-step { display: flex; gap: 14px; }
+.status-step .node-col { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 48px; }
+.status-step .icon-circle {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.status-step.done .icon-circle, .status-step.current .icon-circle {
+  background: var(--primary); color: #fff;
+}
+.status-step.future .icon-circle {
+  background: #fff; border: 2px solid var(--primary); color: var(--primary);
+}
+/* The immediate next step is the one a tap on its circle advances to —
+   sized up (48px vs. 40px) so it visibly reads as tappable, not just a
+   future waypoint like the ones after it. */
+.status-step.next .icon-circle {
+  width: 48px; height: 48px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,142,255,0.25);
+}
+.status-step.next .icon-circle:active { transform: scale(0.92); }
+.status-step.next .icon-circle.updating { cursor: default; box-shadow: none; }
+.status-spinner {
+  width: 20px; height: 20px;
+  border: 3px solid var(--primary-soft);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: status-spin 0.8s linear infinite;
+}
+@keyframes status-spin { to { transform: rotate(360deg); } }
+/* min-height is a floor for otherwise-empty segments, not a target size —
+   keep it small. A larger floor (as this used to be, 24px) forced the row
+   height itself up whenever a row's actual content (e.g. a bare one-line
+   label) didn't need that much space, pushing the label away from its icon
+   and stretching the dashed segment further than the content around it
+   warranted. */
+.status-step .connector { width: 3px; flex: 1; min-height: 8px; background: var(--primary); margin: 2px 0; }
+.status-step .connector.dashed {
+  background-color: transparent;
+  background-image: repeating-linear-gradient(to bottom, var(--primary-soft) 0 6px, transparent 6px 12px);
+}
+.status-step .body { flex: 1; min-width: 0; padding-bottom: 22px; }
+/* The label is centered against its icon by giving both the same height and
+   top-anchoring both within their row — not by centering the row as a
+   whole, which would depend on how tall the rest of the row's content
+   (timestamp, connector, trailing actions) happens to be. That dependency
+   is exactly what kept breaking: a row's total height has nothing to do
+   with where its OWN label sits relative to its OWN icon, but every earlier
+   attempt here effectively assumed it did. */
+.status-step .label-line { display: flex; align-items: center; min-height: 40px; }
+.status-step.next .label-line { min-height: 48px; }
+.status-step .body h4 { margin: 0; font-size: var(--font-xl); font-weight: 800; color: var(--ink); }
+.status-step.future .body h4 { color: var(--ink-4); }
+.status-step .body .ts { font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; margin-top: 2px; }
+/* The last row has no trailing content below it — that gap comes from
+   .status-timeline's own margin-bottom instead. */
+.status-step.last .body { padding-bottom: 0; }
+/* The action buttons belong to the status directly above them (whichever
+   one is current) — tighten that gap so they read as attached to it, and
+   widen the gap below (on the actions row itself) so they don't also read
+   as attached to the future step underneath. */
+.status-step.tight-bottom .body { padding-bottom: 6px; }
+.status-step.actions-row .body { padding-bottom: 36px; }
+
+.status-actions { display: flex; gap: 12px; padding-top: 2px; }
+/* Fixed width, not flex:1 — Sign must be the same width whether it's alone
+   (Onboard not reached yet) or sharing the row with Report to VIZA, not
+   stretch to fill the row when it's the only button showing. */
+.status-action-btn {
+  flex: 0 0 calc(50% - 6px);
+  min-height: 44px;
+  padding: 10px 8px;
+  border-radius: 999px;
+  border: 1.5px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer;
+}
+.status-action-btn:active { background: var(--primary-soft-bg); }
+.status-action-btn:disabled { opacity: 1; cursor: default; }
+.status-action-btn.done { border-color: var(--success); color: var(--success); }
+.status-spinner-sm { width: 14px; height: 14px; border-width: 2px; }
 .btn:hover { background: var(--primary-strong); }
 .btn:active { transform: scale(0.98); }
 .btn.secondary { background: rgb(246,247,251); color: var(--primary); border: 1.5px solid var(--primary); }

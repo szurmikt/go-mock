@@ -2,6 +2,34 @@
 
 const { useState, useRef, useEffect } = React;
 
+// Mock "history" timestamps for the Reservation Status sheet. Not wired to
+// any specific reservation's real dates — this is an illustrative timeline
+// shared by every reservation, so every offset is <= 0 (today or earlier)
+// to avoid ever showing a future date for a step already marked done.
+// Built from local date parts (day/month), not toISOString() — same reason
+// as relDate()/calIso() elsewhere in this project: toISOString() converts
+// to UTC first and can silently shift the displayed day back by one.
+function historyStamp(offsetDays, hh, mm) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const month = d.toLocaleDateString("en-US", { month: "short" });
+  return `${d.getDate()} ${month} ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+const STATUS_STEPS = [
+  { key: "confirmed", label: "Reserved",  Icon: I.Calendar, ts: historyStamp(-6, 9, 12) },
+  { key: "check-in",  label: "Check-in",  Icon: I.Refresh,  ts: historyStamp(-2, 15, 5) },
+  { key: "onboard",   label: "Onboard",   Icon: I.ArrowIn,  ts: historyStamp(-2, 15, 7) },
+  { key: "check-out", label: "Check-out", Icon: I.ArrowOut, ts: historyStamp(0, 11, 30) },
+];
+
+// Signing and VIZA reporting are onboarding actions, not "whatever the
+// current status happens to be" actions — they're always attached directly
+// below the Onboard row itself (see the sheet's render below), whether that
+// row is still the upcoming/outlined step or already done. Report to VIZA
+// only makes sense once onboarding has actually happened, so it only joins
+// Sign once Onboard is reached.
+
 function ArrivalsScreen({ go, back }) {
   const [tab, setTab] = useState("Today");
   const [collapsed, setCollapsed] = useState(false);
@@ -58,7 +86,12 @@ function ArrivalsScreen({ go, back }) {
 function ReservationDetailScreen({ id, go, back, addToast }) {
   const r = RESERVATIONS.find(x => x.id === id) || RESERVATIONS[0];
   const [status, setStatus] = useState(r.status);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [statusSheetOpen, setStatusSheetOpen] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [vizaStatus, setVizaStatus] = useState("idle"); // idle | loading | done
   const guests = (window.GUESTS[r.id] || []);
+  const statusIndex = Math.max(0, STATUS_STEPS.findIndex(s => s.key === status));
 
   const cycle = () => {
     const order = ["confirmed", "onboard", "check-in", "check-out"];
@@ -68,6 +101,23 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
     addToast(`Status → ${next === "check-in" ? "Check-in" : next === "check-out" ? "Check-out" : next === "onboard" ? "Onboard" : "Confirmed"}`);
   };
 
+  const advanceStatus = () => {
+    const next = STATUS_STEPS[statusIndex + 1];
+    if (!next || statusUpdating) return;
+    setStatusUpdating(true);
+    setTimeout(() => {
+      setStatus(next.key);
+      setStatusUpdating(false);
+      addToast(`Status → ${next.label}`);
+    }, 1400);
+  };
+
+  const reportToViza = () => {
+    if (vizaStatus !== "idle") return;
+    setVizaStatus("loading");
+    setTimeout(() => setVizaStatus("done"), 1200);
+  };
+
   return (
     <div className="page">
       <div className="sub-header">
@@ -75,7 +125,7 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
         <span className="title">Reservation Details</span>
       </div>
 
-      <div className="app-scroll" style={{ paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))" }}>
+      <div className="app-scroll" style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>
         <div className="detail-block">
           <div className="header">
             <span style={{ color: "var(--primary)", fontSize: 22, fontWeight: 800, letterSpacing: "0.02em" }}>{r.id}</span>
@@ -115,6 +165,134 @@ function ReservationDetailScreen({ id, go, back, addToast }) {
           ))}
         </div>
       </div>
+
+      <button className="fab" onClick={() => setMenuOpen(true)}><I.GridFill /></button>
+
+      {menuOpen && (
+        <div className="sheet-backdrop" onClick={() => setMenuOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>{r.id}</h3>
+              <button className="icon-btn" onClick={() => setMenuOpen(false)}><I.X /></button>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <button className="action-item" onClick={() => { setMenuOpen(false); setStatusSheetOpen(true); }}>
+                <span className="action-icon"><I.Bolt /></span>
+                Change Status
+              </button>
+              <button className="action-item" onClick={() => { setMenuOpen(false); addToast("Coming soon"); }}>
+                <span className="action-icon"><I.Comment /></span>
+                Comments
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {statusSheetOpen && (
+        <div className="sheet-backdrop" onClick={() => setStatusSheetOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="head">
+              <h3>Reservation Status</h3>
+              <button className="icon-btn" onClick={() => setStatusSheetOpen(false)}><I.X /></button>
+            </div>
+            <div style={{ marginTop: 20 }}>
+              <div className="status-timeline">
+                {(() => {
+                  const doneSteps = STATUS_STEPS.slice(0, statusIndex + 1);
+                  const nextStep = STATUS_STEPS[statusIndex + 1] || null;
+                  const nextIsOnboard = !!nextStep && nextStep.key === "onboard";
+
+                  const actionsRow = (buttons, isFinal) => (
+                    <div className="status-step actions-row">
+                      <div className="node-col">
+                        {!isFinal && <div className="connector dashed" />}
+                      </div>
+                      <div className="body">
+                        <div className="status-actions">
+                          {buttons.includes("sign") && (
+                            <button className="status-action-btn" onClick={() => addToast("Coming soon")}>
+                              <I.Edit style={{ width: 16, height: 16 }} /> Sign
+                            </button>
+                          )}
+                          {buttons.includes("report") && (
+                            <button
+                              className={"status-action-btn" + (vizaStatus === "done" ? " done" : "")}
+                              onClick={reportToViza}
+                              disabled={vizaStatus !== "idle"}
+                            >
+                              {vizaStatus === "loading" && <div className="status-spinner status-spinner-sm" />}
+                              {vizaStatus === "done" && <I.Check style={{ width: 16, height: 16 }} />}
+                              {vizaStatus === "idle" && "Report to VIZA"}
+                              {vizaStatus === "loading" && "Reporting…"}
+                              {vizaStatus === "done" && "Scheduled"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+
+                  return (
+                    <>
+                      {doneSteps.map((s, i) => {
+                        const isCurrent = i === statusIndex;
+                        const isLastDone = i === doneSteps.length - 1;
+                        const onboardDoneHere = s.key === "onboard";
+                        const dashedAfter = onboardDoneHere || (isLastDone && nextStep);
+                        return (
+                          <React.Fragment key={s.key}>
+                            <div className={"status-step " + (isCurrent ? "current" : "done") + (onboardDoneHere ? " tight-bottom" : "")}>
+                              <div className="node-col">
+                                <div className="icon-circle"><s.Icon style={{ width: 18, height: 18 }} /></div>
+                                {(!isLastDone || dashedAfter) && <div className={"connector" + (dashedAfter ? " dashed" : "")} />}
+                              </div>
+                              <div className="body">
+                                <div className="label-line"><h4>{s.label}</h4></div>
+                                <div className="ts">{s.ts}</div>
+                              </div>
+                            </div>
+                            {/* Onboard already reached — its actions (both Sign and, now
+                                that onboarding happened, Report to VIZA) attach right here,
+                                regardless of whether Onboard is the current step or an
+                                earlier one already passed. */}
+                            {onboardDoneHere && actionsRow(["sign", "report"], false)}
+                          </React.Fragment>
+                        );
+                      })}
+
+                      {nextStep && (
+                        <React.Fragment>
+                          <div className={"status-step future next" + (nextIsOnboard ? " tight-bottom" : " last")}>
+                            <div className="node-col">
+                              <div
+                                className={"icon-circle" + (statusUpdating ? " updating" : "")}
+                                onClick={!statusUpdating ? advanceStatus : undefined}
+                              >
+                                {statusUpdating
+                                  ? <div className="status-spinner" />
+                                  : <nextStep.Icon style={{ width: 20, height: 20 }} />}
+                              </div>
+                            </div>
+                            <div className="body">
+                              <div className="label-line"><h4>{statusUpdating ? "Updating status…" : nextStep.label}</h4></div>
+                            </div>
+                          </div>
+                          {/* Onboard hasn't happened yet — only Sign is available; Report
+                              to VIZA isn't possible before onboarding. This is also always
+                              the last visible row, since only the immediate next step is
+                              ever shown. */}
+                          {nextIsOnboard && actionsRow(["sign"], true)}
+                        </React.Fragment>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
