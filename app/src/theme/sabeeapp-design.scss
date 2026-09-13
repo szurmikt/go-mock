@@ -660,12 +660,16 @@ ion-refresher {
   }
 
   &.done .icon-circle, &.current .icon-circle { background: var(--primary); color: #fff; }
-  &.future .icon-circle { background: #fff; border: 2px solid var(--primary); color: var(--primary); }
+  // Upcoming steps beyond the next one are muted grey — only the next step (below)
+  // reads as reachable/tappable.
+  &.future .icon-circle { background: #fff; border: 2px solid var(--line-strong); color: var(--ink-4); }
 
-  // The immediate-next step's circle is the one a tap advances — sized up so it
-  // visibly reads as tappable, not just another future waypoint.
+  // The immediate-next step's circle is the one a tap advances — sized up and
+  // in primary blue (overriding the grey .future default above) so it visibly
+  // reads as tappable, not just another future waypoint.
   &.next .icon-circle {
     width: 48px; height: 48px; cursor: pointer;
+    border-color: var(--primary); color: var(--primary);
     box-shadow: 0 4px 14px rgba(0,142,255,0.25);
 
     &:active   { transform: scale(0.92); }
