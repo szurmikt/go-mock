@@ -688,6 +688,19 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-09-13 — Reservation status change: second round of icon/spacing polish + dev OTA publish
+
+> Branch `implement-reservation-status-management`. No build/version bump, no TestFlight upload. Published OTA to the `dev` channel (bundle `4989e236-9576-4358-82b1-aedbaa3ec4d1`, git `6447271`).
+
+Follow-up to the polish pass logged directly below, driven by live device screenshots against `ionic serve` (`http://localhost:8100/reservation/4A5JVKZ`) rather than guessing from the SCSS alone — two misdiagnoses caught and corrected before landing on the real fixes:
+
+- **Custom "Change Status" icon** for the FAB action item — a rounded card turning into a checkmark circle (per a supplied reference image), replacing the generic lightning-bolt glyph.
+- **First attempt at "the Reserved icon needs more top padding" was wrong twice, then correctly reverted.** Widening the icon's viewBox to a non-square 24x26 had no visible effect (the icon renders into a fixed *square* 20x20 box — a non-square viewBox gets fit via `preserveAspectRatio`'s default "meet" scaling, which can absorb the extra space as horizontal letterboxing instead of vertical padding). A second attempt (recentering within a still-square viewBox) was verified with an isolated headless-Chrome screenshot at 5x size and found to move the glyph only ~4% — imperceptible. **The user then corrected the entire premise**: the icon's size was never wrong at all — reverted both attempts back to the plain, unmodified icon.
+- **The real bug, once correctly diagnosed from a live screenshot: `.status-timeline`'s `margin-top` (4px) left almost no gap between the sheet header's bottom divider and the first circle.** Bumped to 20px — this was the actual "missing padding at the top" the user meant, not anything about the icon's own rendering.
+- **Lesson applied for the rest of this pass:** verify visual CSS/SVG changes with an actual rendered screenshot (a small isolated HTML file + headless Chrome, since the real page needs an authenticated session) before claiming a fix works, rather than reasoning from viewBox coordinates or `transform` math alone — two of the three fixes above were wrong on the first pass specifically because they skipped that step.
+
+**Verification:** `npx ng build` clean throughout (only the three pre-existing known warnings, none new); each fix confirmed against the live `ionic serve` instance (rebuild timestamps checked in `/tmp/ionic-serve.log`) before being called done. Published to `dev` for on-device confirmation of the corrected spacing fix and the new Change Status icon.
+
 ### 2026-09-13 — Reservation status change: visual polish pass + dev OTA publish; Morning Briefing widget disabled
 
 > Branch `implement-reservation-status-management`. No build/version bump, no TestFlight upload. Published OTA to the `dev` channel (bundle `d8c507ed-5574-476e-8c13-72d2c21aa4d6`, git `306a9dc`) after the icon/coloring/typography polish below — `dev` is internal testing only (8 devices, no live properties), matching this project's established pattern of iterating a feature branch against real device screenshots before merge.
