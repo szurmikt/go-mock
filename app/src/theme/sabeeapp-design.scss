@@ -660,21 +660,29 @@ ion-refresher {
   }
 
   &.done .icon-circle, &.current .icon-circle { background: var(--primary); color: #fff; }
-  // Upcoming steps beyond the next one are muted grey — only the next step (below)
-  // reads as reachable/tappable.
-  &.future .icon-circle { background: #fff; border: 2px solid var(--line-strong); color: var(--ink-4); }
+  // Upcoming steps beyond the next one — solid grey fill with a white icon
+  // (matching the real PMS's own "Status and timeline" stepper coloring) —
+  // only the next step (below) reads as reachable/tappable.
+  &.future .icon-circle { background: var(--line-strong); border: none; color: #fff; }
 
-  // The immediate-next step's circle is the one a tap advances — sized up and
-  // in primary blue (overriding the grey .future default above) so it visibly
-  // reads as tappable, not just another future waypoint.
+  // The immediate-next step's circle is the one a tap advances — white fill
+  // with a blue outline (overriding the grey .future default above), sized up,
+  // so it visibly reads as tappable, not just another future waypoint.
   &.next .icon-circle {
     width: 48px; height: 48px; cursor: pointer;
-    border-color: var(--primary); color: var(--primary);
+    background: #fff; border: 2px solid var(--primary); color: var(--primary);
     box-shadow: 0 4px 14px rgba(0,142,255,0.25);
 
     &:active   { transform: scale(0.92); }
     &.updating { cursor: default; box-shadow: none; }
+
+    svg { width: 24px; height: 24px; }
   }
+
+  // Sized here (not on the svg elements in the template) so every step's glyph
+  // stays legible at a glance — the fine detail in some of these icons (e.g.
+  // the PMS's calendar-account glyph) got muddy at the smaller size first tried.
+  .icon-circle svg { width: 20px; height: 20px; }
 
   .connector { width: 3px; flex: 1; min-height: 16px; background: var(--primary); margin: 2px 0; }
   &.future .connector { background: var(--primary-soft); }
@@ -686,7 +694,9 @@ ion-refresher {
   &.next .label-line { min-height: 48px; }
 
   .body h4 { margin: 0; font-size: var(--font-xl); font-weight: 800; color: var(--ink); }
-  &.future .body h4 { color: var(--ink-4); }
+  // Only done/current/next stay bold — steps beyond the next one are muted
+  // preview text (:not(.next), since the next step also carries .future).
+  &.future:not(.next) .body h4 { color: var(--ink-4); font-weight: 400; }
 
   .body .ts { font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; margin-top: 2px; }
 }
