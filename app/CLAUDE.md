@@ -690,7 +690,7 @@ async ionViewWillEnter() {
 
 ### 2026-09-14 — Reservation comments: two device-verified bug fixes
 
-> Branch `implement-comments`. Follow-up to the session directly below, after the first on-device test.
+> Branch `implement-comments`. Follow-up to the session directly below, after the first on-device test. Published OTA to the `dev` channel (bundle `c5124fe0-3e5e-41a9-93d7-d29a271673f7`, git `6e98d77`).
 
 - **`postComment()` was silently discarding every comment not added from the current device.** It merged the new comment onto the reservation as cached in `_reservations` (the Home arrivals list, from `GET reservations` — a bulk, date-ranged endpoint with no nested `comments` field), not onto the page's own reservation object (populated via `fetchDetail()`, which does return real comments). Since `_reservations`' copy always had `comments: []`, each post replaced the entire visible history with just that device's own comments — after 3 posts, a reservation with ~10 real comments showed only those 3. Fixed by changing `postComment()`'s signature to take the caller's current `ReservationInterface` directly (the page's `reservation()` signal) as the merge base, with `_reservations` now only a best-effort sync target, never the source of truth. `ReservationDetailPage.sendComment()` updated to pass `this.reservation()` instead of just the reservation code.
 - **The "N New Comments" row didn't disappear after closing the sheet.** Working as designed (dots/count meant to persist until the *next* page load, decided during planning) — but reads as a bug once seen live. `closeCommentsSheet()` now clears `newCommentIds` immediately on close; dots inside the sheet still stay visible while it's open, for reference during that viewing.
