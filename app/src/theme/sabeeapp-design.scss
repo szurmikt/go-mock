@@ -421,6 +421,117 @@ ion-refresher {
     .l { font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; }
     .v { font-size: var(--font-lg); color: var(--ink); font-weight: 700; margin-top: 2px; }
   }
+
+  // Comments sheet — same shell as every other sheet, but as a flex column so
+  // only .comments-list scrolls internally while the head and compose bar stay
+  // pinned (grows with content up to the shared 88% max-height above).
+  &.comments-sheet {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+}
+
+/* ─── Comments ────────────────────────────────────────────── */
+
+.comments-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.comments-empty {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--ink-4);
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.comment-row {
+  display: flex; gap: 12px; padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+
+  &:last-child { border-bottom: none; }
+}
+
+.comment-avatar {
+  width: 36px; height: 36px; flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--primary-soft-bg); border: 1px solid var(--primary-soft); color: var(--primary);
+  font-size: 13px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.comment-body { flex: 1; min-width: 0; }
+
+.comment-meta {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; flex-wrap: wrap;
+}
+
+.comment-author { font-size: var(--font-base); font-weight: 800; color: var(--ink); }
+
+.comment-time {
+  font-size: var(--font-xs); font-weight: 600; color: var(--ink-4);
+  white-space: nowrap; flex-shrink: 0;
+}
+
+.comment-message {
+  margin-top: 3px;
+  font-size: var(--font-md); color: var(--ink-2); line-height: 1.4;
+}
+
+.comment-error {
+  color: var(--warn); font-size: var(--font-sm); font-weight: 700;
+  margin: 8px 0 0; text-align: center;
+}
+
+.comments-compose {
+  display: flex; align-items: flex-end; gap: 10px;
+  flex-shrink: 0;
+  // Bleeds to the sheet's edges like .head does, so the top border and
+  // background span full width.
+  margin: 0 calc(var(--pad) * -1);
+  padding: 12px var(--pad) calc(max(env(safe-area-inset-bottom, 0px) - 8px, 8px) + 8px);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+
+  textarea {
+    flex: 1; resize: none;
+    border: 1.5px solid var(--line-strong); border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font: inherit; font-size: var(--font-base); color: var(--ink);
+    background: var(--bg);
+    line-height: 1.35;
+    max-height: 90px;
+    transition: border-color 0.18s;
+
+    &:focus { outline: none; border-color: var(--primary); }
+  }
+}
+
+.comment-send {
+  width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--primary); color: #fff; border: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+
+  &:active    { transform: scale(0.94); }
+  &:disabled  { opacity: 0.4; cursor: default; }
+}
+
+// A blue-on-blue spinner (the shared .status-spinner) would be invisible on
+// this button's solid --primary background — white-on-translucent instead,
+// reusing the same status-spin keyframes.
+.comment-send-spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.4); border-top-color: #fff;
+  border-radius: 50%; animation: status-spin 0.8s linear infinite;
 }
 
 /* ─── Action items (sheet lists) ──────────────────────────── */
@@ -628,6 +739,29 @@ ion-refresher {
   .l { display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); }
   .v { font-size: var(--font-md); font-weight: 700; color: var(--ink); margin-top: 2px; }
 }
+
+/* ─── "New" indicators ────────────────────────────────────── */
+
+// Inline marker sitting right after the associated text (the "N New Comments"
+// value, the FAB menu's "Comments" label, a comment's author name) — not a
+// corner badge on an icon/avatar, so it reads as attached to what's new.
+.new-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 999px;
+  background: var(--warn);
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.fact .v .new-dot,
+.comment-author .new-dot {
+  margin-left: 6px;
+}
+
+// .action-item's flex `gap` already spaces its children (icon, label) — 14px
+// is too wide a gap for a small trailing dot, so pull it back in.
+.action-item .new-dot { margin-left: -8px; }
 
 /* ─── FAB ─────────────────────────────────────────────────── */
 

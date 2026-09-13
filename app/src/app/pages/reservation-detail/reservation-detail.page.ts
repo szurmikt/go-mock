@@ -1,24 +1,28 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TitleCasePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
 import { ViewWillEnter } from '@ionic/angular';
 import { ReservationService, pillStatus, pillLabel, STATUS_STEPS, StatusStep } from '../../services/reservation';
 import { OptionsService } from '../../services/options.service';
 import { PropertySettingsService } from '../../services/property-settings.service';
 import { LanguageService } from '../../services/language.service';
+import { AuthService } from '../../services/auth';
 import { ReservationInterface } from '../../models/reservation.interface';
 import { GuestInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { LocalizedTimePipe } from '../../pipes/localized-time.pipe';
 import { TranslatePipe } from '../../pipes/translate.pipe';
+import { parseApiInstant } from '../../utils/date';
+import { getCommentsLastSeen, markCommentsSeen } from '../../utils/comments-seen.util';
 
 @Component({
   selector: 'app-reservation-detail',
   templateUrl: './reservation-detail.page.html',
   styleUrls: ['./reservation-detail.page.scss'],
   standalone: true,
-  imports: [IonContent, IonRefresher, IonRefresherContent, TitleCasePipe, LocalizedDatePipe, LocalizedTimePipe, TranslatePipe],
+  imports: [IonContent, IonRefresher, IonRefresherContent, FormsModule, TitleCasePipe, LocalizedDatePipe, LocalizedTimePipe, TranslatePipe],
 })
 export class ReservationDetailPage implements OnInit, ViewWillEnter {
   reservation = signal<ReservationInterface | null>(null);
@@ -41,6 +45,23 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   // Onboard → Check-out guard
   checkoutConfirmOpen = signal(false);
 
+  // Comments sheet
+  commentsSheetOpen = signal(false);
+  commentDraft = signal('');
+  postingComment = signal(false);
+  commentError = signal<string | null>(null);
+
+  // Snapshotted once per data load (initial fetch / pull-to-refresh), against the
+  // per-user/per-reservation/per-device "last seen" watermark in localStorage —
+  // NOT recomputed when the sheet opens/closes, so a comment stays flagged "new"
+  // for the rest of this page visit even after being viewed (matches "next time
+  // the reservation is opened" — the row/dots clear on the *next* load, once
+  // openCommentsSheet()/sendComment() have advanced the watermark).
+  newCommentIds = signal<Set<number>>(new Set());
+  readonly newCommentCount = computed(() => this.newCommentIds().size);
+
+  @ViewChild('commentsList') commentsListRef?: ElementRef<HTMLDivElement>;
+
   // -1 when the current status isn't one of the 4 flow steps (e.g. cancelled/noshow) —
   // Change Status is hidden entirely in that case (both the FAB item and the pill tap).
   readonly statusIndex = computed(() => {
@@ -62,6 +83,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     private res: ReservationService,
     private options: OptionsService,
     private lang: LanguageService,
+    private auth: AuthService,
     public propertySettings: PropertySettingsService,
   ) {}
 
@@ -100,6 +122,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
       ]);
       this.reservation.set(detail);
       this.guests.set(guests);
+      this.recomputeNewComments(detail);
     } catch (e: any) {
       if (firstLoad) this.error.set(e.message ?? this.lang.t('errors.failedLoadReservation'));
     } finally {
@@ -118,8 +141,21 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
       ]);
       this.reservation.set(detail);
       this.guests.set(guests);
+      this.recomputeNewComments(detail);
     } catch { /* keep existing data */ }
     (event.target as HTMLIonRefresherElement).complete();
+  }
+
+  // First-ever view (no stored watermark) flags every existing comment as new —
+  // deliberate, per product decision, rather than special-casing a quiet first load.
+  private recomputeNewComments(r: ReservationInterface) {
+    const lastSeen = getCommentsLastSeen(this.auth.userId(), r.reservation_code);
+    const ids = new Set(
+      r.comments
+        .filter(c => lastSeen == null || parseApiInstant(c.created_datetime) > lastSeen)
+        .map(c => c.comment_id),
+    );
+    this.newCommentIds.set(ids);
   }
 
   back() {
@@ -205,5 +241,57 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     } finally {
       this.statusUpdating.set(false);
     }
+  }
+
+  openCommentsSheet() {
+    this.menuOpen.set(false);
+    this.commentError.set(null);
+    this.commentsSheetOpen.set(true);
+    // Advances the stored watermark for the *next* load — newCommentIds (this
+    // viewing's dots/count) is left untouched so they stay visible while the
+    // sheet is open, per the timing decision above.
+    markCommentsSeen(this.auth.userId(), this.reservationCode);
+    setTimeout(() => this.scrollCommentsToBottom(), 0);
+  }
+
+  closeCommentsSheet() {
+    this.commentsSheetOpen.set(false);
+  }
+
+  initials(name: string): string {
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(w => w[0])
+      .join('')
+      .toUpperCase();
+  }
+
+  async sendComment() {
+    const text = this.commentDraft().trim();
+    if (!text || this.postingComment()) return;
+    this.postingComment.set(true);
+    this.commentError.set(null);
+    try {
+      const updated = await this.res.postComment(this.reservationCode, text, this.auth.name());
+      this.reservation.set(updated);
+      // Re-advance the watermark past this new comment's own timestamp — it was
+      // set to "now" when the sheet opened, which is earlier than a comment
+      // posted just afterwards, so without this the poster's own comment would
+      // show as unread to themselves next time.
+      markCommentsSeen(this.auth.userId(), this.reservationCode);
+      this.commentDraft.set('');
+      setTimeout(() => this.scrollCommentsToBottom(), 0);
+    } catch (e: any) {
+      this.commentError.set(e?.message ?? this.lang.t('errors.failedPostComment'));
+    } finally {
+      this.postingComment.set(false);
+    }
+  }
+
+  private scrollCommentsToBottom() {
+    const el = this.commentsListRef?.nativeElement;
+    if (el) el.scrollTop = el.scrollHeight;
   }
 }

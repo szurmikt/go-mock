@@ -114,3 +114,25 @@ export function formatPropertyInstant(
     return getLocalInstantFormatter().format(d);
   }
 }
+
+/**
+ * Produces "now" as a naive `"YYYY-MM-DD HH:MM:SS"` UTC-instant string — the
+ * exact format the API uses for every timestamp field (`checked_in_time`,
+ * `created_datetime`, a comment's `created_datetime`, etc.), so a
+ * client-constructed value renders identically through `formatPropertyInstant`
+ * / `LocalizedTimePipe` / `LocalizedDatePipe` as a server-provided one.
+ */
+export function nowAsApiTimestamp(): string {
+  return new Date().toISOString().slice(0, 19).replace('T', ' ');
+}
+
+/**
+ * Converts one of the API's naive `"YYYY-MM-DD HH:MM:SS"` UTC-instant strings
+ * (same convention as `formatPropertyInstant` above) to epoch milliseconds,
+ * for comparing timestamps (e.g. against a stored "last seen" watermark)
+ * rather than displaying them. Returns `NaN` for an empty/invalid value.
+ */
+export function parseApiInstant(value: string | null | undefined): number {
+  if (!value) return NaN;
+  return new Date(`${value.replace(' ', 'T')}Z`).getTime();
+}

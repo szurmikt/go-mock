@@ -6,8 +6,9 @@ import { ApiService } from './api';
 import { LanguageService } from './language.service';
 import { PropertyConfigService } from './property-config.service';
 import { ApiResponse } from '../models/auth.interfaces';
-import { ReservationInterface } from '../models/reservation.interface';
+import { ReservationInterface, ReservationCommentInterface } from '../models/reservation.interface';
 import { GuestInterface } from '../models/guest.interface';
+import { nowAsApiTimestamp } from '../utils/date';
 
 function dateStr(d: Date): string {
   const y = d.getFullYear();
@@ -321,6 +322,87 @@ export class ReservationService {
     }
   }
 
+  /**
+   * Posts a new reservation-level comment via PUT /reservations/comment. Unlike
+   * changeStatus(), the create response never echoes the created comment back
+   * (`data: []`), and per product decision there's no need to verify the write
+   * landed with a re-fetch — so on success the new comment is appended locally,
+   * built from what the caller already knows (the text, the logged-in user's
+   * display name) plus a real "now" timestamp (via nowAsApiTimestamp()) so it
+   * renders through the same provider-timezone pipes as a server-provided one.
+   * `authorName` is passed in by the caller rather than injecting AuthService
+   * here, since auth.ts already imports ReservationService (would be circular).
+   */
+  async postComment(reservationCode: string, comment: string, authorName: string): Promise<ReservationInterface> {
+    const payload = { reservation_code: reservationCode, type: 'reservation' as const, comment, show_for_housekeeper: false };
+    let resp: ApiResponse<unknown>;
+    try {
+      resp = await firstValueFrom(
+        this.api.put<ApiResponse<unknown>>('reservations/comment', payload),
+      );
+    } catch (e) {
+      this.reportCommentPostFailure(reservationCode, payload, null, e);
+      throw e;
+    }
+    if (!resp.success) {
+      this.reportCommentPostFailure(reservationCode, payload, resp.errors, null);
+      const err = new Error('Failed to post comment') as Error & { apiErrors?: unknown };
+      err.apiErrors = resp.errors;
+      throw err;
+    }
+
+    const newComment: ReservationCommentInterface = {
+      comment_id: -Date.now(),
+      type: 'reservation',
+      comment,
+      comment_date: null,
+      created_datetime: nowAsApiTimestamp(),
+      user: authorName,
+      show_for_housekeeper: false,
+    };
+    let merged: ReservationInterface | undefined;
+    this._reservations.update(list =>
+      list.map(r => {
+        if (r.reservation_code !== reservationCode) return r;
+        merged = { ...r, comments: [...r.comments, newComment] };
+        return merged;
+      }),
+    );
+    return merged ?? { ...(await this.fetchDetail(reservationCode)) };
+  }
+
+  private reportCommentPostFailure(
+    reservationCode: string,
+    payload: unknown,
+    apiErrors: unknown,
+    exception: unknown,
+  ): void {
+    try {
+      const captureContext = {
+        tags: {
+          context: 'comment_post',
+          failure_kind: exception != null ? 'http_error' : 'api_rejected',
+        },
+        contexts: {
+          comment_post: {
+            reservation_code: reservationCode,
+            api_errors: safeJson(apiErrors).slice(0, 4000),
+          },
+        },
+      };
+      if (exception != null) {
+        Sentry.captureException(exception, captureContext);
+      } else {
+        Sentry.captureMessage('reservation comment post rejected by API', {
+          level: 'error',
+          ...captureContext,
+        });
+      }
+    } catch {
+      // Reporting must never mask or replace the original failure.
+    }
+  }
+
   // Synchronous cache peek so screens can paint instantly before an SWR refresh lands.
   peekGuests(reservationCode: string): GuestInterface[] | null {
     return this._guestCache.get(reservationCode) ?? null;
@@ -427,7 +509,25 @@ export class ReservationService {
       number_of_guests: r.number_of_guests ?? 0,
       nights,
       open_in_pms: r.open_in_pms === true,
+      comments: this.convertComments(r.comments),
     };
+  }
+
+  // `comments` is `null` on a reservation with none. Sorted ascending by
+  // created_datetime as a defensive measure — don't assume server order.
+  private convertComments(comments: any): ReservationCommentInterface[] {
+    if (!Array.isArray(comments)) return [];
+    return comments
+      .map((c: any): ReservationCommentInterface => ({
+        comment_id: c.comment_id,
+        type: c.type === 'room' ? 'room' : 'reservation',
+        comment: c.comment ?? '',
+        comment_date: c.comment_date ?? null,
+        created_datetime: c.created_datetime ?? '',
+        user: c.user ?? '',
+        show_for_housekeeper: c.show_for_housekeeper === true,
+      }))
+      .sort((a, b) => a.created_datetime.localeCompare(b.created_datetime));
   }
 }
 

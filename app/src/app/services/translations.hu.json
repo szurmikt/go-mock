@@ -86,7 +86,11 @@
     "updatingStatus": "Státusz frissítése…",
     "checkoutConfirmTitle": "Kijelentkezteti a vendéget?",
     "checkoutConfirmMessage": "Ez a vendég csak most lett onboardolva. A közvetlen kijelentkeztetés szokatlan — biztosan folytatja?",
-    "checkoutConfirmButton": "Kijelentkezés"
+    "checkoutConfirmButton": "Kijelentkezés",
+    "comments": "Megjegyzések",
+    "commentsEmpty": "Még nincsenek megjegyzések",
+    "commentsPlaceholder": "Írjon megjegyzést…",
+    "newComments": "{{n}} új megjegyzés"
   },
   "guestDetail": {
     "title": "Vendég adatai",
@@ -285,6 +289,7 @@
     "failedLoadGuest": "A vendég betöltése sikertelen",
     "failedSave": "A mentés sikertelen",
     "failedChangeStatus": "Nem sikerült megerősíteni a státuszváltást. Frissítsen és próbálja újra.",
+    "failedPostComment": "A megjegyzés küldése sikertelen",
     "scanInitError": "Hiba az okmányolvasó inicializálásakor"
   }
 }

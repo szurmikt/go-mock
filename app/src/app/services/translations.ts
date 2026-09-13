@@ -106,6 +106,10 @@ export const TRANSLATIONS: TranslationMap = {
     checkoutConfirmTitle: 'Check out guest?',
     checkoutConfirmMessage: 'This guest was only just onboarded. Checking out immediately after onboarding is unusual — are you sure you want to continue?',
     checkoutConfirmButton: 'Check out',
+    comments: 'Comments',
+    commentsEmpty: 'No comments yet',
+    commentsPlaceholder: 'Write a comment…',
+    newComments: '{{n}} New Comments',
   },
   guestDetail: {
     title: 'Guest details',
@@ -312,6 +316,7 @@ export const TRANSLATIONS: TranslationMap = {
     failedLoadGuest: 'Failed to load guest',
     failedSave: 'Failed to save',
     failedChangeStatus: 'Could not confirm the status change. Please refresh and try again.',
+    failedPostComment: 'Failed to post comment',
     scanInitError: 'Error initializing document reader',
   },
 };
