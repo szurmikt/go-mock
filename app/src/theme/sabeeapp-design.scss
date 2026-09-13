@@ -692,6 +692,12 @@ ion-refresher {
   // Scaled up rather than given a separate fixed size so it stays proportional
   // whether this step is the enlarged .next circle or a plain one.
   .icon-circle svg.icon-onboard { transform: scale(1.25); }
+  // The confirmed/Reserved glyph (mdi-calendar-account-outline) is the opposite
+  // case — it fills its 24x24 box edge-to-edge, with none of the other three
+  // icons' built-in margin, so it reads visibly tighter/bigger at the same
+  // width/height. Scaled down to match their visual density (verified by
+  // rendering both side by side, not just estimated from the viewBox numbers).
+  .icon-circle svg.icon-confirmed { transform: scale(0.85); }
 
   .connector { width: 3px; flex: 1; min-height: 16px; background: var(--primary); margin: 2px 0; }
   // Grey below the current/reached point — matches the grey fill the upcoming
