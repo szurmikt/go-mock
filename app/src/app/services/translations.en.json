@@ -76,7 +76,17 @@
     "reporting": "Reporting",
     "cityTaxLiable": "City Tax Liable",
     "booker": "(Booker)",
-    "noGuests": "No guests registered"
+    "noGuests": "No guests registered",
+    "changeStatus": "Change Status",
+    "reservationStatusTitle": "Reservation Status",
+    "statusReserved": "Reserved",
+    "statusCheckedIn": "Check-in",
+    "statusOnboard": "Onboard",
+    "statusCheckedOut": "Check-out",
+    "updatingStatus": "Updating status…",
+    "checkoutConfirmTitle": "Check out guest?",
+    "checkoutConfirmMessage": "This guest was only just onboarded. Checking out immediately after onboarding is unusual — are you sure you want to continue?",
+    "checkoutConfirmButton": "Check out"
   },
   "guestDetail": {
     "title": "Guest details",
@@ -274,6 +284,7 @@
     "networkError": "Network error",
     "failedLoadGuest": "Failed to load guest",
     "failedSave": "Failed to save",
+    "failedChangeStatus": "Could not confirm the status change. Please refresh and try again.",
     "scanInitError": "Error initializing document reader"
   }
 }

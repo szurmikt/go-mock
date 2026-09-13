@@ -644,6 +644,56 @@ ion-refresher {
   &:active { transform: scale(0.95); }
 }
 
+/* ─── Reservation Status sheet — vertical history timeline ─── */
+
+.status-timeline { display: flex; flex-direction: column; margin-top: 4px; margin-bottom: 8px; }
+
+.status-step {
+  display: flex; gap: 14px;
+
+  .node-col { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 48px; }
+
+  .icon-circle {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: transform 0.15s;
+  }
+
+  &.done .icon-circle, &.current .icon-circle { background: var(--primary); color: #fff; }
+  &.future .icon-circle { background: #fff; border: 2px solid var(--primary); color: var(--primary); }
+
+  // The immediate-next step's circle is the one a tap advances — sized up so it
+  // visibly reads as tappable, not just another future waypoint.
+  &.next .icon-circle {
+    width: 48px; height: 48px; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,142,255,0.25);
+
+    &:active   { transform: scale(0.92); }
+    &.updating { cursor: default; box-shadow: none; }
+  }
+
+  .connector { width: 3px; flex: 1; min-height: 16px; background: var(--primary); margin: 2px 0; }
+  &.future .connector { background: var(--primary-soft); }
+
+  .body { flex: 1; min-width: 0; padding-bottom: 22px; }
+  &.last .body { padding-bottom: 0; }
+
+  .label-line { display: flex; align-items: center; min-height: 40px; }
+  &.next .label-line { min-height: 48px; }
+
+  .body h4 { margin: 0; font-size: var(--font-xl); font-weight: 800; color: var(--ink); }
+  &.future .body h4 { color: var(--ink-4); }
+
+  .body .ts { font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; margin-top: 2px; }
+}
+
+.status-spinner {
+  width: 20px; height: 20px;
+  border: 3px solid var(--primary-soft); border-top-color: var(--primary);
+  border-radius: 50%; animation: status-spin 0.8s linear infinite;
+}
+@keyframes status-spin { to { transform: rotate(360deg); } }
+
 /* ─── Floating-label form fields ──────────────────────────── */
 
 .form-group {

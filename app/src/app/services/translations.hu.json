@@ -76,7 +76,17 @@
     "reporting": "Jelentés",
     "cityTaxLiable": "Idegenforgalmi adóköteles",
     "booker": "(Foglaló)",
-    "noGuests": "Nincs regisztrált vendég"
+    "noGuests": "Nincs regisztrált vendég",
+    "changeStatus": "Státusz módosítása",
+    "reservationStatusTitle": "Foglalás státusza",
+    "statusReserved": "Foglalva",
+    "statusCheckedIn": "Bejelentkezés",
+    "statusOnboard": "Onboard",
+    "statusCheckedOut": "Kijelentkezés",
+    "updatingStatus": "Státusz frissítése…",
+    "checkoutConfirmTitle": "Kijelentkezteti a vendéget?",
+    "checkoutConfirmMessage": "Ez a vendég csak most lett onboardolva. A közvetlen kijelentkeztetés szokatlan — biztosan folytatja?",
+    "checkoutConfirmButton": "Kijelentkezés"
   },
   "guestDetail": {
     "title": "Vendég adatai",
@@ -274,6 +284,7 @@
     "networkError": "Hálózati hiba",
     "failedLoadGuest": "A vendég betöltése sikertelen",
     "failedSave": "A mentés sikertelen",
+    "failedChangeStatus": "Nem sikerült megerősíteni a státuszváltást. Frissítsen és próbálja újra.",
     "scanInitError": "Hiba az okmányolvasó inicializálásakor"
   }
 }

@@ -22,7 +22,13 @@ function getFormatter(
 ): Intl.DateTimeFormat {
   let f = formatterCache.get(cacheKey);
   if (!f) {
-    f = new Intl.DateTimeFormat(locale, opts);
+    try {
+      f = new Intl.DateTimeFormat(locale, opts);
+    } catch {
+      // Invalid/garbage IANA timeZone string — fall back to no timezone rather
+      // than throwing (same graceful-degradation stance as formatPropertyInstant).
+      f = new Intl.DateTimeFormat(locale, { ...opts, timeZone: undefined });
+    }
     formatterCache.set(cacheKey, f);
   }
   return f;
@@ -38,19 +44,28 @@ function getFormatter(
 export class LocalizedDatePipe implements PipeTransform {
   private lang = inject(LanguageService);
 
+  // `timeZone` (IANA name, e.g. from PropertySettingsService) is only meaningful
+  // for 'dayMonth' — it exists for full UTC-instant strings like a reservation's
+  // `created_datetime`/`onboard_time` that (unlike arrival_date/departure_date)
+  // have no separate calendar-date field to read from. Same UTC-instant
+  // assumption as `formatPropertyInstant` — the naive "YYYY-MM-DD HH:MM:SS" is
+  // appended a 'Z' before conversion.
   transform(
     value: string | null | undefined,
     format: 'full' | 'dayMonth' = 'full',
+    timeZone?: string | null,
   ): string {
     if (value == null || (typeof value === 'string' && value.trim() === '')) return '—';
-    const d = new Date(value);
+    const parseable = timeZone ? `${value.replace(' ', 'T')}Z` : value;
+    const d = new Date(parseable);
     if (Number.isNaN(d.getTime())) return '—';
 
     if (format === 'dayMonth') {
       const locale = LOCALE_MAP[this.lang.currentLanguage()] ?? 'en-GB';
-      return getFormatter(`dayMonth|${locale}`, locale, {
+      return getFormatter(`dayMonth|${locale}|${timeZone ?? ''}`, locale, {
         day: 'numeric',
         month: 'short',
+        ...(timeZone ? { timeZone } : {}),
       }).format(d);
     }
 

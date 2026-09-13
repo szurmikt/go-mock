@@ -5,7 +5,9 @@ export interface ReservationInterface {
   booker: BookerInterface;
   arrival_date: string;
   departure_date: string;
+  created_datetime: string;
   checked_in_time: string;
+  onboard_time: string;
   checked_out_time: string;
   status: string;
   room_type_id: string;

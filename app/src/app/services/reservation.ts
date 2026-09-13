@@ -54,6 +54,23 @@ export function pillLabel(apiStatus: string): string {
   }
 }
 
+// The four settable reservation-status stages, in flow order. Keys match both
+// what `POST /reservations/status` accepts and what `pillStatus`/`pillLabel`
+// above already switch on — no new status vocabulary. `tsField` names the
+// `ReservationInterface` field holding that step's timestamp (once reached).
+export interface StatusStep {
+  key: string;
+  labelKey: string;
+  tsField: 'created_datetime' | 'checked_in_time' | 'onboard_time' | 'checked_out_time';
+}
+
+export const STATUS_STEPS: StatusStep[] = [
+  { key: 'confirmed',  labelKey: 'reservationDetail.statusReserved',   tsField: 'created_datetime' },
+  { key: 'checkedin',  labelKey: 'reservationDetail.statusCheckedIn',  tsField: 'checked_in_time' },
+  { key: 'onboard',    labelKey: 'reservationDetail.statusOnboard',    tsField: 'onboard_time' },
+  { key: 'checkedout', labelKey: 'reservationDetail.statusCheckedOut', tsField: 'checked_out_time' },
+];
+
 @Injectable({ providedIn: 'root' })
 export class ReservationService {
   private api = inject(ApiService);
@@ -235,6 +252,75 @@ export class ReservationService {
     }
   }
 
+  /**
+   * Changes a reservation's status via POST /reservations/status, then re-fetches
+   * the reservation (fetchDetail is always-uncached) to verify the API actually
+   * applied it before reporting success to the caller — a single attempt each way,
+   * matching this app's existing single-attempt mutation convention (no retries).
+   */
+  async changeStatus(reservationCode: string, status: string): Promise<ReservationInterface> {
+    const payload = { reservation_code: reservationCode, status };
+    let resp: ApiResponse<unknown>;
+    try {
+      resp = await firstValueFrom(
+        this.api.post<ApiResponse<unknown>>('reservations/status', payload),
+      );
+    } catch (e) {
+      this.reportStatusChangeFailure(reservationCode, status, null, e);
+      throw e;
+    }
+    if (!resp.success) {
+      this.reportStatusChangeFailure(reservationCode, status, resp.errors, null);
+      const err = new Error('Failed to change status') as Error & { apiErrors?: unknown };
+      err.apiErrors = resp.errors;
+      throw err;
+    }
+
+    const updated = await this.fetchDetail(reservationCode);
+    if (updated.status !== status) {
+      this.reportStatusChangeFailure(reservationCode, status, { unverified: updated.status }, null);
+      throw new Error(this.lang.t('errors.failedChangeStatus'));
+    }
+
+    this._reservations.update(list =>
+      list.map(r => (r.reservation_code === reservationCode ? updated : r)),
+    );
+    return updated;
+  }
+
+  private reportStatusChangeFailure(
+    reservationCode: string,
+    requestedStatus: string,
+    apiErrors: unknown,
+    exception: unknown,
+  ): void {
+    try {
+      const captureContext = {
+        tags: {
+          context: 'status_change',
+          failure_kind: exception != null ? 'http_error' : 'api_rejected',
+        },
+        contexts: {
+          status_change: {
+            reservation_code: reservationCode,
+            requested_status: requestedStatus,
+            api_errors: safeJson(apiErrors).slice(0, 4000),
+          },
+        },
+      };
+      if (exception != null) {
+        Sentry.captureException(exception, captureContext);
+      } else {
+        Sentry.captureMessage('reservation status change rejected or unverified', {
+          level: 'error',
+          ...captureContext,
+        });
+      }
+    } catch {
+      // Reporting must never mask or replace the original failure.
+    }
+  }
+
   // Synchronous cache peek so screens can paint instantly before an SWR refresh lands.
   peekGuests(reservationCode: string): GuestInterface[] | null {
     return this._guestCache.get(reservationCode) ?? null;
@@ -324,7 +410,9 @@ export class ReservationService {
       },
       arrival_date: r.arrival_date ?? '',
       departure_date: r.departure_date ?? '',
+      created_datetime: r.created_datetime ?? '',
       checked_in_time: r.checked_in_time ?? '',
+      onboard_time: r.onboard_time ?? '',
       checked_out_time: r.checked_out_time ?? '',
       status: r.status ?? '',
       room_type_id: r.room_type_id ?? '',
