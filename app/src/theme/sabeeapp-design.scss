@@ -685,7 +685,9 @@ ion-refresher {
   .icon-circle svg { width: 20px; height: 20px; }
 
   .connector { width: 3px; flex: 1; min-height: 16px; background: var(--primary); margin: 2px 0; }
-  &.future .connector { background: var(--primary-soft); }
+  // Grey below the current/reached point — matches the grey fill the upcoming
+  // steps' icon circles already use.
+  &.future .connector { background: var(--line-strong); }
 
   .body { flex: 1; min-width: 0; padding-bottom: 22px; }
   &.last .body { padding-bottom: 0; }
