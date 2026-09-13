@@ -686,6 +686,13 @@ ion-refresher {
   // the PMS's calendar-account glyph) got muddy at the smaller size first tried.
   .icon-circle svg { width: 20px; height: 20px; }
 
+  // The onboard glyph (mdi-home-import-outline) is thinner/lower-coverage within
+  // its own 24x24 box than the other three (bulkier filled shapes) — reads
+  // visibly smaller at the same width/height even though the box matches.
+  // Scaled up rather than given a separate fixed size so it stays proportional
+  // whether this step is the enlarged .next circle or a plain one.
+  .icon-circle svg.icon-onboard { transform: scale(1.25); }
+
   .connector { width: 3px; flex: 1; min-height: 16px; background: var(--primary); margin: 2px 0; }
   // Grey below the current/reached point — matches the grey fill the upcoming
   // steps' icon circles already use.
@@ -698,9 +705,10 @@ ion-refresher {
   &.next .label-line { min-height: 48px; }
 
   .body h4 { margin: 0; font-size: var(--font-xl); font-weight: 800; color: var(--ink); }
-  // Only done/current/next stay bold — steps beyond the next one are muted
-  // preview text (:not(.next), since the next step also carries .future).
-  &.future:not(.next) .body h4 { color: var(--ink-4); font-weight: 400; }
+  // Only done/current/next stay bold, full-size text — steps beyond the next
+  // one are a smaller, normal-weight, muted preview (:not(.next), since the
+  // next step also carries .future).
+  &.future:not(.next) .body h4 { color: var(--ink-4); font-weight: 400; font-size: var(--font-lg); }
 
   .body .ts { font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; margin-top: 2px; }
 }
