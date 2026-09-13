@@ -688,6 +688,23 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-09-13 — Reservation status change: visual polish pass + dev OTA publish; Morning Briefing widget disabled
+
+> Branch `implement-reservation-status-management`. No build/version bump, no TestFlight upload. Published OTA to the `dev` channel (bundle `d8c507ed-5574-476e-8c13-72d2c21aa4d6`, git `306a9dc`) after the icon/coloring/typography polish below — `dev` is internal testing only (8 devices, no live properties), matching this project's established pattern of iterating a feature branch against real device screenshots before merge.
+
+**Reservation Status timeline sheet, polished against real device screenshots** (follow-up to the same-day entry directly below this one, which built the feature):
+- Upcoming (non-next) step icons switched from a grey-outline-on-white treatment to a solid grey fill with a white icon, matching the real PMS's own "Status and timeline" widget colors (found via the saved PMS page copy the user dropped in `app/docs/status-icons/`, since deleted — its "Status and timeline" section documents the desktop stepper's exact Material Design Icons and states).
+- Step icons swapped to those same PMS icons — `mdi-calendar-account-outline`/`mdi-login`/`mdi-home-import-outline`/`mdi-logout` for Reserved/Check-in/Onboard/Check-out — as verbatim inline `fill="currentColor"` SVGs (no font dependency), replacing the generic stroke icons used in the first pass.
+- Step label weight/size: only done/current/next stay bold at full size; upcoming (non-next) steps drop to normal weight, muted color, and a smaller `--font-lg` size — reads as "settled fact" (done/current/next) vs. "preview" (future).
+- The next-step connector line (leading into and out of the reachable step) is grey (`var(--line-strong)`) instead of a light-blue tint, matching the new grey future-icon fill.
+- The next-step circle's blue drop-shadow was removed — checked against the rest of the design system first (only the FAB's `--shadow-fab` uses a persistent colored glow; everywhere else shadows are neutral or event-triggered) and decided to keep that glow FAB-only; the next circle already stands out via size + blue border + bold label.
+- The next step's tap target widened from just the icon-circle to the whole row (icon + label) — the icon alone sits at the sheet's far-left edge, an awkward one-handed reach. Follows the same tappable-row-with-nested-button convention this same page's `.guest-card`/`scan-btn` already uses (`$event.stopPropagation()` on the inner button) — documented inline so a future action button added to a row doesn't silently double-fire `advanceStatus()`.
+- The onboard icon (`mdi-home-import-outline`) is a thinner/lower-coverage outline glyph than the other three's bulkier filled shapes and read visibly smaller at the same box size — scaled 1.25× via CSS (`transform: scale`, not a fixed size) so it stays proportional whether it's a plain circle or the enlarged next one.
+
+**Morning Briefing widget disabled entirely, including for its one gated property.** `HomePage.showBriefing` (`home.page.ts`) hardcoded to `computed(() => false)` — the throwaway mock widget/route/`briefing.const.ts` (`BRIEFING_PROPERTY_ID = '6250'`) are left in place, just never shown, per explicit request rather than a full removal. The now-dead `BRIEFING_PROPERTY_ID` import was dropped from `home.page.ts`.
+
+**Verification:** `npx ng build` clean throughout every step (only the three pre-existing known warnings — two IDScanly SCSS budget overages + the `jscanify` CommonJS bailout, none new). Live-published to `dev`; **not yet independently device-confirmed** that the widget disappears from Home for property 6250 or that the timeline polish reads correctly beyond the screenshots already reviewed mid-session.
+
 ### 2026-09-13 — Reservation status change: FAB + tappable pill open a Reservation Status timeline sheet, wired to POST /reservations/status with verify-by-refetch
 
 > Branch `implement-reservation-status-management`. No build/version bump, no TestFlight upload (local verification only — `npm run build` clean in both dev and production configs).
