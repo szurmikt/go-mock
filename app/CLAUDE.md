@@ -688,6 +688,15 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-09-14 — Reservation comments: two device-verified bug fixes
+
+> Branch `implement-comments`. Follow-up to the session directly below, after the first on-device test.
+
+- **`postComment()` was silently discarding every comment not added from the current device.** It merged the new comment onto the reservation as cached in `_reservations` (the Home arrivals list, from `GET reservations` — a bulk, date-ranged endpoint with no nested `comments` field), not onto the page's own reservation object (populated via `fetchDetail()`, which does return real comments). Since `_reservations`' copy always had `comments: []`, each post replaced the entire visible history with just that device's own comments — after 3 posts, a reservation with ~10 real comments showed only those 3. Fixed by changing `postComment()`'s signature to take the caller's current `ReservationInterface` directly (the page's `reservation()` signal) as the merge base, with `_reservations` now only a best-effort sync target, never the source of truth. `ReservationDetailPage.sendComment()` updated to pass `this.reservation()` instead of just the reservation code.
+- **The "N New Comments" row didn't disappear after closing the sheet.** Working as designed (dots/count meant to persist until the *next* page load, decided during planning) — but reads as a bug once seen live. `closeCommentsSheet()` now clears `newCommentIds` immediately on close; dots inside the sheet still stay visible while it's open, for reference during that viewing.
+
+**Verification:** `npx ng build` clean (only the three known pre-existing warnings, none new). Not yet re-verified on device against the same 10-comment reservation from the bug report.
+
 ### 2026-09-14 — Reservation comments: fetch/post via API, unread tracking, dev OTA publish
 
 > Branch `implement-comments` (off `implement-reservation-status-management`, carrying its uncommitted "Comments" FAB stub forward). No build/version bump, no TestFlight upload. Published OTA to the `dev` channel (bundle `20caaecb-83ad-4c2c-a5d4-f5f0f3d33667`, git `d5af5e0`).

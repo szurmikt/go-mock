@@ -333,7 +333,16 @@ export class ReservationService {
    * `authorName` is passed in by the caller rather than injecting AuthService
    * here, since auth.ts already imports ReservationService (would be circular).
    */
-  async postComment(reservationCode: string, comment: string, authorName: string): Promise<ReservationInterface> {
+  //
+  // Takes the caller's own current `reservation` (not looked up from `_reservations`)
+  // as the base to append onto — `_reservations` is the Home arrivals list cache, built
+  // from GET /reservations (a bulk, date-ranged endpoint with no nested `comments` field),
+  // so its copy of any given reservation's `comments` is always `[]`/stale. Merging onto
+  // that cache instead of the caller's fully-loaded reservation (from fetchDetail(), which
+  // does return real comments) was an earlier bug: every post silently replaced the whole
+  // comment history with just the comments added from this device.
+  async postComment(reservation: ReservationInterface, comment: string, authorName: string): Promise<ReservationInterface> {
+    const reservationCode = reservation.reservation_code;
     const payload = { reservation_code: reservationCode, type: 'reservation' as const, comment, show_for_housekeeper: false };
     let resp: ApiResponse<unknown>;
     try {
@@ -360,15 +369,13 @@ export class ReservationService {
       user: authorName,
       show_for_housekeeper: false,
     };
-    let merged: ReservationInterface | undefined;
+    const updated: ReservationInterface = { ...reservation, comments: [...reservation.comments, newComment] };
+    // Best-effort sync of the Home list cache, if this reservation happens to be in it —
+    // never the source of truth for the merge above.
     this._reservations.update(list =>
-      list.map(r => {
-        if (r.reservation_code !== reservationCode) return r;
-        merged = { ...r, comments: [...r.comments, newComment] };
-        return merged;
-      }),
+      list.map(r => (r.reservation_code === reservationCode ? updated : r)),
     );
-    return merged ?? { ...(await this.fetchDetail(reservationCode)) };
+    return updated;
   }
 
   private reportCommentPostFailure(

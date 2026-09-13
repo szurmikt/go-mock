@@ -256,6 +256,11 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
 
   closeCommentsSheet() {
     this.commentsSheetOpen.set(false);
+    // Dots/count stay visible while the sheet is open (so a viewer can see what
+    // was new during this look), but clear immediately on close — waiting for
+    // the next full page load to clear the "N New Comments" row read as a bug
+    // once seen live, not the intended behavior.
+    this.newCommentIds.set(new Set());
   }
 
   initials(name: string): string {
@@ -269,12 +274,13 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   }
 
   async sendComment() {
+    const current = this.reservation();
     const text = this.commentDraft().trim();
-    if (!text || this.postingComment()) return;
+    if (!current || !text || this.postingComment()) return;
     this.postingComment.set(true);
     this.commentError.set(null);
     try {
-      const updated = await this.res.postComment(this.reservationCode, text, this.auth.name());
+      const updated = await this.res.postComment(current, text, this.auth.name());
       this.reservation.set(updated);
       // Re-advance the watermark past this new comment's own timestamp — it was
       // set to "now" when the sheet opened, which is earlier than a comment
