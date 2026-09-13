@@ -63,21 +63,21 @@ function getLocalInstantFormatter(): Intl.DateTimeFormat {
  * fields that represent a specific moment in time, not a calendar day.
  *
  * The API sends these as naive `"YYYY-MM-DD HH:MM:SS"` strings with no
- * timezone marker, and — as of this writing — never tells us the property's
- * timezone. Until it does, `timeZone` should be omitted: the naive string is
- * read as if it's already in the viewer's own local time (exactly how this
- * function's predecessor, the inline logic in `LocalizedTimePipe`, has always
- * behaved). This is NOT a degraded fallback — it's the only path any current
- * caller exercises, and its behavior must stay byte-for-byte stable except by
- * a deliberate, reviewed change, since every user sees it today.
+ * timezone marker. `GET /properties/settings` now returns the property's real
+ * timezone as an IANA name (e.g. "Europe/Budapest") in `property_time_zone`
+ * (see `PropertySettingsService`, wired through `AuthService` and consumed by
+ * `ReservationDetailPage`) — confirmed live (2026-09-13) that the naive
+ * strings are true UTC instants, not property-local wall-clock time. When a
+ * `timeZone` is passed, the value is treated as a UTC instant (`Z` appended)
+ * and converted to that zone for display.
  *
- * Once the API sends a real property timezone (an IANA name, e.g.
- * "Europe/Budapest"), pass it as `timeZone` and the value is instead treated
- * as a UTC instant and converted to that zone for display. ⚠️ That branch is
- * UNVERIFIED against a real payload — the exact future wire format (a naive
- * string that's secretly UTC vs. a real ISO string with a `Z`/offset vs. a
- * Unix epoch) is not yet known. Confirm and adjust this branch against a real
- * API response before relying on it.
+ * Omitting `timeZone` is the graceful-degradation path — a property with no
+ * timezone on record, or a failed `PropertySettingsService.load()` — and reads
+ * the naive string as if it's already in the viewer's own local time (exactly
+ * how this function's predecessor, the inline logic in `LocalizedTimePipe`,
+ * has always behaved). Its behavior must stay byte-for-byte stable except by
+ * a deliberate, reviewed change, since it's still what renders whenever the
+ * real timezone isn't available.
  */
 export function formatPropertyInstant(
   value: string | null | undefined,
@@ -95,7 +95,7 @@ export function formatPropertyInstant(
     return getLocalInstantFormatter().format(d);
   }
 
-  // Provisional UTC-instant assumption — see the "UNVERIFIED" note above.
+  // Confirmed UTC-instant assumption — see the doc comment above.
   const d = new Date(`${normalized}Z`);
   if (Number.isNaN(d.getTime())) {
     const m = value.match(/(\d{1,2}:\d{2})/);

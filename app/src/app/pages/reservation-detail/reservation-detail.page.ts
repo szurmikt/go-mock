@@ -5,6 +5,7 @@ import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/st
 import { ViewWillEnter } from '@ionic/angular';
 import { ReservationService, pillStatus, pillLabel } from '../../services/reservation';
 import { OptionsService } from '../../services/options.service';
+import { PropertySettingsService } from '../../services/property-settings.service';
 import { LanguageService } from '../../services/language.service';
 import { ReservationInterface } from '../../models/reservation.interface';
 import { GuestInterface } from '../../models/guest.interface';
@@ -34,6 +35,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     private res: ReservationService,
     private options: OptionsService,
     private lang: LanguageService,
+    public propertySettings: PropertySettingsService,
   ) {}
 
   private reservationCode!: string;

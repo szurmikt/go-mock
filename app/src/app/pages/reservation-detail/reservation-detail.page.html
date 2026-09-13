@@ -49,7 +49,7 @@
                 </svg>
                 {{ 'reservationDetail.checkIn' | tr }}
               </div>
-              <div class="v">{{ r.arrival_date | localizedDate:'dayMonth' }}{{ r.checked_in_time ? '  ' + (r.checked_in_time | localizedTime) : '' }}</div>
+              <div class="v">{{ r.arrival_date | localizedDate:'dayMonth' }}{{ r.checked_in_time ? '  ' + (r.checked_in_time | localizedTime:propertySettings.timeZone()) : '' }}</div>
             </div>
             <div class="fact">
               <div class="l">
@@ -61,7 +61,7 @@
                 </svg>
                 {{ 'reservationDetail.checkOut' | tr }}
               </div>
-              <div class="v">{{ r.departure_date | localizedDate:'dayMonth' }}{{ r.checked_out_time ? '  ' + (r.checked_out_time | localizedTime) : '' }}</div>
+              <div class="v">{{ r.departure_date | localizedDate:'dayMonth' }}{{ r.checked_out_time ? '  ' + (r.checked_out_time | localizedTime:propertySettings.timeZone()) : '' }}</div>
             </div>
             <div class="fact">
               <div class="l">

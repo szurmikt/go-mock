@@ -688,6 +688,55 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-09-13 — Property timezone wired up: GET /properties/settings integrated, checked-in/out times now render in the property's real zone
+
+> Branch `utc-local-date-parser`. No build/version bump, no TestFlight upload (local verification only — `npm run build` clean, `date.spec.ts` 12/12 green).
+
+Closes out the "UNVERIFIED" flag left by commit `a02bac5` (2026-09-10, see that commit's message):
+`formatPropertyInstant()` in [utils/date.ts](src/app/utils/date.ts) and `LocalizedTimePipe`
+([pipes/localized-time.pipe.ts](src/app/pipes/localized-time.pipe.ts)) were built to render a
+reservation's `checked_in_time`/`checked_out_time` in the property's real timezone, but shipped
+inert — no caller ever passed a `timeZone`, since the API never sent one. **Confirmed live this
+session (via a hand-rolled curl script against the real API, in lieu of a Postman setup): `GET
+/properties/settings` now returns `property_time_zone` as an IANA name (e.g. "Europe/Budapest"),
+and the naive `"YYYY-MM-DD HH:MM:SS"` timestamps really are UTC instants** — so
+`formatPropertyInstant()`'s existing "append `Z`, then convert to `timeZone`" logic was correct as
+already written; this was a wiring task, not a logic-rewrite.
+
+- **New [services/property-settings.service.ts](src/app/services/property-settings.service.ts)
+  (`PropertySettingsService`)** — `GET /properties/settings` via `ApiService.get()`, modeled
+  directly on the existing `OptionsService` pattern (a `timeZone` signal + `load()`/`clear()`, no
+  internal try/catch — caller decides fire-and-forget vs. fail-closed). Deliberately named/scoped
+  apart from the pre-existing `PropertyConfigService` (`property-config.service.ts`), which queries
+  an unrelated Supabase `property_config` table — this new service talks to the real SabeeApp API.
+  `scan_fields` (also present in the response) is deliberately left untyped/unused — nothing in the
+  app consumes it yet. No `property_id` param needed — scoped implicitly via the `Property-Id`
+  header the interceptor already attaches from `auth.selectedProperty()`.
+- **[services/auth.ts](src/app/services/auth.ts)**: `PropertySettingsService` threaded through the
+  same three chokepoints `PropertyConfigService` already uses — `loadStoredAuth()` (cold-start
+  restore, fire-and-forget, closes the same "cold-start gap" class of bug `loadPropertyConfig` was
+  added to fix), `selectProperty()` (fire-and-forget, deliberately not awaited — a slow/failing
+  timezone fetch must not delay or fail property selection), and `clearSessionData()` (`.clear()`,
+  so a logout/property switch can never leak one property's timezone into another's display).
+- **[pages/reservation-detail/reservation-detail.page.ts](src/app/pages/reservation-detail/reservation-detail.page.ts)
+  / [.html](src/app/pages/reservation-detail/reservation-detail.page.html)**: the only two current
+  `| localizedTime` call sites (check-in/check-out rows) now pass
+  `propertySettings.timeZone()` as the pipe's second argument. No other screen renders
+  `checked_in_time`/`checked_out_time` (confirmed by grep).
+- **Docs**: `formatPropertyInstant()`'s doc comment and the inline "provisional" comment in
+  [utils/date.ts](src/app/utils/date.ts), plus the stale "unused by every current call site"
+  comment on `LocalizedTimePipe`, updated to reflect the now-confirmed behavior. No logic changed —
+  `date.spec.ts`'s existing timezone-conversion test (`Asia/Tokyo`, UTC+9) already exercised this
+  exact path and passes unmodified.
+
+**Verification:** `npm run build` clean (only the three pre-existing known warnings — two IDScanly
+SCSS budget overages + the `jscanify` CommonJS bailout, none new). `date.spec.ts` 12/12
+(ChromeHeadless). **Not yet device/browser-verified end-to-end** — no `ionic serve`/device session
+run this pass; next one should confirm on a real reservation that the displayed check-in/out time
+matches the property's real local time (most visible when testing from a device whose own timezone
+differs from the property's), and that the graceful no-timezone fallback still renders correctly
+for a property with no `property_time_zone` on record or a failed fetch.
+
 ### 2026-09-07 — IDScanly: identity-document scans now capture an embedded address, when present
 
 > Branch `idscanly-identity-doc-address`, merged into `main` 2026-09-08. No build/version bump, no TestFlight upload. Published OTA to the `dev` channel (bundle `7c64a1af-a9f8-46b4-8883-37c2a305069c`, git `242e615`) — `dev` is internal testing only (8 devices, no live properties).
