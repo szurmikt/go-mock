@@ -435,11 +435,14 @@ ion-refresher {
 
 /* ─── Notes ───────────────────────────────────────────────── */
 
+// Bleeds to the sheet's edges like .head and .notes-compose already do, so a swiped
+// row's grey backdrop can reach the true edge — .note-row re-adds the horizontal inset
+// itself (padding, not margin) so its content still lines up with the header/composer.
 .notes-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  margin-top: 4px;
+  margin: 4px calc(var(--pad) * -1) 0;
 }
 
 .notes-empty {
@@ -481,9 +484,9 @@ ion-refresher {
 }
 
 .note-row {
-  display: flex; gap: 12px; padding: 14px 0;
+  display: flex; gap: 12px; padding: 14px var(--pad);
   background: var(--surface);
-  transition: transform 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 
   &--dragging { transition: none; }
 }
