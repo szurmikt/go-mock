@@ -713,7 +713,7 @@ Corrects a wrong status advance (or a status set too early by mistake) without l
 
 **Follow-up same day — fix: corner info/chevron button clipped by the sheet's rounded corner on iOS.** Reported from real device screenshots: the button sat visibly overlapping/cut by the sheet's bottom-right curve. Root cause: `.sheet` combines `border-radius` with non-visible overflow, so an absolutely-positioned child near the corner is genuinely clipped to the *rounded* shape, not a plain rectangle — and `--sheet-radius-bottom` is 48px on iOS native (concentric with the device's own screen corner, see the earlier "concentric corners" session) vs. 24px elsewhere, so the button's fixed `12px` offset left it almost exactly on the containment boundary (real margin ≈10.5px for R=48/r=12, a hair under the 12px used). Fixed in [sabeeapp-design.scss](src/theme/sabeeapp-design.scss) `.status-help-btn`: `bottom`/`right` now read `calc(var(--sheet-radius-bottom) / 2)` instead of a flat `12px` — scales with whichever radius is active per platform, with a comfortable safety margin under the same containment inequality either way, rather than a magic number tuned for only one of the two radii.
 
-**Verification:** `npx ng build` clean (same three pre-existing warnings, none new). **Not yet re-confirmed on device.**
+**Verification:** `npx ng build` clean (same three pre-existing warnings, none new). **Not yet re-confirmed on device.** Published OTA to the `dev` channel (bundle `272ef8b8-852f-4449-8dc5-d5ae2816969b`, git `d93108a`).
 
 ### 2026-09-14 — Reservation comments: two device-verified bug fixes
 
