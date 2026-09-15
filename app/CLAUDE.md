@@ -716,6 +716,8 @@ Notes had no way to be removed once posted. Swiping a note row left in the Notes
 
 **Follow-up same day — grey backdrop behind the swiped row.** First live look (via the `dev` bundle above) showed the revealed delete button floating on plain white — the row didn't read as having physically slid away. `.note-swipe` (the wrapper, sits underneath `.note-row`) gained `background: var(--bg)` — a light grey, matching the app's page-background token — so the reveal now shows a real backdrop behind the row instead of the same white the row itself sits on. One-line change; republished to `dev` (bundle `bc126346-b34c-4861-a04c-b20d56a34214`, git `c85dc80`).
 
+**Follow-up same day — darker backdrop.** `--bg` (rgb(249,250,251)) still read as barely distinguishable from white on device. Switched to `--line-strong` (rgb(183,183,183) — the same grey used for card borders) for a clearly visible grey. Republished to `dev` (bundle `f6170150-0383-4b9d-8e4c-940b85821f64`, git `55608ff`).
+
 **Verification:** `npx ng build` clean at both steps (only the three pre-existing known warnings — two IDScanly SCSS budget overages + the `jscanify` CommonJS bailout, none new). **Not yet device-verified** — no touch/camera session available in this environment; needs a real swipe test to confirm the gesture doesn't fight the notes list's own vertical scroll, the grey backdrop reads correctly, and a delete actually removes the note server-side (confirmed via a re-fetch/reload, not just the optimistic local removal).
 
 ### 2026-09-15 — Comments sheet renamed to "Notes" + Reservation/Room type switch, housekeeper visibility, room note dates
