@@ -884,8 +884,19 @@ ion-refresher {
 // timeline's rows never reach the sheet's full width, so this always has clear
 // space beside the last row to sit in without a dedicated row/extra vertical space.
 // Swaps to a chevron (pointing at the disclosure it now closes) while open.
+//
+// Offset tied to --sheet-radius-bottom, not a fixed pixel value: `.sheet` combines
+// border-radius with non-visible overflow, so a child positioned into the corner is
+// genuinely clipped to the ROUNDED shape, not just a rectangle. That radius (R) is
+// 48px on iOS native (concentric with the device's own screen corner) vs. 24px
+// elsewhere — a fixed 12px offset left this button's 24px circle sitting almost
+// exactly on the containment boundary on iOS (real margin: R - r - (R-r)/√2 ≈ 10.5px
+// for R=48, r=12 — a hair under the 12px used), visually clipped by/overlapping the
+// curve. R/2 keeps comfortable margin under that same inequality on every platform
+// (for R=24 elsewhere it lands the button's center exactly on the arc's own center)
+// while scaling automatically instead of needing a per-platform magic number.
 .status-help-btn {
-  position: absolute; bottom: 12px; right: 12px;
+  position: absolute; bottom: calc(var(--sheet-radius-bottom) / 2); right: calc(var(--sheet-radius-bottom) / 2);
   width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--line); color: var(--ink-3);
