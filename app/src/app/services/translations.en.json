@@ -102,7 +102,8 @@
     "roomTypeSeg": "Room",
     "visibleToHousekeeper": "Visible to Housekeeper",
     "roomNoteTag": "Room",
-    "housekeeperTag": "Visible to Housekeeper"
+    "housekeeperTag": "Visible to Housekeeper",
+    "deleteNoteAria": "Delete note"
   },
   "guestDetail": {
     "title": "Guest details",
@@ -302,6 +303,7 @@
     "failedSave": "Failed to save",
     "failedChangeStatus": "Could not confirm the status change. Please refresh and try again.",
     "failedPostNote": "Failed to post note",
-    "scanInitError": "Error initializing document reader"
+    "scanInitError": "Error initializing document reader",
+    "failedDeleteNote": "Failed to delete note"
   }
 }

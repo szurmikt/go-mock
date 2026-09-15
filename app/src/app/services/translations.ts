@@ -122,6 +122,7 @@ export const TRANSLATIONS: TranslationMap = {
     visibleToHousekeeper: 'Visible to Housekeeper',
     roomNoteTag: 'Room',
     housekeeperTag: 'Visible to Housekeeper',
+    deleteNoteAria: 'Delete note',
   },
   guestDetail: {
     title: 'Guest details',
@@ -329,6 +330,7 @@ export const TRANSLATIONS: TranslationMap = {
     failedSave: 'Failed to save',
     failedChangeStatus: 'Could not confirm the status change. Please refresh and try again.',
     failedPostNote: 'Failed to post note',
+    failedDeleteNote: 'Failed to delete note',
     scanInitError: 'Error initializing document reader',
   },
 };

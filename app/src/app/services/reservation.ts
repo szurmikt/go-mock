@@ -416,6 +416,77 @@ export class ReservationService {
     return updated;
   }
 
+  /**
+   * Deletes a note via DELETE /reservations/comment ({ comment_id, type }) and, on
+   * success, removes it from the caller's own reservation (same "caller's current
+   * reservation is the merge base, _reservations is only a best-effort sync target"
+   * reasoning as postNote() — see that method's comment for why).
+   */
+  async deleteNote(
+    reservation: ReservationInterface,
+    note: ReservationNoteInterface,
+  ): Promise<ReservationInterface> {
+    const reservationCode = reservation.reservation_code;
+    const payload = { comment_id: note.comment_id, type: note.type };
+
+    let resp: ApiResponse<unknown>;
+    try {
+      resp = await firstValueFrom(
+        this.api.delete<ApiResponse<unknown>>('reservations/comment', payload),
+      );
+    } catch (e) {
+      this.reportNoteDeleteFailure(reservationCode, payload, null, e);
+      throw e;
+    }
+    if (!resp.success) {
+      this.reportNoteDeleteFailure(reservationCode, payload, resp.errors, null);
+      const err = new Error('Failed to delete note') as Error & { apiErrors?: unknown };
+      err.apiErrors = resp.errors;
+      throw err;
+    }
+
+    const updated: ReservationInterface = {
+      ...reservation,
+      notes: reservation.notes.filter(n => n.comment_id !== note.comment_id),
+    };
+    this._reservations.update(list =>
+      list.map(r => (r.reservation_code === reservationCode ? updated : r)),
+    );
+    return updated;
+  }
+
+  private reportNoteDeleteFailure(
+    reservationCode: string,
+    payload: unknown,
+    apiErrors: unknown,
+    exception: unknown,
+  ): void {
+    try {
+      const captureContext = {
+        tags: {
+          context: 'note_delete',
+          failure_kind: exception != null ? 'http_error' : 'api_rejected',
+        },
+        contexts: {
+          note_delete: {
+            reservation_code: reservationCode,
+            api_errors: safeJson(apiErrors).slice(0, 4000),
+          },
+        },
+      };
+      if (exception != null) {
+        Sentry.captureException(exception, captureContext);
+      } else {
+        Sentry.captureMessage('reservation note delete rejected by API', {
+          level: 'error',
+          ...captureContext,
+        });
+      }
+    } catch {
+      // Reporting must never mask or replace the original failure.
+    }
+  }
+
   private reportNotePostFailure(
     reservationCode: string,
     payload: unknown,

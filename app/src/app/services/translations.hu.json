@@ -102,7 +102,8 @@
     "roomTypeSeg": "Szoba",
     "visibleToHousekeeper": "Látható a takarítóknak is",
     "roomNoteTag": "Szoba",
-    "housekeeperTag": "Látható a takarítóknak is"
+    "housekeeperTag": "Látható a takarítóknak is",
+    "deleteNoteAria": "Jegyzet törlése"
   },
   "guestDetail": {
     "title": "Vendég adatai",
@@ -302,6 +303,7 @@
     "failedSave": "A mentés sikertelen",
     "failedChangeStatus": "Nem sikerült megerősíteni a státuszváltást. Frissítsen és próbálja újra.",
     "failedPostNote": "A jegyzet küldése sikertelen",
-    "scanInitError": "Hiba az okmányolvasó inicializálásakor"
+    "scanInitError": "Hiba az okmányolvasó inicializálásakor",
+    "failedDeleteNote": "A jegyzet törlése sikertelen"
   }
 }

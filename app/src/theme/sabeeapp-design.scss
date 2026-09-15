@@ -450,11 +450,41 @@ ion-refresher {
   font-weight: 600;
 }
 
-.note-row {
-  display: flex; gap: 12px; padding: 14px 0;
+// Swipe-to-delete wrapper — .note-delete-btn sits underneath (absolute, right-aligned),
+// .note-row sits on top and slides left via `transform` to reveal it. The divider lives
+// on the wrapper (not .note-row) so it stays put while the row content swipes over it.
+.note-swipe {
+  position: relative;
+  overflow: hidden;
   border-bottom: 1px solid var(--line);
+  touch-action: pan-y;
 
   &:last-child { border-bottom: none; }
+}
+
+.note-swipe-actions {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 76px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.note-delete-btn {
+  width: 44px; height: 44px; flex-shrink: 0;
+  border: none; border-radius: 999px;
+  background: var(--warn);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+
+  &:disabled { opacity: 0.55; }
+}
+
+.note-row {
+  display: flex; gap: 12px; padding: 14px 0;
+  background: var(--surface);
+  transition: transform 0.2s ease;
+
+  &--dragging { transition: none; }
 }
 
 .note-avatar {

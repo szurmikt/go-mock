@@ -10,7 +10,7 @@ import { OptionsService } from '../../services/options.service';
 import { PropertySettingsService } from '../../services/property-settings.service';
 import { LanguageService } from '../../services/language.service';
 import { AuthService } from '../../services/auth';
-import { ReservationInterface } from '../../models/reservation.interface';
+import { ReservationInterface, ReservationNoteInterface } from '../../models/reservation.interface';
 import { GuestInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { LocalizedTimePipe } from '../../pipes/localized-time.pipe';
@@ -113,6 +113,22 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   // openNotesSheet()/sendNote() have advanced the watermark).
   newNoteIds = signal<Set<number>>(new Set());
   readonly newNoteCount = computed(() => this.newNoteIds().size);
+
+  // Swipe-to-delete on a note row. `openNoteId` is the note currently snapped open
+  // (delete button revealed) — at most one at a time. `dragNoteId`/`dragOffsetPx`
+  // track a gesture in progress; the row bound to `dragNoteId` renders at
+  // `dragOffsetPx` live, everything else renders at 0 or -SWIPE_REVEAL_PX depending
+  // on whether it's `openNoteId`. `dragAxis` is decided on the first few pixels of
+  // movement so a vertical scroll inside the notes list is never hijacked.
+  private readonly SWIPE_REVEAL_PX = 76;
+  private readonly SWIPE_OPEN_THRESHOLD_PX = 38;
+  private dragStartX = 0;
+  private dragStartY = 0;
+  private dragAxis: 'horizontal' | 'vertical' | null = null;
+  dragNoteId = signal<number | null>(null);
+  dragOffsetPx = signal(0);
+  openNoteId = signal<number | null>(null);
+  deletingNoteId = signal<number | null>(null);
 
   @ViewChild('notesList') notesListRef?: ElementRef<HTMLDivElement>;
 
@@ -419,6 +435,8 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     // a note left mid-composition from a previous visit shouldn't resurface.
     this.noteType.set('reservation');
     this.housekeeperVisible.set(false);
+    this.openNoteId.set(null);
+    this.dragNoteId.set(null);
     const r = this.reservation();
     this.noteDates.set(r ? this.buildNoteDatePills(r) : []);
     // Advances the stored watermark for the *next* load — newNoteIds (this
@@ -435,6 +453,8 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     // the next full page load to clear the "N New Notes" row read as a bug
     // once seen live, not the intended behavior.
     this.newNoteIds.set(new Set());
+    this.openNoteId.set(null);
+    this.dragNoteId.set(null);
   }
 
   setNoteType(t: NoteType) {
@@ -515,5 +535,83 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   private scrollNotesToBottom() {
     const el = this.notesListRef?.nativeElement;
     if (el) el.scrollTop = el.scrollHeight;
+  }
+
+  // Live transform for a note row: mid-gesture it follows the finger, otherwise it's
+  // either snapped open (delete button revealed) or closed.
+  noteRowTransform(note: ReservationNoteInterface): string {
+    if (this.dragNoteId() === note.comment_id) {
+      return `translateX(${this.dragOffsetPx()}px)`;
+    }
+    return `translateX(${this.openNoteId() === note.comment_id ? -this.SWIPE_REVEAL_PX : 0}px)`;
+  }
+
+  onNoteTouchStart(e: TouchEvent, note: ReservationNoteInterface) {
+    if (this.deletingNoteId() !== null) return;
+    const t = e.touches[0];
+    this.dragStartX = t.clientX;
+    this.dragStartY = t.clientY;
+    this.dragAxis = null;
+    this.dragNoteId.set(note.comment_id);
+    // Start from wherever the row already sits (open or closed) so re-swiping an
+    // already-open row to close it tracks the finger continuously.
+    this.dragOffsetPx.set(this.openNoteId() === note.comment_id ? -this.SWIPE_REVEAL_PX : 0);
+  }
+
+  onNoteTouchMove(e: TouchEvent) {
+    const id = this.dragNoteId();
+    if (id === null) return;
+    const t = e.touches[0];
+    const dx = t.clientX - this.dragStartX;
+    const dy = t.clientY - this.dragStartY;
+    if (this.dragAxis === null) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      this.dragAxis = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+      if (this.dragAxis === 'vertical') {
+        // A vertical drag is a list scroll, not a swipe — stop tracking and let the
+        // browser handle it natively (no preventDefault was ever called).
+        this.dragNoteId.set(null);
+        return;
+      }
+    }
+    if (this.dragAxis !== 'horizontal') return;
+    e.preventDefault();
+    const base = this.openNoteId() === id ? -this.SWIPE_REVEAL_PX : 0;
+    const offset = Math.min(0, Math.max(-this.SWIPE_REVEAL_PX - 16, base + dx));
+    this.dragOffsetPx.set(offset);
+  }
+
+  onNoteTouchEnd(_e: TouchEvent, note: ReservationNoteInterface) {
+    if (this.dragNoteId() !== note.comment_id) return;
+    const offset = this.dragOffsetPx();
+    this.dragNoteId.set(null);
+    if (offset <= -this.SWIPE_OPEN_THRESHOLD_PX) {
+      this.openNoteId.set(note.comment_id);
+    } else if (this.openNoteId() === note.comment_id) {
+      this.openNoteId.set(null);
+    }
+  }
+
+  // Tapping a row (open or not) dismisses whichever row is currently swiped open —
+  // this only fires on a genuine tap (a drag that moved the row never produces a
+  // click), so it never fights the gesture handlers above.
+  closeSwipe() {
+    if (this.openNoteId() !== null) this.openNoteId.set(null);
+  }
+
+  async deleteNote(note: ReservationNoteInterface) {
+    const current = this.reservation();
+    if (!current || this.deletingNoteId() !== null) return;
+    this.deletingNoteId.set(note.comment_id);
+    this.noteError.set(null);
+    try {
+      const updated = await this.res.deleteNote(current, note);
+      this.reservation.set(updated);
+      if (this.openNoteId() === note.comment_id) this.openNoteId.set(null);
+    } catch (e: any) {
+      this.noteError.set(e?.message ?? this.lang.t('errors.failedDeleteNote'));
+    } finally {
+      this.deletingNoteId.set(null);
+    }
   }
 }
