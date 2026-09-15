@@ -94,10 +94,15 @@
     "revertConfirmTitle": "Visszavonja a kijelentkezést?",
     "revertConfirmMessage": "Ez a vendég már ki van jelentkeztetve. A visszaállítás törli a kijelentkezés rögzítését — biztosan folytatja?",
     "revertConfirmButton": "Visszaállítás",
-    "comments": "Megjegyzések",
-    "commentsEmpty": "Még nincsenek megjegyzések",
-    "commentsPlaceholder": "Írjon megjegyzést…",
-    "newComments": "{{n}} új megjegyzés"
+    "notes": "Jegyzetek",
+    "notesEmpty": "Még nincsenek jegyzetek",
+    "notesPlaceholder": "Írjon jegyzetet…",
+    "newNotes": "{{n}} új jegyzet",
+    "reservationTypeSeg": "Foglalás",
+    "roomTypeSeg": "Szoba",
+    "visibleToHousekeeper": "Látható a takarítóknak is",
+    "roomNoteTag": "Szoba",
+    "housekeeperTag": "Látható a takarítóknak is"
   },
   "guestDetail": {
     "title": "Vendég adatai",
@@ -296,7 +301,7 @@
     "failedLoadGuest": "A vendég betöltése sikertelen",
     "failedSave": "A mentés sikertelen",
     "failedChangeStatus": "Nem sikerült megerősíteni a státuszváltást. Frissítsen és próbálja újra.",
-    "failedPostComment": "A megjegyzés küldése sikertelen",
+    "failedPostNote": "A jegyzet küldése sikertelen",
     "scanInitError": "Hiba az okmányolvasó inicializálásakor"
   }
 }

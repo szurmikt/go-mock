@@ -18,7 +18,7 @@ export interface ReservationInterface {
   number_of_guests: number;
   nights: number;
   open_in_pms: boolean;
-  comments: ReservationCommentInterface[];
+  notes: ReservationNoteInterface[];
 }
 
 export interface BookerInterface {
@@ -28,11 +28,13 @@ export interface BookerInterface {
   email: string;
 }
 
-export interface ReservationCommentInterface {
+export interface ReservationNoteInterface {
   comment_id: number;
   type: 'reservation' | 'room';
   comment: string;
   comment_date: string | null;
+  // Only meaningful for type 'room' — the date(s) within the stay the note applies to.
+  comment_dates: string[] | null;
   created_datetime: string;
   user: string;
   show_for_housekeeper: boolean;

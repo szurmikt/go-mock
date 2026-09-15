@@ -77,24 +77,68 @@ esac
 echo "▸ Channel:      $CHANNEL"
 echo "▸ Native floor: android >= $ANDROID_MIN, ios >= $IOS_MIN"
 
+GIT_REF=$(git rev-parse --short HEAD)
+
 # Guard against accidentally skipping the dev-test step. This script always rebuilds `www` from
 # the current working tree, so publishing straight to early/prod ships whatever the tree looks
 # like right now — untested. The intended path for anything that should reach real users is:
 # push to dev, test it, then `npm run promote:liveupdate <bundle-id> <channel>`, which attaches
 # that exact already-tested build with no rebuild. This has been skipped by mistake before.
+#
+# Enforced mechanically, not just by a warning a human (or an agent) can type through: for
+# early/prod, this HARD-BLOCKS unless the exact current commit (GIT_REF) was already uploaded to
+# `dev` at some point — checked against Capawesome's own build records (each dev upload is tagged
+# --custom-property "git_ref=<sha>", set below), not against local state, so this can't be spoofed
+# by e.g. deleting and re-running publish:liveupdate dev without actually testing.
 if [ "$CHANNEL" != "dev" ]; then
-  echo ""
-  echo "⚠️  Publishing directly to '$CHANNEL' — this skips dev testing."
-  echo "   This rebuilds from your CURRENT working tree and uploads a brand-new bundle;"
-  echo "   it will not be the same bytes as anything already verified on dev."
-  echo "   If you meant to ship something already tested on dev, Ctrl-C and run instead:"
-  echo "     npm run promote:liveupdate <bundle-id> $CHANNEL"
-  echo ""
-  read -r -p "  Type '$CHANNEL' to confirm publishing untested code directly: " CONFIRM_CHANNEL
-  if [ "$CONFIRM_CHANNEL" != "$CHANNEL" ]; then
-    echo "Aborted."
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "✗ This script needs 'jq' (brew install jq) to verify the commit was dev-tested."
     exit 1
   fi
+
+  # A dirty tree means `git rev-parse HEAD` names a commit that ISN'T what's about to be built —
+  # the dev-tested check below would then compare the wrong ref and could pass by coincidence.
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "✗ Uncommitted changes present — refusing to publish to '$CHANNEL'."
+    echo "  Commit (or stash) first, so the dev-tested check below verifies the actual commit"
+    echo "  about to be built, not a different, dirtier version of it."
+    exit 1
+  fi
+
+  echo "▸ Checking whether commit $GIT_REF was already published to 'dev'..."
+  DEV_CHANNEL_ID=$(npx @capawesome/cli apps:channels:list --app-id "$APP_ID" --json \
+    | jq -r '.[] | select(.nameLower == "dev") | .id')
+  if [ -z "$DEV_CHANNEL_ID" ]; then
+    echo "✗ Could not resolve the 'dev' channel id — refusing to publish without the safety check."
+    exit 1
+  fi
+
+  DEV_MATCH=$(npx @capawesome/cli apps:builds:list --app-id "$APP_ID" --platform web --limit 200 --json \
+    | jq -r --arg ref "$GIT_REF" --arg ch "$DEV_CHANNEL_ID" \
+      '[.[] | select(.appChannelId == $ch and .customProperties.git_ref == $ref)][0]')
+
+  if [ "$DEV_MATCH" = "null" ] || [ -z "$DEV_MATCH" ]; then
+    echo ""
+    echo "✗ Commit $GIT_REF has not been published to 'dev' yet — refusing to publish to '$CHANNEL'."
+    echo "  Run this first, then test on a real device:"
+    echo "    npm run publish:liveupdate dev"
+    echo "  Once verified, promote that EXACT tested build (no rebuild) with:"
+    echo "    npm run promote:liveupdate <bundle-id> $CHANNEL"
+    exit 1
+  fi
+
+  DEV_BUNDLE_ID=$(echo "$DEV_MATCH" | jq -r '.appBuildArtifactId')
+  DEV_BUILD_NUM=$(echo "$DEV_MATCH" | jq -r '.numberAsString')
+  echo "✓ Commit $GIT_REF was already published to 'dev' as build #$DEV_BUILD_NUM (bundle $DEV_BUNDLE_ID)."
+  echo ""
+  echo "  Prefer promoting that exact tested build instead of rebuilding here — guarantees identical bytes:"
+  echo "    npm run promote:liveupdate $DEV_BUNDLE_ID $CHANNEL"
+  echo ""
+  read -r -p "  Rebuild from this same commit and publish directly to '$CHANNEL' anyway? [y/N] " CONFIRM_CHANNEL
+  case "$CONFIRM_CHANNEL" in
+    y|Y) ;;
+    *) echo "Aborted."; exit 1 ;;
+  esac
 fi
 
 # --- build ---
@@ -103,8 +147,6 @@ echo "▸ Building web..."
 npx ng build --configuration production --progress false 2>&1 | tail -3
 
 # --- upload (isolated: swap this block alone to move to self-hosted bundles) ---
-
-GIT_REF=$(git rev-parse --short HEAD)
 
 # --git-ref is validated against a linked repo in the Capawesome Cloud console (Settings > Git),
 # which this app doesn't have configured — it rejects the upload with "App does not have a git

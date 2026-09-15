@@ -6,7 +6,7 @@ import { ApiService } from './api';
 import { LanguageService } from './language.service';
 import { PropertyConfigService } from './property-config.service';
 import { ApiResponse } from '../models/auth.interfaces';
-import { ReservationInterface, ReservationCommentInterface } from '../models/reservation.interface';
+import { ReservationInterface, ReservationNoteInterface } from '../models/reservation.interface';
 import { GuestInterface } from '../models/guest.interface';
 import { nowAsApiTimestamp } from '../utils/date';
 
@@ -337,53 +337,77 @@ export class ReservationService {
   }
 
   /**
-   * Posts a new reservation-level comment via PUT /reservations/comment. Unlike
-   * changeStatus(), the create response never echoes the created comment back
+   * Posts a new reservation- or room-level note via PUT /reservations/comment. Unlike
+   * changeStatus(), the create response never echoes the created note back
    * (`data: []`), and per product decision there's no need to verify the write
-   * landed with a re-fetch — so on success the new comment is appended locally,
+   * landed with a re-fetch — so on success the new note is appended locally,
    * built from what the caller already knows (the text, the logged-in user's
    * display name) plus a real "now" timestamp (via nowAsApiTimestamp()) so it
    * renders through the same provider-timezone pipes as a server-provided one.
    * `authorName` is passed in by the caller rather than injecting AuthService
    * here, since auth.ts already imports ReservationService (would be circular).
+   *
+   * `show_for_housekeeper` is only meaningful (and only sent) for a 'reservation'
+   * note; `comment_dates` is only meaningful (and only sent) for a 'room' note —
+   * mirrors the API contract, which documents each field as scoped to one type.
    */
   //
   // Takes the caller's own current `reservation` (not looked up from `_reservations`)
   // as the base to append onto — `_reservations` is the Home arrivals list cache, built
   // from GET /reservations (a bulk, date-ranged endpoint with no nested `comments` field),
-  // so its copy of any given reservation's `comments` is always `[]`/stale. Merging onto
+  // so its copy of any given reservation's `notes` is always `[]`/stale. Merging onto
   // that cache instead of the caller's fully-loaded reservation (from fetchDetail(), which
-  // does return real comments) was an earlier bug: every post silently replaced the whole
-  // comment history with just the comments added from this device.
-  async postComment(reservation: ReservationInterface, comment: string, authorName: string): Promise<ReservationInterface> {
+  // does return real notes) was an earlier bug: every post silently replaced the whole
+  // note history with just the notes added from this device.
+  async postNote(
+    reservation: ReservationInterface,
+    params: {
+      type: 'reservation' | 'room';
+      comment: string;
+      showForHousekeeper?: boolean;
+      commentDates?: string[];
+    },
+    authorName: string,
+  ): Promise<ReservationInterface> {
     const reservationCode = reservation.reservation_code;
-    const payload = { reservation_code: reservationCode, type: 'reservation' as const, comment, show_for_housekeeper: false };
+    const payload: Record<string, unknown> = {
+      reservation_code: reservationCode,
+      type: params.type,
+      comment: params.comment,
+    };
+    if (params.type === 'reservation') {
+      payload['show_for_housekeeper'] = params.showForHousekeeper ?? false;
+    } else {
+      payload['comment_dates'] = params.commentDates ?? [];
+    }
+
     let resp: ApiResponse<unknown>;
     try {
       resp = await firstValueFrom(
         this.api.put<ApiResponse<unknown>>('reservations/comment', payload),
       );
     } catch (e) {
-      this.reportCommentPostFailure(reservationCode, payload, null, e);
+      this.reportNotePostFailure(reservationCode, payload, null, e);
       throw e;
     }
     if (!resp.success) {
-      this.reportCommentPostFailure(reservationCode, payload, resp.errors, null);
-      const err = new Error('Failed to post comment') as Error & { apiErrors?: unknown };
+      this.reportNotePostFailure(reservationCode, payload, resp.errors, null);
+      const err = new Error('Failed to post note') as Error & { apiErrors?: unknown };
       err.apiErrors = resp.errors;
       throw err;
     }
 
-    const newComment: ReservationCommentInterface = {
+    const newNote: ReservationNoteInterface = {
       comment_id: -Date.now(),
-      type: 'reservation',
-      comment,
+      type: params.type,
+      comment: params.comment,
       comment_date: null,
+      comment_dates: params.type === 'room' ? (params.commentDates ?? []) : null,
       created_datetime: nowAsApiTimestamp(),
       user: authorName,
-      show_for_housekeeper: false,
+      show_for_housekeeper: params.type === 'reservation' ? (params.showForHousekeeper ?? false) : false,
     };
-    const updated: ReservationInterface = { ...reservation, comments: [...reservation.comments, newComment] };
+    const updated: ReservationInterface = { ...reservation, notes: [...reservation.notes, newNote] };
     // Best-effort sync of the Home list cache, if this reservation happens to be in it —
     // never the source of truth for the merge above.
     this._reservations.update(list =>
@@ -392,7 +416,7 @@ export class ReservationService {
     return updated;
   }
 
-  private reportCommentPostFailure(
+  private reportNotePostFailure(
     reservationCode: string,
     payload: unknown,
     apiErrors: unknown,
@@ -401,11 +425,11 @@ export class ReservationService {
     try {
       const captureContext = {
         tags: {
-          context: 'comment_post',
+          context: 'note_post',
           failure_kind: exception != null ? 'http_error' : 'api_rejected',
         },
         contexts: {
-          comment_post: {
+          note_post: {
             reservation_code: reservationCode,
             api_errors: safeJson(apiErrors).slice(0, 4000),
           },
@@ -414,7 +438,7 @@ export class ReservationService {
       if (exception != null) {
         Sentry.captureException(exception, captureContext);
       } else {
-        Sentry.captureMessage('reservation comment post rejected by API', {
+        Sentry.captureMessage('reservation note post rejected by API', {
           level: 'error',
           ...captureContext,
         });
@@ -530,20 +554,22 @@ export class ReservationService {
       number_of_guests: r.number_of_guests ?? 0,
       nights,
       open_in_pms: r.open_in_pms === true,
-      comments: this.convertComments(r.comments),
+      notes: this.convertNotes(r.comments),
     };
   }
 
-  // `comments` is `null` on a reservation with none. Sorted ascending by
-  // created_datetime as a defensive measure — don't assume server order.
-  private convertComments(comments: any): ReservationCommentInterface[] {
+  // `comments` (the API's field name) is `null` on a reservation with none.
+  // Sorted ascending by created_datetime as a defensive measure — don't assume
+  // server order.
+  private convertNotes(comments: any): ReservationNoteInterface[] {
     if (!Array.isArray(comments)) return [];
     return comments
-      .map((c: any): ReservationCommentInterface => ({
+      .map((c: any): ReservationNoteInterface => ({
         comment_id: c.comment_id,
         type: c.type === 'room' ? 'room' : 'reservation',
         comment: c.comment ?? '',
         comment_date: c.comment_date ?? null,
+        comment_dates: Array.isArray(c.comment_dates) ? c.comment_dates : null,
         created_datetime: c.created_datetime ?? '',
         user: c.user ?? '',
         show_for_housekeeper: c.show_for_housekeeper === true,

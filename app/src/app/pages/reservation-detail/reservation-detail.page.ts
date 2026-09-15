@@ -16,7 +16,15 @@ import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { LocalizedTimePipe } from '../../pipes/localized-time.pipe';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { parseApiInstant } from '../../utils/date';
-import { getCommentsLastSeen, markCommentsSeen } from '../../utils/comments-seen.util';
+import { getNotesLastSeen, markNotesSeen } from '../../utils/notes-seen.util';
+
+type NoteType = 'reservation' | 'room';
+
+interface NoteDatePill {
+  date: string;
+  label: string;
+  selected: boolean;
+}
 
 @Component({
   selector: 'app-reservation-detail',
@@ -69,22 +77,44 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   // flight — the existing spinner condition below only ever covered the "next" row.
   revertingIndex = signal<number | null>(null);
 
-  // Comments sheet
-  commentsSheetOpen = signal(false);
-  commentDraft = signal('');
-  postingComment = signal(false);
-  commentError = signal<string | null>(null);
+  // Notes sheet
+  notesSheetOpen = signal(false);
+  noteDraft = signal('');
+  postingNote = signal(false);
+  noteError = signal<string | null>(null);
+
+  // Which kind of note the composer is currently building — Reservation or Room.
+  // Scoped only to the note being typed (per the approved "1b" design) — the list
+  // of existing notes above is never filtered by this.
+  noteType = signal<NoteType>('reservation');
+  // Only meaningful (and only sent) when noteType() === 'reservation'.
+  housekeeperVisible = signal(false);
+  // Only meaningful (and only sent) when noteType() === 'room' — one pill per
+  // calendar date of the stay (arrival_date..departure_date inclusive), none
+  // selected by default (staff pick the specific date(s) the note applies to).
+  // Rebuilt every time the sheet opens.
+  noteDates = signal<NoteDatePill[]>([]);
+  readonly canSendNote = computed(() => {
+    if (!this.noteDraft().trim() || this.postingNote()) return false;
+    if (this.noteType() === 'room') return this.noteDates().some(d => d.selected);
+    return true;
+  });
+
+  readonly noteTypes: { key: NoteType; labelKey: string }[] = [
+    { key: 'reservation', labelKey: 'reservationDetail.reservationTypeSeg' },
+    { key: 'room', labelKey: 'reservationDetail.roomTypeSeg' },
+  ];
 
   // Snapshotted once per data load (initial fetch / pull-to-refresh), against the
   // per-user/per-reservation/per-device "last seen" watermark in localStorage —
-  // NOT recomputed when the sheet opens/closes, so a comment stays flagged "new"
+  // NOT recomputed when the sheet opens/closes, so a note stays flagged "new"
   // for the rest of this page visit even after being viewed (matches "next time
   // the reservation is opened" — the row/dots clear on the *next* load, once
-  // openCommentsSheet()/sendComment() have advanced the watermark).
-  newCommentIds = signal<Set<number>>(new Set());
-  readonly newCommentCount = computed(() => this.newCommentIds().size);
+  // openNotesSheet()/sendNote() have advanced the watermark).
+  newNoteIds = signal<Set<number>>(new Set());
+  readonly newNoteCount = computed(() => this.newNoteIds().size);
 
-  @ViewChild('commentsList') commentsListRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('notesList') notesListRef?: ElementRef<HTMLDivElement>;
 
   // -1 when the current status isn't one of the 4 flow steps (e.g. cancelled/noshow) —
   // Change Status is hidden entirely in that case (both the FAB item and the pill tap).
@@ -146,7 +176,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
       ]);
       this.reservation.set(detail);
       this.guests.set(guests);
-      this.recomputeNewComments(detail);
+      this.recomputeNewNotes(detail);
     } catch (e: any) {
       if (firstLoad) this.error.set(e.message ?? this.lang.t('errors.failedLoadReservation'));
     } finally {
@@ -165,21 +195,21 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
       ]);
       this.reservation.set(detail);
       this.guests.set(guests);
-      this.recomputeNewComments(detail);
+      this.recomputeNewNotes(detail);
     } catch { /* keep existing data */ }
     (event.target as HTMLIonRefresherElement).complete();
   }
 
-  // First-ever view (no stored watermark) flags every existing comment as new —
+  // First-ever view (no stored watermark) flags every existing note as new —
   // deliberate, per product decision, rather than special-casing a quiet first load.
-  private recomputeNewComments(r: ReservationInterface) {
-    const lastSeen = getCommentsLastSeen(this.auth.userId(), r.reservation_code);
+  private recomputeNewNotes(r: ReservationInterface) {
+    const lastSeen = getNotesLastSeen(this.auth.userId(), r.reservation_code);
     const ids = new Set(
-      r.comments
+      r.notes
         .filter(c => lastSeen == null || parseApiInstant(c.created_datetime) > lastSeen)
         .map(c => c.comment_id),
     );
-    this.newCommentIds.set(ids);
+    this.newNoteIds.set(ids);
   }
 
   back() {
@@ -381,24 +411,63 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     }
   }
 
-  openCommentsSheet() {
+  openNotesSheet() {
     this.menuOpen.set(false);
-    this.commentError.set(null);
-    this.commentsSheetOpen.set(true);
-    // Advances the stored watermark for the *next* load — newCommentIds (this
+    this.noteError.set(null);
+    this.notesSheetOpen.set(true);
+    // Reset the composer to its default state every time the sheet opens —
+    // a note left mid-composition from a previous visit shouldn't resurface.
+    this.noteType.set('reservation');
+    this.housekeeperVisible.set(false);
+    const r = this.reservation();
+    this.noteDates.set(r ? this.buildNoteDatePills(r) : []);
+    // Advances the stored watermark for the *next* load — newNoteIds (this
     // viewing's dots/count) is left untouched so they stay visible while the
     // sheet is open, per the timing decision above.
-    markCommentsSeen(this.auth.userId(), this.reservationCode);
-    setTimeout(() => this.scrollCommentsToBottom(), 0);
+    markNotesSeen(this.auth.userId(), this.reservationCode);
+    setTimeout(() => this.scrollNotesToBottom(), 0);
   }
 
-  closeCommentsSheet() {
-    this.commentsSheetOpen.set(false);
+  closeNotesSheet() {
+    this.notesSheetOpen.set(false);
     // Dots/count stay visible while the sheet is open (so a viewer can see what
     // was new during this look), but clear immediately on close — waiting for
-    // the next full page load to clear the "N New Comments" row read as a bug
+    // the next full page load to clear the "N New Notes" row read as a bug
     // once seen live, not the intended behavior.
-    this.newCommentIds.set(new Set());
+    this.newNoteIds.set(new Set());
+  }
+
+  setNoteType(t: NoteType) {
+    this.noteType.set(t);
+  }
+
+  toggleHousekeeper() {
+    this.housekeeperVisible.update(v => !v);
+  }
+
+  toggleNoteDate(date: string) {
+    this.noteDates.update(dates => dates.map(d => (d.date === date ? { ...d, selected: !d.selected } : d)));
+  }
+
+  // One pill per calendar date of the stay, arrival_date..departure_date inclusive,
+  // none selected by default. Built from the plain "YYYY-MM-DD" calendar strings via
+  // Date.UTC (never a local-timezone Date) so the range can't drift by a day for
+  // anyone west of UTC — same convention as ReservationService's own date parsing.
+  private buildNoteDatePills(r: ReservationInterface): NoteDatePill[] {
+    const [ay, am, ad] = r.arrival_date.split('-').map(Number);
+    const [dy, dm, dd] = r.departure_date.split('-').map(Number);
+    if (!ay || !dy) return [];
+    const start = Date.UTC(ay, am - 1, ad);
+    const end = Date.UTC(dy, dm - 1, dd);
+    if (end < start) return [];
+    const pills: NoteDatePill[] = [];
+    for (let t = start; t <= end; t += 86_400_000) {
+      const d = new Date(t);
+      const date = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+      const label = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+      pills.push({ date, label, selected: false });
+    }
+    return pills;
   }
 
   initials(name: string): string {
@@ -411,31 +480,40 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
       .toUpperCase();
   }
 
-  async sendComment() {
+  async sendNote() {
     const current = this.reservation();
-    const text = this.commentDraft().trim();
-    if (!current || !text || this.postingComment()) return;
-    this.postingComment.set(true);
-    this.commentError.set(null);
+    if (!current || !this.canSendNote()) return;
+    const type = this.noteType();
+    this.postingNote.set(true);
+    this.noteError.set(null);
     try {
-      const updated = await this.res.postComment(current, text, this.auth.name());
+      const updated = await this.res.postNote(
+        current,
+        {
+          type,
+          comment: this.noteDraft().trim(),
+          showForHousekeeper: type === 'reservation' ? this.housekeeperVisible() : undefined,
+          commentDates: type === 'room' ? this.noteDates().filter(d => d.selected).map(d => d.date) : undefined,
+        },
+        this.auth.name(),
+      );
       this.reservation.set(updated);
-      // Re-advance the watermark past this new comment's own timestamp — it was
-      // set to "now" when the sheet opened, which is earlier than a comment
-      // posted just afterwards, so without this the poster's own comment would
+      // Re-advance the watermark past this new note's own timestamp — it was
+      // set to "now" when the sheet opened, which is earlier than a note
+      // posted just afterwards, so without this the poster's own note would
       // show as unread to themselves next time.
-      markCommentsSeen(this.auth.userId(), this.reservationCode);
-      this.commentDraft.set('');
-      setTimeout(() => this.scrollCommentsToBottom(), 0);
+      markNotesSeen(this.auth.userId(), this.reservationCode);
+      this.noteDraft.set('');
+      setTimeout(() => this.scrollNotesToBottom(), 0);
     } catch (e: any) {
-      this.commentError.set(e?.message ?? this.lang.t('errors.failedPostComment'));
+      this.noteError.set(e?.message ?? this.lang.t('errors.failedPostNote'));
     } finally {
-      this.postingComment.set(false);
+      this.postingNote.set(false);
     }
   }
 
-  private scrollCommentsToBottom() {
-    const el = this.commentsListRef?.nativeElement;
+  private scrollNotesToBottom() {
+    const el = this.notesListRef?.nativeElement;
     if (el) el.scrollTop = el.scrollHeight;
   }
 }
