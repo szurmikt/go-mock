@@ -690,7 +690,7 @@ async ionViewWillEnter() {
 
 ### 2026-09-15 — Long-press revert on the Reservation Status timeline
 
-> Branch `add-status-revert`, off `implement-comments`. No build/version bump, no TestFlight upload — ships OTA.
+> Branch `add-status-revert`, off `implement-comments`. No build/version bump, no TestFlight upload. Published OTA to the `dev` channel (bundle `470b1af8-2e7b-4b90-8f0f-4764939c8b15`, git `84f2c8d`).
 
 Corrects a wrong status advance (or a status set too early by mistake) without leaving the app: long-pressing an earlier ("done") step in the Reservation Status sheet reverts the reservation back to it. Every earlier step is a valid target, not just one step back — from Onboard you can revert to either Confirmed or Check-in.
 
