@@ -266,7 +266,10 @@
              alone sits at the sheet's far-left edge, an awkward reach one-handed.
              Same pattern as .guest-card's scan-btn above: any button added inside a
              row later must (click)="$event.stopPropagation(); ..." or it will also
-             fire this row's advanceStatus(). -->
+             fire this row's advanceStatus(). Done rows have no click action — instead
+             a long-press (pointerdown held HOLD_MS) reverts the reservation back to
+             that step; startHold()/cancelHold() themselves no-op for the current/next
+             rows, so binding the pointer handlers on every row is harmless. -->
         @for (step of statusSteps; track step.key; let i = $index; let last = $last) {
           <div class="status-step"
                [class.done]="i < statusIndex()"
@@ -276,11 +279,21 @@
                [class.tap-anim]="i === statusIndex() + 1"
                [class.tappable]="i === statusIndex() + 1"
                [class.last]="last"
-               (click)="i === statusIndex() + 1 ? advanceStatus() : null">
+               (click)="i === statusIndex() + 1 ? advanceStatus() : null"
+               (pointerdown)="startHold(step, i)"
+               (pointerup)="cancelHold()"
+               (pointerleave)="cancelHold()"
+               (pointercancel)="cancelHold()">
             <div class="node-col">
-              <div class="icon-circle" [class.updating]="i === statusIndex() + 1 && statusUpdating()">
-                @if (i === statusIndex() + 1 && statusUpdating()) {
+              <div class="icon-circle" [class.updating]="isUpdatingRow(i)">
+                @if (isUpdatingRow(i)) {
                   <div class="status-spinner"></div>
+                } @else if (holdingIndex() === i) {
+                  <!-- Held row swaps to an undo glyph for the duration of the hold —
+                       reinforces "this is a revert," same idea as the label swap below. -->
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+                  </svg>
                 } @else {
                   <!-- Icons match the real PMS's "Status and timeline" widget
                        (calendar-account / login / home-import / logout, Material Design Icons). -->
@@ -309,15 +322,18 @@
                 }
               </div>
               @if (!last) {
-                <div class="connector"></div>
+                <div class="connector"
+                     [class.rewinding]="isRewinding(i)"
+                     [style.animation-duration.ms]="isRewinding(i) ? connectorDrainDuration(i) : null"
+                     [style.animation-delay.ms]="isRewinding(i) ? connectorDrainDelay(i) : null"></div>
               }
             </div>
             <div class="body">
               <div class="label-line">
-                <h4>{{ (i === statusIndex() + 1 && statusUpdating()) ? ('reservationDetail.updatingStatus' | tr) : (step.labelKey | tr) }}</h4>
+                <h4>{{ holdingIndex() === i ? holdLabel(step) : (isUpdatingRow(i) ? ('reservationDetail.updatingStatus' | tr) : (step.labelKey | tr)) }}</h4>
               </div>
               @if (i <= statusIndex()) {
-                <div class="ts">{{ stepTimestamp(step) | localizedDate:'dayMonth':propertySettings.timeZone() }} {{ stepTimestamp(step) | localizedTime:propertySettings.timeZone() }}</div>
+                <div class="ts" [class.ts-hidden]="isTimestampHidden(i)">{{ stepTimestamp(step) | localizedDate:'dayMonth':propertySettings.timeZone() }} {{ stepTimestamp(step) | localizedTime:propertySettings.timeZone() }}</div>
               }
             </div>
           </div>
@@ -328,6 +344,37 @@
         <p style="color: var(--warn); font-size: var(--font-sm); font-weight: 700; margin: -8px 0 0; text-align: center">
           {{ statusUpdateError() }}
         </p>
+      }
+
+      <!-- Inline help disclosure, toggled by the small corner button. Pinned to the
+           sheet's bottom-right corner (the timeline's rows never use the sheet's full
+           width, so there's always clear space beside the last row for it — no
+           dedicated row needed). Revealing the disclosure appends new content at the
+           end of the sheet; since the sheet is bottom-anchored (see .sheet-backdrop)
+           and sized to its content up to max-height, that growth visually pushes the
+           rest of the sheet up and carries the button down with it (still the
+           bottom-right corner of the now-taller sheet), with no explicit animation
+           needed. -->
+      <button class="status-help-btn" (click)="toggleHelp()" [attr.aria-expanded]="helpOpen()" [attr.aria-label]="'reservationDetail.statusHelpToggle' | tr">
+        @if (helpOpen()) {
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 15l6-6 6 6"/>
+          </svg>
+        } @else {
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+        }
+      </button>
+
+      @if (helpOpen()) {
+        <div class="status-help">
+          <div class="status-help__line"></div>
+          <p>{{ 'reservationDetail.statusHelpTap' | tr }}</p>
+          <p>{{ 'reservationDetail.statusHelpHold' | tr }}</p>
+        </div>
       }
     </div>
   </div>
@@ -351,6 +398,30 @@
       <div class="actions">
         <button class="btn secondary" (click)="checkoutConfirmOpen.set(false)">{{ 'common.cancel' | tr }}</button>
         <button class="btn" (click)="confirmCheckout()">{{ 'reservationDetail.checkoutConfirmButton' | tr }}</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Revert-away-from-Check-out guard — the one revert target that undoes a completed
+     stay; every other revert (from Check-in/Onboard) fires immediately on hold-completion. -->
+@if (revertConfirmOpen()) {
+  <div class="sheet-backdrop" (click)="cancelRevertConfirm()">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      <div class="head">
+        <h3>{{ 'reservationDetail.revertConfirmTitle' | tr }}</h3>
+        <button class="icon-btn" (click)="cancelRevertConfirm()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div style="margin-top: 16px; font-size: var(--font-base); color: var(--ink-2); line-height: 1.5">
+        {{ 'reservationDetail.revertConfirmMessage' | tr }}
+      </div>
+      <div class="actions">
+        <button class="btn secondary" (click)="cancelRevertConfirm()">{{ 'common.cancel' | tr }}</button>
+        <button class="btn" (click)="confirmRevert()">{{ 'reservationDetail.revertConfirmButton' | tr }}</button>
       </div>
     </div>
   </div>

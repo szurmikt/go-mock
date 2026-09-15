@@ -788,12 +788,20 @@ ion-refresher {
   .node-col { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 48px; }
 
   .icon-circle {
+    position: relative;
     width: 40px; height: 40px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; transition: transform 0.15s;
   }
 
   &.done .icon-circle, &.current .icon-circle { background: var(--primary); color: #fff; }
+
+  // Only .done (not .current) is a long-press-to-revert target — cursor + a subtle
+  // press-scale signal it's interactive, matching .next's own :active treatment below.
+  &.done .icon-circle {
+    cursor: pointer;
+    &:active { transform: scale(0.94); }
+  }
   // Upcoming steps beyond the next one — solid grey fill with a white icon
   // (matching the real PMS's own "Status and timeline" stepper coloring) —
   // only the next step (below) reads as reachable/tappable.
@@ -832,6 +840,18 @@ ion-refresher {
   // steps' icon circles already use.
   &.future .connector { background: var(--line-strong); }
 
+  // Long-press-to-revert "rewind": while holding an earlier step, every connector
+  // between it and the current status drains from blue to grey, showing the span of
+  // history about to be undone. animation-duration/-delay are set inline per element
+  // (ReservationDetailPage.connectorDrainDuration/Delay) so the whole span finishes
+  // draining in sequence, bottom (current) to top (target), exactly as the hold
+  // completes — only the animation-name/timing/fill-mode live here.
+  .connector.rewinding {
+    animation-name: connector-drain;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+
   .body { flex: 1; min-width: 0; padding-bottom: 22px; }
   &.last .body { padding-bottom: 0; }
 
@@ -845,6 +865,9 @@ ion-refresher {
   &.future:not(.next) .body h4 { color: var(--ink-4); font-weight: 400; font-size: var(--font-lg); }
 
   .body .ts { font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; margin-top: 2px; }
+  // visibility, not display — keeps the row's height (and so the sheet's) stable
+  // while a hold/revert is temporarily overriding the label above it.
+  .body .ts.ts-hidden { visibility: hidden; }
 }
 
 .status-spinner {
@@ -853,6 +876,40 @@ ion-refresher {
   border-radius: 50%; animation: status-spin 0.8s linear infinite;
 }
 @keyframes status-spin { to { transform: rotate(360deg); } }
+
+@keyframes connector-drain { to { background: var(--line-strong); } }
+
+// Small "how does this work" info toggle, pinned to the status sheet's bottom-right
+// corner. `.sheet` is `position: relative` already (see .sheet rules) — the
+// timeline's rows never reach the sheet's full width, so this always has clear
+// space beside the last row to sit in without a dedicated row/extra vertical space.
+// Swaps to a chevron (pointing at the disclosure it now closes) while open.
+.status-help-btn {
+  position: absolute; bottom: 12px; right: 12px;
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--line); color: var(--ink-3);
+  border: none; padding: 0; cursor: pointer;
+}
+
+// Revealed by the button above, appended at the end of the sheet's content — a plain
+// 1px divider then two short usage lines. No entrance animation of its own; growing
+// the sheet's content is what produces the "push up" effect (see the template comment).
+.status-help {
+  margin-top: 16px;
+
+  // Bleeds edge-to-edge past .sheet's own padding, same convention as .head's
+  // negative margins — a plain inset line reads as a scoped divider, not a full
+  // section break. (Not affected by the paragraphs' own padding-right below —
+  // that's scoped to them, not this container, so it can't eat into the bleed.)
+  &__line { height: 1px; background: var(--line); margin: 0 calc(var(--pad) * -1) 12px; }
+
+  // Clears the pinned corner button, which sits over this block's own bottom-right
+  // once open — the timeline rows are short enough to not need this, but these are
+  // full sentences and can run closer to the sheet's right edge.
+  p { margin: 0 0 6px; padding-right: 32px; font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; }
+  p:last-child { margin-bottom: 0; }
+}
 
 /* ─── Floating-label form fields ──────────────────────────── */
 

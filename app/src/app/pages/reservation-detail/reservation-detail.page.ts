@@ -4,7 +4,8 @@ import { TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
 import { ViewWillEnter } from '@ionic/angular';
-import { ReservationService, pillStatus, pillLabel, STATUS_STEPS, StatusStep } from '../../services/reservation';
+import { ReservationService, pillStatus, pillLabel, STATUS_STEPS, StatusStep, blankTimestampsAfter } from '../../services/reservation';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { OptionsService } from '../../services/options.service';
 import { PropertySettingsService } from '../../services/property-settings.service';
 import { LanguageService } from '../../services/language.service';
@@ -41,9 +42,32 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   statusSheetOpen = signal(false);
   statusUpdating = signal(false);
   statusUpdateError = signal<string | null>(null);
+  // Inline "how does this work" disclosure — toggled by the small info button pinned
+  // to the sheet's bottom-right corner. Reset on close so it never carries over open
+  // to the next time the sheet is opened.
+  helpOpen = signal(false);
 
   // Onboard → Check-out guard
   checkoutConfirmOpen = signal(false);
+
+  // Long-press-to-revert on an earlier ("done") timeline step. The hold-progress fill
+  // bar is only ever rendered while holdingIndex() matches a row's index — @if creates
+  // it fresh on pointerdown and destroys it on release/cancel, which is what gives an
+  // early release a full reset rather than a paused-partway bar (no separate "holding"
+  // class needed). HOLD_MS must stay in sync with the .hold-progress-fill animation
+  // duration in SCSS.
+  readonly HOLD_MS = 700;
+  private holdTimer: ReturnType<typeof setTimeout> | null = null;
+  holdingIndex = signal<number | null>(null);
+
+  // Confirm guard for reverting AWAY FROM Check-out (undoing a completed stay) — the one
+  // highest-stakes revert, mirroring the existing Onboard→Check-out forward guard above.
+  // Every other revert (from Check-in or Onboard) fires immediately on hold-completion.
+  revertConfirmOpen = signal(false);
+  revertConfirmTarget = signal<StatusStep | null>(null);
+  // Which row's icon shows the spinner while a revert's changeStatus() call is in
+  // flight — the existing spinner condition below only ever covered the "next" row.
+  revertingIndex = signal<number | null>(null);
 
   // Comments sheet
   commentsSheetOpen = signal(false);
@@ -205,10 +229,72 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   closeStatusSheet() {
     if (this.statusUpdating()) return;
     this.statusSheetOpen.set(false);
+    this.helpOpen.set(false);
+  }
+
+  toggleHelp() {
+    this.helpOpen.update(v => !v);
   }
 
   stepTimestamp(step: StatusStep): string {
     return this.reservation()?.[step.tsField] ?? '';
+  }
+
+  // The one row that shows the spinner + "Updating status…" while a change is in
+  // flight — the row being advanced-to (forward) or the row being reverted-to
+  // (revert). Only ever one row at a time: during a revert, statusIndex() (and so
+  // "the next row") still reflects the OLD status until the API call resolves, so
+  // without explicitly branching on revertingIndex() both the revert target AND the
+  // stale "next" row would show the spinner together.
+  isUpdatingRow(i: number): boolean {
+    if (!this.statusUpdating()) return false;
+    const rev = this.revertingIndex();
+    return rev !== null ? i === rev : i === this.statusIndex() + 1;
+  }
+
+  // Hides (visibility, not display) a row's own timestamp while its label is
+  // temporarily showing something else (the hold's "Reset to X" preview, or the
+  // in-flight "Updating status…") — showing a stale timestamp next to either read
+  // as confusing/contradictory. Visibility-only so the row keeps its normal height
+  // and the sheet doesn't visibly resize/jump as this toggles on and off.
+  isTimestampHidden(i: number): boolean {
+    return this.holdingIndex() === i || this.revertingIndex() === i;
+  }
+
+  // Row label while it's being held — replaces the plain step name with the actual
+  // consequence ("Reset to Reserved"), since a progress bar alone didn't tell anyone
+  // what letting go would do.
+  holdLabel(step: StatusStep): string {
+    return this.lang.t('reservationDetail.revertHoldLabel', { status: this.lang.t(step.labelKey) });
+  }
+
+  // True for every connector strictly between the held row and the current status —
+  // these "drain" from blue to grey during the hold, visualizing the span of history
+  // about to be undone. The held row's own connector is included; the current row's
+  // is not (nothing below the current status is ever affected).
+  isRewinding(i: number): boolean {
+    const h = this.holdingIndex();
+    return h !== null && i >= h && i < this.statusIndex();
+  }
+
+  // Connectors drain in sequence from the bottom (closest to the current status) up
+  // to the top (closest to the held target), each getting an equal share of HOLD_MS —
+  // so the whole span finishes draining exactly when the hold completes, reading as a
+  // single wave traveling backward through the reservation's history.
+  connectorDrainDuration(i: number): number {
+    const h = this.holdingIndex();
+    if (h === null) return this.HOLD_MS;
+    const count = this.statusIndex() - h;
+    return count > 0 ? this.HOLD_MS / count : this.HOLD_MS;
+  }
+
+  connectorDrainDelay(i: number): number {
+    const h = this.holdingIndex();
+    if (h === null) return 0;
+    const count = this.statusIndex() - h;
+    if (count <= 0) return 0;
+    const distanceFromBottom = this.statusIndex() - 1 - i;
+    return distanceFromBottom * (this.HOLD_MS / count);
   }
 
   // Every step-to-step advance proceeds immediately except one: check-out only
@@ -221,25 +307,77 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
       this.checkoutConfirmOpen.set(true);
       return;
     }
-    this.doAdvance(next);
+    this.doChangeStatus(next);
   }
 
   confirmCheckout() {
     this.checkoutConfirmOpen.set(false);
     const next = this.nextStep();
-    if (next) this.doAdvance(next);
+    if (next) this.doChangeStatus(next);
   }
 
-  private async doAdvance(next: StatusStep) {
+  // Long-press an earlier ("done") step to revert to it. Guarded to done rows only —
+  // the current row (i === statusIndex()) and the tappable next row are both excluded
+  // since reverting to either makes no sense (current: no-op; next: that's advanceStatus's job).
+  startHold(step: StatusStep, i: number) {
+    if (this.statusUpdating() || i >= this.statusIndex()) return;
+    this.cancelHold();
+    this.holdingIndex.set(i);
+    this.holdTimer = setTimeout(() => this.completeHold(step), this.HOLD_MS);
+  }
+
+  cancelHold() {
+    if (this.holdTimer) {
+      clearTimeout(this.holdTimer);
+      this.holdTimer = null;
+    }
+    this.holdingIndex.set(null);
+  }
+
+  private async completeHold(step: StatusStep) {
+    this.holdTimer = null;
+    this.holdingIndex.set(null);
+    try {
+      await Haptics.impact({ style: ImpactStyle.Medium });
+    } catch {
+      // Native-only; no-op on web/ionic serve.
+    }
+    if (this.reservation()?.status === 'checkedout') {
+      this.revertConfirmTarget.set(step);
+      this.revertConfirmOpen.set(true);
+      return;
+    }
+    this.doChangeStatus(step, true);
+  }
+
+  cancelRevertConfirm() {
+    this.revertConfirmOpen.set(false);
+    this.revertConfirmTarget.set(null);
+  }
+
+  confirmRevert() {
+    const target = this.revertConfirmTarget();
+    this.revertConfirmOpen.set(false);
+    this.revertConfirmTarget.set(null);
+    if (target) this.doChangeStatus(target, true);
+  }
+
+  private async doChangeStatus(target: StatusStep, isRevert = false) {
     this.statusUpdating.set(true);
     this.statusUpdateError.set(null);
+    const targetIndex = STATUS_STEPS.findIndex(s => s.key === target.key);
+    if (isRevert) this.revertingIndex.set(targetIndex);
     try {
-      const updated = await this.res.changeStatus(this.reservationCode, next.key);
+      let updated = await this.res.changeStatus(this.reservationCode, target.key);
+      if (isRevert) {
+        updated = blankTimestampsAfter(updated, targetIndex);
+      }
       this.reservation.set(updated);
     } catch (e: any) {
       this.statusUpdateError.set(e?.message ?? this.lang.t('errors.failedChangeStatus'));
     } finally {
       this.statusUpdating.set(false);
+      this.revertingIndex.set(null);
     }
   }
 

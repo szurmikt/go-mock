@@ -72,6 +72,20 @@ export const STATUS_STEPS: StatusStep[] = [
   { key: 'checkedout', labelKey: 'reservationDetail.statusCheckedOut', tsField: 'checked_out_time' },
 ];
 
+// After a manual status revert (long-press an earlier step in the timeline), the steps
+// now AHEAD of the reverted-to one must stop showing a timestamp — even though the API
+// is not expected to clear those fields on a backward transition, so changeStatus()'s
+// verify-by-refetch would otherwise keep returning them. In-memory only: a later fresh
+// fetch (app restart, a fresh fetchDetail) can surface the stale value again until the
+// guest genuinely reaches that step for real.
+export function blankTimestampsAfter(r: ReservationInterface, targetIndex: number): ReservationInterface {
+  const patch: Partial<ReservationInterface> = {};
+  STATUS_STEPS.forEach((step, i) => {
+    if (i > targetIndex) patch[step.tsField] = '';
+  });
+  return { ...r, ...patch };
+}
+
 @Injectable({ providedIn: 'root' })
 export class ReservationService {
   private api = inject(ApiService);
