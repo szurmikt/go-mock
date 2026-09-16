@@ -58,6 +58,15 @@ export class LiveUpdateService {
    */
   readonly bundleState = signal<BundleBootState>('native_web');
 
+  /**
+   * The rollback-fallback's candidate — the last bundle ready() actually confirmed healthy, kept
+   * in sync with the persisted record. Exposed (Settings shows it alongside currentBundleId) as
+   * ground truth for on-device debugging: this is exactly what the 2026-09-16 investigation
+   * needed and didn't have — the app's own bundle ID alone can't tell you whether it's running
+   * because it's genuinely confirmed, or because a stale/wrong value confirmed it circularly.
+   */
+  readonly lastHealthyBundleId = signal<string | null>(null);
+
   /** Resolved channel, for telemetry context. Defaults to the capacitor.config.ts fallback. */
   private channel: string = 'prod';
 
@@ -215,7 +224,22 @@ export class LiveUpdateService {
         channelHint,
       });
       this.bundleState.set(state);
+      this.lastHealthyBundleId.set(nextRecord.lastHealthyBundleId);
       await this.writeRecord(nextRecord);
+
+      // Always-on, not gated behind PropertyConfigService.extendedLogging — that flag isn't
+      // resolved until loadPropertyConfig() runs, well after this point in boot, so it can't see
+      // the moment that matters. Low-frequency (once per boot) and non-Issue-raising, same
+      // pattern as version_gate's diagnostic log in app-config.ts.
+      Sentry.logger.info('live_update boot reconciled', {
+        context: 'live_update_diagnostics',
+        state,
+        currentBundleId,
+        lastHealthyBundleId: nextRecord.lastHealthyBundleId,
+        fallbackAttemptedFor: nextRecord.fallbackAttemptedFor,
+        installedBundleId: nextRecord.installedBundleId,
+        stagedBundleId: nextRecord.stagedBundleId,
+      });
 
       if (await this.applyRollbackFallback(state, nextRecord)) {
         return true;
@@ -269,10 +293,23 @@ export class LiveUpdateService {
 
       if (!decision.apply) {
         this.mixpanel.trackBundleFallbackDeclined({ reason: decision.reason });
+        Sentry.logger.warn('live_update fallback declined', {
+          context: 'live_update_diagnostics',
+          reason: decision.reason,
+          lastHealthyBundleId: record.lastHealthyBundleId,
+          fallbackAttemptedFor: record.fallbackAttemptedFor,
+          downloadedBundleIds: downloaded.bundleIds,
+          blockedBundleIds: blocked.bundleIds,
+        });
         return false;
       }
 
       const { bundleId } = decision;
+      Sentry.logger.warn('live_update fallback applying', {
+        context: 'live_update_diagnostics',
+        bundleId,
+        downloadedBundleIds: downloaded.bundleIds,
+      });
 
       // The only durable record of this attempt — nothing downstream re-derives it the way the
       // plain rollback event gets recovered (see this method's doc above). Recorded before
@@ -314,15 +351,25 @@ export class LiveUpdateService {
    * this a bundle that has been running unchanged for weeks would still re-risk the whole OTA
    * chain on one network call, every single time it starts. A bundle cannot have broken while
    * sitting untouched on disk between launches.
+   *
+   * Passes fallbackAttemptedFor through deliberately — decideReadyGate excludes exactly the boot
+   * right after a forced fallback from this shortcut, so that boot always earns ready() for real.
    */
   async alreadyConfirmedHealthy(): Promise<boolean> {
     const record = await this.readRecord();
-    return (
-      decideReadyGate({
-        currentBundleId: this.currentBundleId(),
-        lastHealthyBundleId: record?.lastHealthyBundleId ?? null,
-      }) === 'confirm-immediately'
-    );
+    const gate = decideReadyGate({
+      currentBundleId: this.currentBundleId(),
+      lastHealthyBundleId: record?.lastHealthyBundleId ?? null,
+      fallbackAttemptedFor: record?.fallbackAttemptedFor ?? null,
+    });
+    Sentry.logger.info('live_update ready gate', {
+      context: 'live_update_diagnostics',
+      gate,
+      currentBundleId: this.currentBundleId(),
+      lastHealthyBundleId: record?.lastHealthyBundleId ?? null,
+      fallbackAttemptedFor: record?.fallbackAttemptedFor ?? null,
+    });
+    return gate === 'confirm-immediately';
   }
 
   /**
@@ -331,7 +378,14 @@ export class LiveUpdateService {
    * the bundle itself.
    */
   callReadyAfterProbe(reachedBackend: boolean): void {
-    const { ready } = decideReady({ reachedBackend, online: navigator.onLine });
+    const { ready, reason } = decideReady({ reachedBackend, online: navigator.onLine });
+    Sentry.logger.info('live_update probe result', {
+      context: 'live_update_diagnostics',
+      reachedBackend,
+      online: navigator.onLine,
+      ready,
+      reason,
+    });
     this.callReady(ready);
   }
 
@@ -385,6 +439,18 @@ export class LiveUpdateService {
         const { currentBundleId, previousBundleId, rollback } = await LiveUpdate.ready();
         this.currentBundleId.set(currentBundleId ?? NATIVE_BUNDLE);
 
+        // The single most diagnostic point in this whole flow — this is the plugin's own,
+        // authoritative view (rollbackPerformed + its own previousBundleId), independent of
+        // anything this app has reasoned about. `rollback` can legitimately be true here even for
+        // a healthy bundle right after a forced fallback — see markBundleHealthy's doc — so log
+        // the raw result rather than an interpretation of it.
+        Sentry.logger.info('live_update ready() resolved', {
+          context: 'live_update_diagnostics',
+          currentBundleId,
+          previousBundleId,
+          rollback,
+        });
+
         if (rollback) {
           this.mixpanel.trackBundleFailed({
             reason: 'rollback',
@@ -424,6 +490,7 @@ export class LiveUpdateService {
    */
   private async markBundleHealthy(bundleId: string): Promise<void> {
     const record = (await this.readRecord()) ?? emptyState('');
+    this.lastHealthyBundleId.set(bundleId);
     await this.writeRecord({
       ...record,
       lastHealthyBundleId: bundleId,

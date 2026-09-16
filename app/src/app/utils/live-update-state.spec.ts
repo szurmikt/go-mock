@@ -331,26 +331,38 @@ describe('keepSetFor', () => {
 describe('decideReadyGate', () => {
   it('confirms immediately when the running bundle already proved itself — the watchdog arms every launch, so re-proving a known-good bundle risks the whole chain on one network call for no reason', () => {
     expect(
-      decideReadyGate({ currentBundleId: 'b1', lastHealthyBundleId: 'b1' }),
+      decideReadyGate({ currentBundleId: 'b1', lastHealthyBundleId: 'b1', fallbackAttemptedFor: null }),
     ).toBe('confirm-immediately');
   });
 
   it('requires the probe on a first run of a new bundle', () => {
     expect(
-      decideReadyGate({ currentBundleId: 'b2', lastHealthyBundleId: 'b1' }),
+      decideReadyGate({ currentBundleId: 'b2', lastHealthyBundleId: 'b1', fallbackAttemptedFor: null }),
     ).toBe('probe-required');
   });
 
   it('requires the probe when nothing has ever been confirmed', () => {
     expect(
-      decideReadyGate({ currentBundleId: 'b1', lastHealthyBundleId: null }),
+      decideReadyGate({ currentBundleId: 'b1', lastHealthyBundleId: null, fallbackAttemptedFor: null }),
     ).toBe('probe-required');
   });
 
   it('requires the probe on native — there is nothing to have proved itself', () => {
     expect(
-      decideReadyGate({ currentBundleId: null, lastHealthyBundleId: 'b1' }),
+      decideReadyGate({ currentBundleId: null, lastHealthyBundleId: 'b1', fallbackAttemptedFor: null }),
     ).toBe('probe-required');
+  });
+
+  it('requires the probe on the boot right after a forced fallback, even though the candidate equals lastHealthyBundleId by construction — this is the closed-loop bug: without this exclusion, a candidate that was never actually reachable would confirm itself forever, since it IS lastHealthyBundleId precisely because it was chosen as the fallback target', () => {
+    expect(
+      decideReadyGate({ currentBundleId: 'b1', lastHealthyBundleId: 'b1', fallbackAttemptedFor: 'b1' }),
+    ).toBe('probe-required');
+  });
+
+  it('confirms immediately again once the marker is cleared for a DIFFERENT bundle — the exclusion is scoped to the exact fallback candidate, not a general veto', () => {
+    expect(
+      decideReadyGate({ currentBundleId: 'b1', lastHealthyBundleId: 'b1', fallbackAttemptedFor: 'b9' }),
+    ).toBe('confirm-immediately');
   });
 });
 

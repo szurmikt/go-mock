@@ -39,11 +39,15 @@ export class SettingsPage {
   // identifies the running code, so this is what a support call needs.
   private liveUpdate = inject(LiveUpdateService);
   bundleId = this.liveUpdate.currentBundleId;
+  // Ground truth for on-device debugging of the rollback-fallback: the running bundle alone
+  // can't tell you whether it's confirmed for real or just circularly matching a stale value —
+  // this is the field the 2026-09-16 investigation needed and didn't have visibility into.
+  lastHealthyBundleId = this.liveUpdate.lastHealthyBundleId;
   copied = signal(false);
 
   /** Copy the full version triple — that's what's useful when debugging a specific hotel. */
   async copyDiagnostics(): Promise<void> {
-    const text = `v${this.appVersion()} (${this.appBuild()}) · bundle ${this.bundleId()}`;
+    const text = `v${this.appVersion()} (${this.appBuild()}) · bundle ${this.bundleId()} · lastHealthy ${this.lastHealthyBundleId() ?? 'none'}`;
     try {
       await navigator.clipboard.writeText(text);
       this.copied.set(true);

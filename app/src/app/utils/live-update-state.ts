@@ -312,12 +312,29 @@ export type ReadyGateDecision = 'confirm-immediately' | 'probe-required';
  * bundle cannot have become broken while sitting untouched on disk between launches; only a
  * bundle running for the FIRST time (or one that was applied but never confirmed) needs to earn
  * its ready() over the network.
+ *
+ * ⚠️ `fallbackAttemptedFor` is checked and EXCLUDED from the immediate-confirm path, even when it
+ * equals `lastHealthyBundleId` — which it always does the boot right after a forced fallback (see
+ * decideRollbackFallback): that candidate IS `lastHealthyBundleId` by construction, which is
+ * exactly why it was chosen. Without this exclusion, the one boot that most needs genuine
+ * re-verification is precisely the one this gate would skip it for — a bundle that was ever
+ * force-applied without actually being reachable would confirm itself in a closed loop, immune to
+ * ever being re-checked again. Confirmed as a real failure mode on a real device (2026-09-16,
+ * property 9345): a stale candidate kept re-confirming itself across repeated fallbacks with no
+ * further verification, because this gate had no way to tell "proven" apart from "merely the
+ * thing we're currently hoping is fine." The marker only clears once LiveUpdateService.callReady()
+ * sees ready() genuinely succeed — so this boot, and only this one, must go through the real probe.
  */
 export function decideReadyGate(facts: {
   currentBundleId: string | null;
   lastHealthyBundleId: string | null;
+  fallbackAttemptedFor: string | null;
 }): ReadyGateDecision {
-  if (facts.currentBundleId && facts.currentBundleId === facts.lastHealthyBundleId) {
+  if (
+    facts.currentBundleId &&
+    facts.currentBundleId === facts.lastHealthyBundleId &&
+    facts.currentBundleId !== facts.fallbackAttemptedFor
+  ) {
     return 'confirm-immediately';
   }
   return 'probe-required';
