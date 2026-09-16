@@ -99,20 +99,29 @@ export class LiveUpdateService {
    *
    * Normalizes every field on every read (rather than trusting the stored shape), because a
    * record written before the lastHealthyBundleId rename/fallback fields were added has none of
-   * them — `previousBundleId` was the old name for lastHealthyBundleId, and the three new fields
-   * were simply absent. Safe to remove once the fleet has rewritten every record under the new
-   * shape at least once (any boot that reaches writeRecord() does that).
+   * them. Safe to remove once the fleet has rewritten every record under the new shape at least
+   * once (any boot that reaches writeRecord() does that).
+   *
+   * ⚠️ Deliberately does NOT backfill lastHealthyBundleId from the old `previousBundleId` field,
+   * even though that was this rename's source field. Confirmed as a real bug on a real device
+   * (2026-09-16, property 9345): `previousBundleId` was written positionally by the OLD rule (b)
+   * — "whatever bundle was installed right before this one" — regardless of whether ready() ever
+   * actually confirmed it healthy. That device had old, unrelated history in that field (a
+   * long-previous bundle from before this session's testing even began), and the very first
+   * rollback under the new code force-applied it via the fallback, landing on a stale, wrong
+   * bundle instead of the device's real last-confirmed one. A migrated record gets NO fallback
+   * candidate until this code itself confirms one via markBundleHealthy() — costs one ordinary
+   * probe on the first post-upgrade boot, in exchange for never risking a bundle that was never
+   * actually verified under the new invariant.
    */
   private async readRecord(): Promise<LiveUpdateState | null> {
-    const raw = await this.storage.get<
-      Partial<LiveUpdateState> & { previousBundleId?: string | null }
-    >(Config.STORAGE_LIVE_UPDATE_KEY);
+    const raw = await this.storage.get<Partial<LiveUpdateState>>(Config.STORAGE_LIVE_UPDATE_KEY);
     if (!raw) return null;
     return {
       versionCode: raw.versionCode ?? '',
       installedBundleId: raw.installedBundleId ?? null,
       installedBundleChannel: raw.installedBundleChannel ?? null,
-      lastHealthyBundleId: raw.lastHealthyBundleId ?? raw.previousBundleId ?? null,
+      lastHealthyBundleId: raw.lastHealthyBundleId ?? null,
       lastHealthyBundleChannel: raw.lastHealthyBundleChannel ?? null,
       lastResolvedChannel: raw.lastResolvedChannel ?? null,
       stagedBundleId: raw.stagedBundleId ?? null,
