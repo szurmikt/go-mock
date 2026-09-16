@@ -5,6 +5,7 @@ import { DETECTION_TUNING, DetectionTuning, TuningProfile } from '../capture-tun
 import { CaptureQuality } from '../models/capture-quality';
 import { OpenCvLoaderService } from './opencv-loader.service';
 import { LanguageService } from '../../services/language.service';
+import { BusyGuardService } from '../../services/busy-guard';
 
 export type DetectionStatus = 'idle' | 'searching' | 'aligned' | 'bad-light' | 'captured';
 
@@ -153,10 +154,20 @@ export class DocumentDetectionService {
   /** True while the hunt is actively rotating profiles — surfaced on the Scan page's message. */
   readonly huntActive = signal(false);
 
+  // Diagnostic-only state for the camera-start failure capture below (SABEEAPPGO-13) — not used
+  // by any detection logic. Tracks how long the page has been in its current visibility state and
+  // how long this scan session has been running, so a failure report says WHEN it happened
+  // relative to backgrounding, not just that it happened.
+  private lastVisibilityState: DocumentVisibilityState =
+    typeof document !== 'undefined' ? document.visibilityState : 'visible';
+  private lastVisibilityChangeAt = Date.now();
+  private sessionStartedAt = Date.now();
+
   constructor(
     private readonly cvLoader: OpenCvLoaderService,
     private readonly zone: NgZone,
     private readonly lang: LanguageService,
+    private readonly busyGuard: BusyGuardService,
   ) {
     // Surface otherwise-silent async failures to the on-screen log during debugging.
     if (typeof window !== 'undefined') {
@@ -167,10 +178,17 @@ export class DocumentDetectionService {
         this.pushLog(`WINDOW ERROR: ${e.message ?? e}`),
       );
     }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        this.lastVisibilityState = document.visibilityState;
+        this.lastVisibilityChangeAt = Date.now();
+      });
+    }
   }
 
   async start(opts: DetectionStartOptions): Promise<void> {
     this.opts = opts;
+    this.sessionStartedAt = Date.now();
     this.tuningProfiles = opts.tuningProfiles ?? [];
     // A new scan session always starts at the known-good default profile (index 0) — see
     // tuningProfiles' declaration for why this matters.
@@ -193,10 +211,20 @@ export class DocumentDetectionService {
       this.pushLog(`camera FAILED: ${description}`);
       // No prior Sentry visibility into IDScanly camera-start failures — this is exactly
       // the class of issue the WKWebView/getUserMedia reliability risk would surface as.
+      // Diagnostic fields below (SABEEAPPGO-13) exist to tell a backgrounding-related failure
+      // (page was hidden, or just returned from a long background) apart from anything else —
+      // the bare exception alone gave no way to distinguish these.
+      const now = Date.now();
       Sentry.captureException(error, {
         tags: {
           context: 'idscanly_camera_start',
           error_name: (error as { name?: string })?.name ?? 'unknown',
+          visibility_state: this.lastVisibilityState,
+        },
+        extra: {
+          ms_since_visibility_change: now - this.lastVisibilityChangeAt,
+          ms_since_scan_start: now - this.sessionStartedAt,
+          busy_guard_active: this.busyGuard.isBusy(),
         },
       });
       this.zone.run(() => opts.onError?.(description));

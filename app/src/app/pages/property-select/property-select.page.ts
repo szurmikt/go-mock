@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import * as Sentry from '@sentry/angular';
 import { IonContent, AlertController } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth';
 import { OptionsService } from '../../services/options.service';
@@ -60,6 +61,10 @@ export class PropertySelectPage implements OnInit {
       // The API excludes ineligible PIDs from this response entirely — an empty
       // list means the user has no Go-eligible property.
       if (properties.length === 0) {
+        Sentry.captureMessage('go_unavailable shown', {
+          level: 'warning',
+          tags: { reason: 'empty_properties' },
+        });
         await this.router.navigate(['/go-unavailable'], { replaceUrl: true });
         return;
       }

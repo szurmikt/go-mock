@@ -1,6 +1,7 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import * as Sentry from '@sentry/angular';
 import { Config } from '../config/config';
 import { StorageService } from './storage';
 import { ApiEnvironmentService } from './api-environment';
@@ -426,7 +427,18 @@ export class AuthService {
     const result = await this.fetchUser();
     this.identifyToMixpanel();
     if (!result.ok) return 'unverified';
-    if (!result.subscription.includes(GO_SUBSCRIPTION_MODULE)) return 'ineligible';
+    if (!result.subscription.includes(GO_SUBSCRIPTION_MODULE)) {
+      // /go-unavailable is about to render — capture why, so a report like "it worked
+      // yesterday, not today" is diagnosable from the actual /me response instead of
+      // guesswork. subscription is an entitlement-flag list, not PII, so it's safe to
+      // attach directly; nothing else from the /me response is read here.
+      Sentry.captureMessage('go_unavailable shown', {
+        level: 'warning',
+        tags: { reason: 'ineligible_subscription', property_id: String(property.property_id) },
+        extra: { subscription: result.subscription },
+      });
+      return 'ineligible';
+    }
     // Corrects the channel if this property's differs from the one the installed bundle came
     // from. Reload is safe here, unlike at boot or on a short resume: the session is already
     // persisted above, so a reload's fresh boot restores straight through to this same property

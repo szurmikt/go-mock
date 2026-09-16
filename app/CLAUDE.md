@@ -688,6 +688,22 @@ async ionViewWillEnter() {
 
 ## 19. Changelog
 
+### 2026-09-16 — Sentry visibility into why `/go-unavailable` fires + IDScanly camera-start failure diagnostics (SABEEAPPGO-13)
+
+> Branch `ota-rollback-fallback`. No native build/version bump, no TestFlight upload. Published OTA to the `dev` channel (bundle `72cf737a-164d-4935-a48c-364f38dd61ff`, git `f703b44` at publish time — committed after the fact, see below).
+
+**`/go-unavailable` had zero Sentry visibility.** Two independent user reports (properties reachable via accounts `office.immoreb@gmail.com` and one other) described the same symptom: the app let them in, showed today's arrivals, then a few seconds later showed "SabeeApp Go isn't available for you yet." Reading the code confirmed the screen only renders when the SabeeApp API answered successfully and said the account isn't entitled — `GET /properties` came back empty, or `GET /users/me`'s `subscription` array doesn't include `sabeeapp_go` — checked fresh on every cold boot with a restored session, every post-login property pick, and every in-app property switch. Nothing logged which of those three call sites fired, or what the actual API response was, so "it worked yesterday, not today" had no way to be diagnosed beyond guesswork.
+
+- **[services/auth.ts](src/app/services/auth.ts) `selectProperty()`** — the shared eligibility chokepoint for both the post-login pick and the in-app switcher — now fires `Sentry.captureMessage('go_unavailable shown', ...)` when the ineligible branch is hit, tagged with `reason: 'ineligible_subscription'` and `property_id`, with the real `subscription` array attached as `extra`. `subscription` is just a list of entitlement-flag strings (e.g. `sabeeapp_go`), not PII — no other field from `/users/me` is read here, so nothing sensitive is in scope to log by construction.
+- **[pages/property-select/property-select.page.ts](src/app/pages/property-select/property-select.page.ts) `loadProperties()`** — same message with `reason: 'empty_properties'` when `/properties` itself comes back empty (checked before a property is ever picked).
+- **[app.component.ts](src/app/app.component.ts)** boot-restore re-verification — the path that matches both reports (a restored session re-checked on cold launch) — logs the same message with `reason` set from whichever condition actually fired (`empty_properties` or `ineligible_subscription`), plus `properties_count` and the `subscription` array.
+- Deliberately scoped to `/go-unavailable` only, not `/service-unavailable` — that screen means the eligibility check itself failed (network/API error) and is a different, already-understood failure mode with its own Retry button.
+- Not scoped to any specific property — fires for any account/property that hits the ineligible branch, not just the two reported.
+
+**Also included in this publish, pre-existing uncommitted work from an earlier session (SABEEAPPGO-13 — IDScanly camera-start failures with no Sentry stack context):** [idscanly/services/document-detection.service.ts](src/app/idscanly/services/document-detection.service.ts) now injects `BusyGuardService` and tracks `document.visibilitychange` events (last state + timestamp) alongside a per-scan-session start timestamp. The existing `Sentry.captureException` on a camera-start failure (`context: 'idscanly_camera_start'`) gained `visibility_state` (tag) and `ms_since_visibility_change` / `ms_since_scan_start` / `busy_guard_active` (extra) — so a failure report can now distinguish "camera failed because the page was backgrounded" from any other cause, which a bare exception couldn't do before.
+
+**Verification:** `npx ng build` clean (only the three pre-existing known warnings — two IDScanly SCSS budget overages + the `jscanify` CommonJS bailout, none new). Published to `dev` only. **Not yet confirmed live** — needs a real recurrence of either flagged property's `/go-unavailable` hit (or the camera-start failure) to confirm the new tags/extras actually show up in Sentry as expected.
+
 ### 2026-09-16 — OTA rollback watchdog no longer re-tests proven bundles, falls back to last-healthy instead of native
 
 > Branch `ota-rollback-fallback`. No native build/version bump, no TestFlight upload. Published OTA to the `dev` channel (bundle `0f23907c-2914-48c3-aeab-5df0a02ead6e`, git `9fd22af`).

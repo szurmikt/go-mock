@@ -126,6 +126,13 @@ export class AppComponent implements OnInit, OnDestroy {
     // interceptor's App-Version header and the force-update gate both read it on the very
     // first request/check.
     await this.appVersion.init();
+    // Global tag so every Sentry event/log carries the real installed app version — same gap the
+    // `platform` tag above already closed for platform. Without this, an error report carries no
+    // way to tell which build/train it came from at all (see SABEEAPPGO-13). Uses `version`, not
+    // `analyticsVersion` — Sentry wants the real value on web/dev too (unlike Mixpanel, there's no
+    // risk of it being mistaken for a specific shipped version), and the '0.0.0' sentinel would
+    // make every browser/dev report look identical here.
+    Sentry.setTag('app_version', this.appVersion.version());
     // Purely local read (the persisted auto-lock interval) — no network dependency, must resolve
     // before the inactivity timer or biometric.checkAndLock() can fire.
     await this.biometric.init();
@@ -139,6 +146,9 @@ export class AppComponent implements OnInit, OnDestroy {
     // Which OTA bundle is running — a purely local read, deliberately not gated on any backend
     // call, so bundle_version is correct on the very first event even on a flaky network.
     await this.liveUpdate.initBundleVersion();
+    // Global tag so every Sentry event/log also carries which OTA bundle is running (or 'native')
+    // — the other half of "what code was actually on the device", alongside app_version above.
+    Sentry.setTag('bundle_version', this.liveUpdate.currentBundleId());
     // Reconcile what the plugin reports against what we persisted (did a staged bundle apply? did
     // the binary change? did the watchdog roll back?) and prune old bundles. Entirely local, no
     // network — it sits ahead of the version gate so its result is available to registerSuperProps
@@ -332,6 +342,18 @@ export class AppComponent implements OnInit, OnDestroy {
         if (freshProperties === null || !meResult.ok) {
           url = '/service-unavailable';
         } else if (freshProperties.length === 0 || !meResult.subscription.includes(GO_SUBSCRIPTION_MODULE)) {
+          // /go-unavailable is about to render on a RESTORED session — the case reported as
+          // "worked yesterday, not today." Capture why so it's diagnosable from the actual
+          // /properties + /me response instead of guesswork. subscription is an
+          // entitlement-flag list, not PII — nothing else from /me is read here.
+          Sentry.captureMessage('go_unavailable shown', {
+            level: 'warning',
+            tags: {
+              reason: freshProperties.length === 0 ? 'empty_properties' : 'ineligible_subscription',
+              property_id: String(selected.property_id),
+            },
+            extra: { properties_count: freshProperties.length, subscription: meResult.subscription },
+          });
           url = '/go-unavailable';
         } else if (!freshProperties.some(p => p.property_id === selected.property_id)) {
           await this.auth.clearSelectedProperty();
