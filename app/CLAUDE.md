@@ -711,6 +711,14 @@ First device test on `9345` (real hardware, this bundle): the rollback-fallback 
 
 **Verification:** `npm test` — 102/109 (4 new `decideReady` cases; same 7 pre-existing failures as before, 0 new). `npx ng build --configuration production` clean. Same native-only caveat as above — not yet device-verified for this half either.
 
+**Follow-up same day — real bug found on real device, fixed.** Republished to `dev` (bundle `1f5b3b0f-6679-46f9-83a9-ea4072e3a445`, git `b2d7061`). First on-device rollback-fallback test, property `9345`: went offline, got `/service-unavailable` (expected, unrelated pre-existing behaviour — see `AppComponent.ngOnInit`'s post-login eligibility re-check), came back online, cold-started — and landed on `fd51569d-983c-4d7e-a751-f3bbb3f419f4`, a bundle from weeks-earlier, unrelated testing, not on `native` and not on the actual last-known-good `ae643f97`. Confirmed via Settings screenshots. Self-corrected to `ae643f97` on the following cold start via the ordinary update-check gate, unrelated to the fallback fix itself.
+
+Root cause isolated to `LiveUpdateService.readRecord()`'s migration, not the tested decision logic: `lastHealthyBundleId: raw.lastHealthyBundleId ?? raw.previousBundleId ?? null` backfilled from the OLD `previousBundleId` field, which the OLD rule (b) wrote positionally ("whatever was installed right before this one") with no guarantee `ready()` ever actually confirmed it. `9345`'s device had old, unrelated history sitting in that field from before this session's testing began, and the very first rollback under the new code trusted it as a verified fallback target. `decideRollbackFallback`/`decideReadyGate` — both unit-tested — behaved exactly as designed given that bad input; the bug lived entirely in migration glue that a from-`emptyState()` unit test can't exercise, which is exactly why this needed a real device with real history to surface.
+
+Fix: dropped the `previousBundleId` fallback entirely. A migrated record now gets no fallback candidate until `markBundleHealthy()` confirms one itself under the new code — one ordinary probe on the first post-upgrade boot per device, never a wrong bundle.
+
+**Verification:** `npm test` 102/109 (unchanged — pure logic untouched, only the migration glue changed), `npx ng build --configuration production` clean. **Device-verified this time, directly** — this fix exists because of what the device test showed.
+
 ### 2026-09-07 — IDScanly: identity-document scans now capture an embedded address, when present
 
 > Branch `idscanly-identity-doc-address`, merged into `main` 2026-09-08. No build/version bump, no TestFlight upload. Published OTA to the `dev` channel (bundle `7c64a1af-a9f8-46b4-8883-37c2a305069c`, git `242e615`) — `dev` is internal testing only (8 devices, no live properties).
