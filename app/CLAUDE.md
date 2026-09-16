@@ -719,6 +719,16 @@ Fix: dropped the `previousBundleId` fallback entirely. A migrated record now get
 
 **Verification:** `npm test` 102/109 (unchanged — pure logic untouched, only the migration glue changed), `npx ng build --configuration production` clean. **Device-verified this time, directly** — this fix exists because of what the device test showed.
 
+**Follow-up same day — that fix wasn't enough; a deeper bug, fixed.** Republished to `dev` (bundle `55e88e8c-5c1a-46f7-bed5-55482e8bf126`, git `820d2f0`). The "device-verified" claim above turned out premature: repeating the identical airplane-mode test on `9345` after updating to `1f5b3b0f` reproduced the exact same symptom — landed on `fd51569d` again, confirmed via Settings screenshots, self-corrected on the next cold start exactly as before.
+
+The previous fix addressed how a bad value got *seeded* (the migration) but not how one, once genuinely written, could persist forever. Real root cause: `decideReadyGate`'s Phase 0 shortcut (`currentBundleId === lastHealthyBundleId` → confirm without a network call) is satisfied *by construction* on the boot immediately following a forced fallback — the candidate the fallback picked *is* `lastHealthyBundleId`, that's the whole reason it was chosen. So that boot got the free pass and never called `ready()` for real. Once `fd51569d` was written even once (from the earlier migration bug), any future rollback that picked it as a candidate would re-confirm it in a closed loop, with no network call ever re-validating it — completely immune to fixing the seed alone. The exact boot that most needs genuine re-verification was precisely the one this gate skipped it for.
+
+Fix: `decideReadyGate` now also takes `fallbackAttemptedFor` and excludes a candidate matching it from the immediate-confirm path, even though it equals `lastHealthyBundleId`. That one boot must always earn `ready()` over the real network; every boot after it (once the marker clears in `callReady()`) still gets the normal Phase 0 speed-up.
+
+Also added, since the last two rounds had to be reconstructed entirely from Settings screenshots and guesswork: `LiveUpdateService.lastHealthyBundleId` as a live signal, now shown in Settings next to the running bundle ID (ground truth for "confirmed" vs. "just matches a stale value"), plus always-on `Sentry.logger` diagnostic logging at every decision point in this flow (boot reconciliation, ready-gate outcome, probe result, raw plugin `ready()` response) — deliberately not gated behind `PropertyConfigService.extendedLogging`, since that flag isn't resolved until after `loadStoredAuth()`, well past the point in boot where this logic already ran.
+
+**Verification:** `npm test` 104/111 (2 new `decideReadyGate` cases covering the closed loop directly; same 7 pre-existing failures, 0 new). `npx ng build --configuration production` clean. Needs a fourth device round to actually confirm — not claiming "device-verified" again until it's re-run and holds up this time.
+
 ### 2026-09-07 — IDScanly: identity-document scans now capture an embedded address, when present
 
 > Branch `idscanly-identity-doc-address`, merged into `main` 2026-09-08. No build/version bump, no TestFlight upload. Published OTA to the `dev` channel (bundle `7c64a1af-a9f8-46b4-8883-37c2a305069c`, git `242e615`) — `dev` is internal testing only (8 devices, no live properties).
