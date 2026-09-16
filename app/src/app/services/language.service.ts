@@ -1,4 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { Device } from '@capacitor/device';
 import { Capacitor } from '@capacitor/core';
@@ -8,6 +9,15 @@ import { StorageService } from './storage';
 import { ApiResponse } from '../models/auth.interfaces';
 import { TRANSLATIONS, TranslationMap } from './translations';
 import { environment } from '../../environments/environment';
+
+/** Per-attempt timeout inside waitForBackendReachable — mirrors the shape AppConfigService's
+ *  own version-gate reachability retry used before the live-update probe moved here. */
+const REACHABILITY_ATTEMPT_TIMEOUT_MS = 1500;
+const REACHABILITY_RETRY_GAP_MS = 500;
+
+function timeout(ms: number): Promise<never> {
+  return new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
+}
 
 export interface Language {
   code: string;
@@ -44,6 +54,14 @@ export class LanguageService {
     return filtered.length > 0 ? filtered : list;
   });
 
+  /**
+   * The init()-time fetchLanguages() call, captured so waitForBackendReachable() can reuse it
+   * instead of firing a second request — normally already settled by the time anything asks.
+   * Starts resolved-false so a call before init() has run (shouldn't happen, but this is a
+   * `providedIn: 'root'` singleton with no guaranteed construction order) never hangs.
+   */
+  private bootProbe: Promise<boolean> = Promise.resolve(false);
+
   async init(): Promise<void> {
     const stored = await this.storage.get<string>(STORAGE_KEY_LANG);
     const deviceLang = await this.getDeviceLang();
@@ -65,8 +83,10 @@ export class LanguageService {
     if (cachedEnabled) this.enabledLanguages.set(cachedEnabled);
 
     // Fire-and-forget: update translations + enabled-languages restriction in the
-    // background without blocking app start
-    this.fetchLanguages().catch(() => {});
+    // background without blocking app start. Captured (not just fired) — this exact request is
+    // what the live-update ready() confirmation reuses via waitForBackendReachable(), rather
+    // than firing a second one of its own.
+    this.bootProbe = this.fetchLanguages();
     this.fetchEnabledLanguages().catch(() => {});
   }
 
@@ -101,12 +121,25 @@ export class LanguageService {
     await this.fetchLanguages();
   }
 
-  async fetchLanguages(): Promise<void> {
+  /**
+   * Returns whether a real round trip to the SabeeApp API completed — NOT whether the business
+   * call succeeded. `response.success: false` still means the request reached the backend and
+   * got a well-formed answer, so it counts; only a genuine network failure doesn't. This return
+   * value is what the live-update ready() confirmation is built on (see waitForBackendReachable)
+   * — it needs "is this bundle able to reach the real backend", which is a different question
+   * from "did the language list come back", though the same request answers both.
+   *
+   * `timeoutMs`, when given, races the request against a local timeout — used by
+   * waitForBackendReachable's retry loop so one slow attempt can't consume the whole budget.
+   * Omitted for the plain init()/setLanguage() callers, which just want the normal request.
+   */
+  async fetchLanguages(timeoutMs?: number): Promise<boolean> {
     try {
-      const response = await firstValueFrom(
+      const request = firstValueFrom(
         this.api.get<ApiResponse<LanguagesResponse>>('languages'),
       );
-      if (!response.success) return;
+      const response = await (timeoutMs ? Promise.race([request, timeout(timeoutMs)]) : request);
+      if (!response.success) return true;
 
       const merged = this.mergeTranslations(
         TRANSLATIONS,
@@ -117,9 +150,53 @@ export class LanguageService {
 
       await this.storage.set(STORAGE_KEY_TRANSLATIONS, merged);
       await this.storage.set(STORAGE_KEY_LANGUAGES, response.data.languages);
-    } catch {
-      // Network error: keep current translations (cached or fallback English)
+      return true;
+    } catch (err) {
+      // Network error: keep current translations (cached or fallback English). A real HTTP error
+      // response (any status but 0) still proves the network — and this bundle's own HTTP
+      // client/interceptor wiring — reached SabeeApp's infrastructure; only status 0 (no response
+      // at all: DNS failure, connection refused, or our own `timeout()` above) means genuinely
+      // unreachable. Same status-0 rule LoginPage.extractMessage already uses.
+      return err instanceof HttpErrorResponse && err.status !== 0;
     }
+  }
+
+  /**
+   * Retry until a round trip completes or the budget runs out. Starts by reusing the boot probe
+   * already in flight from init() (normally already settled, so the common case costs nothing
+   * extra) before falling back to fresh attempts of its own.
+   *
+   * Exists because a bundle's ready() confirmation needs to tell "the backend is reachable" apart
+   * from "we gave up and let the user through" — a single twitchy attempt would revert perfectly
+   * good bundles on ordinary slow hotel wifi, and with autoBlockRolledBackBundles the device then
+   * stays pinned to the old one. The budget is computed by the caller from the clock, so retries
+   * can never outlive the native readyTimeout.
+   */
+  async waitForBackendReachable(budgetMs: number): Promise<boolean> {
+    const deadline = Date.now() + budgetMs;
+
+    const bootResult = await Promise.race([
+      this.bootProbe,
+      new Promise<boolean>(resolve =>
+        setTimeout(() => resolve(false), Math.max(0, deadline - Date.now())),
+      ),
+    ]);
+    if (bootResult) return true;
+
+    // The boot probe above may still be in flight past the deadline race (unusually slow), in
+    // which case this fires a genuinely separate request rather than waiting on it further —
+    // acceptable: this only happens when the very first attempt was already exceptionally slow.
+    while (Date.now() < deadline) {
+      const remaining = deadline - Date.now();
+      if (await this.fetchLanguages(Math.min(REACHABILITY_ATTEMPT_TIMEOUT_MS, remaining))) {
+        return true;
+      }
+
+      if (Date.now() + REACHABILITY_RETRY_GAP_MS >= deadline) break;
+      await new Promise(resolve => setTimeout(resolve, REACHABILITY_RETRY_GAP_MS));
+    }
+
+    return false;
   }
 
   /**

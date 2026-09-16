@@ -9,16 +9,17 @@ export interface GateResult {
   blocked: boolean;
   /**
    * Whether a real response came back, as opposed to the timeout/network-failure fail-open path.
-   * Consumed by the live-update ready() confirmation, which must not treat "we gave up and let
-   * the user through" as proof the backend is reachable.
+   * Consumed by AppComponent's pre-login setup gate to decide between syncAndInstallNow() (apply
+   * behind the splash) and a stage-only checkAndApply() — NOT by the live-update ready()
+   * confirmation, which moved to LanguageService's SabeeApp-API-backed probe: this Supabase Edge
+   * Function proved itself an independent point of failure (a ~2.5h platform-side degradation
+   * false-flagged 15 healthy bundles as broken on 2026-09-16), and isn't a dependency the app
+   * otherwise needs, unlike the SabeeApp API itself.
    */
   reachedBackend: boolean;
 }
 
 const CONFIG_TIMEOUT_MS = 3000;
-/** Per-attempt timeout inside waitForBackendReachable — shorter, so several attempts fit. */
-const REACHABILITY_ATTEMPT_TIMEOUT_MS = 1500;
-const REACHABILITY_RETRY_GAP_MS = 500;
 const CONFIG_FN_URL = `${environment.supabaseUrl}/functions/v1/config`;
 
 /** Why a fetchConfigOnce attempt came back with no usable data — surfaced for diagnostics only;
@@ -86,34 +87,5 @@ export class AppConfigService {
     }
 
     return { blocked: false, reachedBackend: true };
-  }
-
-  /**
-   * Retry the same probe until one attempt succeeds or the budget runs out. Only called when
-   * runVersionGate()'s single attempt already failed — the caller short-circuits otherwise.
-   *
-   * Exists because the gate's one-shot 3s timeout is tuned for keeping the routing decision
-   * responsive, which is far too twitchy to decide whether a bundle is healthy: on ordinary slow
-   * hotel wifi that would revert perfectly good bundles, and with autoBlockRolledBackBundles the
-   * device then stays pinned to the old bundle. The budget is computed by the caller from the
-   * clock, so retries can never outlive the native readyTimeout.
-   */
-  async waitForBackendReachable(budgetMs: number): Promise<boolean> {
-    const deadline = Date.now() + budgetMs;
-    const platform = this.platform();
-
-    while (Date.now() < deadline) {
-      const remaining = deadline - Date.now();
-      const { data: result } = await this.fetchConfigOnce(
-        { platform },
-        Math.min(REACHABILITY_ATTEMPT_TIMEOUT_MS, remaining),
-      );
-      if (result?.app_config) return true;
-
-      if (Date.now() + REACHABILITY_RETRY_GAP_MS >= deadline) break;
-      await new Promise(resolve => setTimeout(resolve, REACHABILITY_RETRY_GAP_MS));
-    }
-
-    return false;
   }
 }

@@ -7,6 +7,7 @@ import { Config } from '../config/config';
 import {
   BundleBootState,
   LiveUpdateState,
+  decideReady,
   decideReadyGate,
   decideReloadBeforeReady,
   decideRollbackFallback,
@@ -313,6 +314,16 @@ export class LiveUpdateService {
         lastHealthyBundleId: record?.lastHealthyBundleId ?? null,
       }) === 'confirm-immediately'
     );
+  }
+
+  /**
+   * Confirms (or not) the bundle after a probe attempt, folding in the offline short-circuit —
+   * see decideReady. A provably offline device must not have a failed backend probe blamed on
+   * the bundle itself.
+   */
+  callReadyAfterProbe(reachedBackend: boolean): void {
+    const { ready } = decideReady({ reachedBackend, online: navigator.onLine });
+    this.callReady(ready);
   }
 
   /**

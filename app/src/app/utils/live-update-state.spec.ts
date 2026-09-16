@@ -1,5 +1,6 @@
 import { FALLBACK_COOLDOWN_MS } from '../config/live-update.const';
 import {
+  decideReady,
   decideReadyGate,
   decideReloadBeforeReady,
   decideRollbackFallback,
@@ -457,5 +458,35 @@ describe('decideRollbackFallback', () => {
         downloadedBundleIds: [],
       }),
     ).toEqual({ apply: false, reason: 'already-attempted' });
+  });
+});
+
+describe('decideReady', () => {
+  it('confirms when the backend was reached', () => {
+    expect(decideReady({ reachedBackend: true, online: true })).toEqual({
+      ready: true,
+      reason: 'backend',
+    });
+  });
+
+  it('does not confirm when neither reachable nor offline', () => {
+    expect(decideReady({ reachedBackend: false, online: true })).toEqual({
+      ready: false,
+      reason: 'unconfirmed',
+    });
+  });
+
+  it('confirms when provably offline — a device with no network must not have the bundle blamed for it, even though this is a one-way door (the watchdog is cancelled regardless of whether the bundle is actually fine)', () => {
+    expect(decideReady({ reachedBackend: false, online: false })).toEqual({
+      ready: true,
+      reason: 'offline',
+    });
+  });
+
+  it('checks offline BEFORE reachedBackend — being offline confirms even if reachedBackend somehow also reports true', () => {
+    expect(decideReady({ reachedBackend: true, online: false })).toEqual({
+      ready: true,
+      reason: 'offline',
+    });
   });
 });

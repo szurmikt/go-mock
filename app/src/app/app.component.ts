@@ -13,6 +13,7 @@ import { AuthService, GO_SUBSCRIPTION_MODULE } from './services/auth';
 import { BiometricService } from './services/biometric';
 import { CapturePreferenceService } from './idscanly/services/capture-preference.service';
 import { ScanOnboardingService } from './idscanly/services/scan-onboarding.service';
+import { LanguageService } from './services/language.service';
 import { LiveUpdateService } from './services/live-update';
 import { MixpanelService } from './services/mixpanel';
 import { OptionsService } from './services/options.service';
@@ -87,6 +88,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private options = inject(OptionsService);
   private apiEnv = inject(ApiEnvironmentService);
   private appConfig = inject(AppConfigService);
+  private language = inject(LanguageService);
   private mixpanel = inject(MixpanelService);
   private appVersion = inject(AppVersionService);
   private liveUpdate = inject(LiveUpdateService);
@@ -177,22 +179,25 @@ export class AppComponent implements OnInit, OnDestroy {
     // bundle on every single cold start would re-risk the whole OTA chain on one network call for
     // no reason: it cannot have broken while sitting untouched on disk between launches.
     //
-    // Otherwise, the gate's own attempt is proof enough when it succeeded, which is the
-    // overwhelmingly common case for a bundle running for the first time; only when it failed do
-    // we retry, and then strictly within whatever is left of readyTimeout, so the retry can never
-    // outlive the native deadline it is racing.
+    // Otherwise, the probe goes through LanguageService — the SabeeApp API, not AppConfigService's
+    // Supabase Edge Function — deliberately: that function proved itself an independent point of
+    // failure (a ~2.5h platform-side degradation there false-flagged 15 perfectly healthy bundles
+    // on 2026-09-16), and it isn't a dependency the app otherwise needs to function. The probe
+    // reuses LanguageService's own boot-time request rather than firing a second one, and retries
+    // strictly within whatever is left of readyTimeout, so it can never outlive the native
+    // deadline it is racing. callReadyAfterProbe() also folds in the offline short-circuit — a
+    // provably offline device must not have the bundle blamed for something no network call could
+    // ever overcome.
     if (await this.liveUpdate.alreadyConfirmedHealthy()) {
-      this.liveUpdate.callReady(true);
-    } else if (gate.reachedBackend) {
       this.liveUpdate.callReady(true);
     } else {
       const budget = Math.max(
         0,
         READY_TIMEOUT_MS - PRE_BOOT_MARGIN_MS - READY_SAFETY_MARGIN_MS - (Date.now() - bootStart),
       );
-      this.appConfig
+      this.language
         .waitForBackendReachable(budget)
-        .then(reachable => this.liveUpdate.callReady(reachable));
+        .then(reachable => this.liveUpdate.callReadyAfterProbe(reachable));
     }
 
     // Registered before the gate.blocked early-return below, so it still runs for a user who is

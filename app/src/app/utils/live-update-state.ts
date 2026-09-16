@@ -388,3 +388,26 @@ export function decideRollbackFallback(facts: {
 
   return { apply: true, bundleId: candidate };
 }
+
+/** Why callReady() was (or wasn't) told to confirm the bundle, once a probe was required. */
+export type ReadyReason = 'backend' | 'offline' | 'unconfirmed';
+
+/**
+ * Whether to confirm the bundle as ready, once decideReadyGate has already determined a probe was
+ * required (a bundle running for the first time, or one that was applied but never confirmed).
+ *
+ * A provably offline device must not have the bundle blamed for something no network call could
+ * ever overcome. This is a genuine one-way door, not a free pass: confirming cancels the native
+ * watchdog, so a bundle that is ACTUALLY broken but happened to go offline moments after applying
+ * will stick around, unconfirmed-but-uncancelled, until the next publish. Only ever acts on
+ * `online === false` — being online proves nothing on its own (a captive portal or a merely slow
+ * backend both still report online), which is exactly the gap `reachedBackend` exists to close.
+ */
+export function decideReady(facts: { reachedBackend: boolean; online: boolean }): {
+  ready: boolean;
+  reason: ReadyReason;
+} {
+  if (!facts.online) return { ready: true, reason: 'offline' };
+  if (facts.reachedBackend) return { ready: true, reason: 'backend' };
+  return { ready: false, reason: 'unconfirmed' };
+}
