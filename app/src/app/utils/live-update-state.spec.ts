@@ -1,5 +1,8 @@
+import { FALLBACK_COOLDOWN_MS } from '../config/live-update.const';
 import {
+  decideReadyGate,
   decideReloadBeforeReady,
+  decideRollbackFallback,
   emptyState,
   keepSetFor,
   reconcileBootState,
@@ -75,8 +78,48 @@ describe('reconcileBootState', () => {
     expect(state).toBe('ota');
     expect(nextRecord.installedBundleId).toBe('b2');
     expect(nextRecord.installedBundleChannel).toBe('dev');
-    expect(nextRecord.previousBundleId).toBe('b1');
     expect(nextRecord.stagedBundleId).toBeNull();
+  });
+
+  it('does NOT set lastHealthyBundleId on a plain promotion — only callReady() may, once ready() actually confirms it', () => {
+    const { nextRecord } = reconcileBootState(
+      record({
+        stagedBundleId: 'b2',
+        stagedBundleChannel: 'dev',
+        installedBundleId: 'b1',
+        lastHealthyBundleId: 'b1',
+      }),
+      { currentBundleId: 'b2', versionCode: VC },
+    );
+    expect(nextRecord.lastHealthyBundleId).toBe('b1');
+  });
+
+  it('clears a stale fallback marker on a plain promotion of a DIFFERENT bundle', () => {
+    const { nextRecord } = reconcileBootState(
+      record({
+        stagedBundleId: 'b2',
+        stagedBundleChannel: 'dev',
+        fallbackAttemptedFor: 'b1',
+        fallbackAttemptedAt: 1_000,
+      }),
+      { currentBundleId: 'b2', versionCode: VC },
+    );
+    expect(nextRecord.fallbackAttemptedFor).toBeNull();
+    expect(nextRecord.fallbackAttemptedAt).toBeNull();
+  });
+
+  it('leaves the fallback marker for callReady() to clear when the promoted bundle IS the fallback candidate', () => {
+    const { nextRecord } = reconcileBootState(
+      record({
+        stagedBundleId: 'b2',
+        stagedBundleChannel: 'dev',
+        fallbackAttemptedFor: 'b2',
+        fallbackAttemptedAt: 1_000,
+      }),
+      { currentBundleId: 'b2', versionCode: VC },
+    );
+    expect(nextRecord.fallbackAttemptedFor).toBe('b2');
+    expect(nextRecord.fallbackAttemptedAt).toBe(1_000);
   });
 
   it('does not promote a staged bundle that is not running (apply never happened)', () => {
@@ -90,7 +133,7 @@ describe('reconcileBootState', () => {
 
   it('reports native_after_rollback and clears the installed channel', () => {
     const { state, nextRecord } = reconcileBootState(
-      record({ installedBundleId: 'b2', installedBundleChannel: 'dev', previousBundleId: 'b1' }),
+      record({ installedBundleId: 'b2', installedBundleChannel: 'dev', lastHealthyBundleId: 'b1' }),
       { currentBundleId: null, versionCode: VC },
     );
     expect(state).toBe('native_after_rollback');
@@ -98,12 +141,28 @@ describe('reconcileBootState', () => {
     expect(nextRecord.installedBundleChannel).toBeNull();
   });
 
-  it('KEEPS previousBundleId on rollback — it is the disk evidence and fallback target', () => {
+  it('KEEPS lastHealthyBundleId on rollback — it is the rollback-fallback\'s only candidate', () => {
     const { nextRecord } = reconcileBootState(
-      record({ installedBundleId: 'b2', previousBundleId: 'b1' }),
+      record({ installedBundleId: 'b2', lastHealthyBundleId: 'b1' }),
       { currentBundleId: null, versionCode: VC },
     );
-    expect(nextRecord.previousBundleId).toBe('b1');
+    expect(nextRecord.lastHealthyBundleId).toBe('b1');
+  });
+
+  it('reports native_fresh, not native_after_rollback, for a record with no real bundle activity (e.g. only a resolved channel)', () => {
+    const { state } = reconcileBootState(record({ lastResolvedChannel: 'dev' }), {
+      currentBundleId: null,
+      versionCode: VC,
+    });
+    expect(state).toBe('native_fresh');
+  });
+
+  it('reports native_after_rollback when only lastHealthyBundleId shows prior activity (installedBundleId already cleared)', () => {
+    const { state } = reconcileBootState(record({ lastHealthyBundleId: 'b1' }), {
+      currentBundleId: null,
+      versionCode: VC,
+    });
+    expect(state).toBe('native_after_rollback');
   });
 
   it('wipes bundle state on a native binary change, keeping the property channel', () => {
@@ -111,7 +170,7 @@ describe('reconcileBootState', () => {
       record({
         installedBundleId: 'b2',
         installedBundleChannel: 'dev',
-        previousBundleId: 'b1',
+        lastHealthyBundleId: 'b1',
         lastResolvedChannel: 'dev',
       }),
       { currentBundleId: null, versionCode: '104' },
@@ -119,8 +178,55 @@ describe('reconcileBootState', () => {
     expect(state).toBe('native_after_binary_change');
     expect(nextRecord.versionCode).toBe('104');
     expect(nextRecord.installedBundleId).toBeNull();
-    expect(nextRecord.previousBundleId).toBeNull();
+    expect(nextRecord.lastHealthyBundleId).toBeNull();
     expect(nextRecord.lastResolvedChannel).toBe('dev');
+  });
+
+  it('clears the fallback marker on a native binary change too — a candidate built for the old binary is no longer viable', () => {
+    const { nextRecord } = reconcileBootState(
+      record({ fallbackAttemptedFor: 'b1', fallbackAttemptedAt: 1_000 }),
+      { currentBundleId: null, versionCode: '104' },
+    );
+    expect(nextRecord.fallbackAttemptedFor).toBeNull();
+    expect(nextRecord.fallbackAttemptedAt).toBeNull();
+  });
+
+  describe('rollback-fallback confirmation (c2)', () => {
+    it('reports ota_after_fallback and recovers the channel from lastHealthyBundleChannel', () => {
+      const { state, nextRecord } = reconcileBootState(
+        record({ fallbackAttemptedFor: 'b1', fallbackAttemptedAt: 1_000, lastHealthyBundleChannel: 'dev' }),
+        { currentBundleId: 'b1', versionCode: VC },
+      );
+      expect(state).toBe('ota_after_fallback');
+      expect(nextRecord.installedBundleId).toBe('b1');
+      expect(nextRecord.installedBundleChannel).toBe('dev');
+    });
+
+    it('leaves the marker untouched — only callReady(), once ready() actually confirms it, may clear it', () => {
+      const { nextRecord } = reconcileBootState(
+        record({ fallbackAttemptedFor: 'b1', fallbackAttemptedAt: 1_000 }),
+        { currentBundleId: 'b1', versionCode: VC },
+      );
+      expect(nextRecord.fallbackAttemptedFor).toBe('b1');
+      expect(nextRecord.fallbackAttemptedAt).toBe(1_000);
+    });
+
+    it('is idempotent — the second boot falls through to steady state instead of re-firing', () => {
+      const first = reconcileBootState(
+        record({ fallbackAttemptedFor: 'b1', fallbackAttemptedAt: 1_000, lastHealthyBundleChannel: 'dev' }),
+        { currentBundleId: 'b1', versionCode: VC },
+      );
+      const second = reconcileBootState(first.nextRecord, { currentBundleId: 'b1', versionCode: VC });
+      expect(second.state).toBe('ota');
+    });
+
+    it('does not fire for an unrelated bundle merely because a marker exists for a different id', () => {
+      const { state } = reconcileBootState(
+        record({ fallbackAttemptedFor: 'b1', fallbackAttemptedAt: 1_000 }),
+        { currentBundleId: 'b2', versionCode: VC },
+      );
+      expect(state).not.toBe('ota_after_fallback');
+    });
   });
 
   it('stays ota in the steady state and restamps the version code', () => {
@@ -218,5 +324,138 @@ describe('keepSetFor', () => {
 
   it('drops nulls', () => {
     expect(keepSetFor({ current: 'b3', next: null, previous: null })).toEqual(new Set(['b3']));
+  });
+});
+
+describe('decideReadyGate', () => {
+  it('confirms immediately when the running bundle already proved itself — the watchdog arms every launch, so re-proving a known-good bundle risks the whole chain on one network call for no reason', () => {
+    expect(
+      decideReadyGate({ currentBundleId: 'b1', lastHealthyBundleId: 'b1' }),
+    ).toBe('confirm-immediately');
+  });
+
+  it('requires the probe on a first run of a new bundle', () => {
+    expect(
+      decideReadyGate({ currentBundleId: 'b2', lastHealthyBundleId: 'b1' }),
+    ).toBe('probe-required');
+  });
+
+  it('requires the probe when nothing has ever been confirmed', () => {
+    expect(
+      decideReadyGate({ currentBundleId: 'b1', lastHealthyBundleId: null }),
+    ).toBe('probe-required');
+  });
+
+  it('requires the probe on native — there is nothing to have proved itself', () => {
+    expect(
+      decideReadyGate({ currentBundleId: null, lastHealthyBundleId: 'b1' }),
+    ).toBe('probe-required');
+  });
+});
+
+describe('decideRollbackFallback', () => {
+  const base = {
+    state: 'native_after_rollback' as const,
+    lastHealthyBundleId: 'b1',
+    fallbackAttemptedFor: null as string | null,
+    fallbackAttemptedAt: null as number | null,
+    now: 10_000,
+    downloadedBundleIds: ['b1'],
+    blockedBundleIds: [] as string[],
+  };
+
+  it('applies lastHealthyBundleId after a rollback when it is downloaded and unblocked', () => {
+    expect(decideRollbackFallback(base)).toEqual({ apply: true, bundleId: 'b1' });
+  });
+
+  it('declines after a binary change — a candidate built for the old binary may call an API the new one no longer has', () => {
+    expect(decideRollbackFallback({ ...base, state: 'native_after_binary_change' })).toEqual({
+      apply: false,
+      reason: 'not-after-rollback',
+    });
+  });
+
+  it('declines on a fresh install — nothing has ever run', () => {
+    expect(decideRollbackFallback({ ...base, state: 'native_fresh' })).toEqual({
+      apply: false,
+      reason: 'not-after-rollback',
+    });
+  });
+
+  it('declines while already running an OTA bundle', () => {
+    expect(decideRollbackFallback({ ...base, state: 'ota' })).toEqual({
+      apply: false,
+      reason: 'not-after-rollback',
+    });
+  });
+
+  it('declines with no candidate', () => {
+    expect(decideRollbackFallback({ ...base, lastHealthyBundleId: null })).toEqual({
+      apply: false,
+      reason: 'no-candidate',
+    });
+  });
+
+  it('declines a repeat of the same candidate within the cooldown — this is what stops native → fallback → fails-again → native from looping when the backend itself is still down', () => {
+    expect(
+      decideRollbackFallback({
+        ...base,
+        fallbackAttemptedFor: 'b1',
+        fallbackAttemptedAt: 9_000,
+        now: 9_000 + FALLBACK_COOLDOWN_MS - 1,
+      }),
+    ).toEqual({ apply: false, reason: 'already-attempted' });
+  });
+
+  it('allows the same candidate again once the cooldown has fully elapsed — a marker that never clears must not kill the feature forever', () => {
+    expect(
+      decideRollbackFallback({
+        ...base,
+        fallbackAttemptedFor: 'b1',
+        fallbackAttemptedAt: 9_000,
+        now: 9_000 + FALLBACK_COOLDOWN_MS,
+      }),
+    ).toEqual({ apply: true, bundleId: 'b1' });
+  });
+
+  it('treats a future attemptedAt (clock moved backwards) as inside the cooldown', () => {
+    expect(
+      decideRollbackFallback({
+        ...base,
+        fallbackAttemptedFor: 'b1',
+        fallbackAttemptedAt: base.now + 1_000,
+      }),
+    ).toEqual({ apply: false, reason: 'already-attempted' });
+  });
+
+  it('is unaffected by a marker for a DIFFERENT bundle', () => {
+    expect(
+      decideRollbackFallback({ ...base, fallbackAttemptedFor: 'b9', fallbackAttemptedAt: 9_999 }),
+    ).toEqual({ apply: true, bundleId: 'b1' });
+  });
+
+  it('declines when the candidate is not on disk', () => {
+    expect(decideRollbackFallback({ ...base, downloadedBundleIds: [] })).toEqual({
+      apply: false,
+      reason: 'not-downloaded',
+    });
+  });
+
+  it('declines when the plugin has blocked the candidate itself — respects autoBlockRolledBackBundles rather than overriding it', () => {
+    expect(decideRollbackFallback({ ...base, blockedBundleIds: ['b1'] })).toEqual({
+      apply: false,
+      reason: 'blocked',
+    });
+  });
+
+  it('checks the cooldown BEFORE the disk — an in-cooldown candidate declines as already-attempted even if it is also not downloaded', () => {
+    expect(
+      decideRollbackFallback({
+        ...base,
+        fallbackAttemptedFor: 'b1',
+        fallbackAttemptedAt: 9_999,
+        downloadedBundleIds: [],
+      }),
+    ).toEqual({ apply: false, reason: 'already-attempted' });
   });
 });

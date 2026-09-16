@@ -54,10 +54,16 @@ export class LiveUpdateEventsService {
 
   /**
    * Never throws — a failure here must not disturb a boot that is already recovering from a
-   * rollback. `reason` shares its vocabulary with Mixpanel's bundle_failed so the two join.
+   * rollback. `reason` shares its vocabulary with Mixpanel's bundle_failed / bundle_fallback_*
+   * so the two join.
+   *
+   * `rollback_fallback_applied` reuses `previous_bundle_id` for a different meaning than plain
+   * `rollback` does: there, it's the bundle that failed; here (no dedicated column exists, and
+   * none is needed for one event type), it's the bundle the fallback landed ON. Always read
+   * `reason` alongside it.
    */
   async record(p: {
-    reason: 'rollback';
+    reason: 'rollback' | 'rollback_fallback_applied';
     previousBundleId: string | null;
     downloadedBundleIds: string[];
   }): Promise<void> {

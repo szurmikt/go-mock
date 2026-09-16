@@ -64,3 +64,20 @@ export const BOOT_SETUP_RELOAD_MARGIN_MS = 300;
  * permanently blocklist a perfectly healthy bundle. On timeout the gate must return, not reload.
  */
 export const READY_RACE_MS = 500;
+
+/**
+ * How long a rollback-fallback candidate stays "already attempted" before it is eligible to be
+ * force-applied again. Exists for the case where the underlying cause of a rollback is NOT the
+ * candidate bundle itself (e.g. a real backend outage) — without this, a device could bounce
+ * between the candidate and native forever. A device that hits this window has a real, recurring
+ * problem; the operational fix at that point is rolling the channel back to a previous deployment
+ * from the Capawesome dashboard, not waiting out more cooldowns.
+ */
+export const FALLBACK_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Cap on how long the rollback-fallback's own telemetry write is allowed to hold up reload() —
+ * this is the only chance to record it (the boot never reaches the normal ready()-driven path),
+ * but a dead network must not be allowed to delay landing the device on a working bundle.
+ */
+export const FALLBACK_TELEMETRY_TIMEOUT_MS = 1500;

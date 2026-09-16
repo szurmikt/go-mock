@@ -141,7 +141,15 @@ export class AppComponent implements OnInit, OnDestroy {
     // the binary change? did the watchdog roll back?) and prune old bundles. Entirely local, no
     // network — it sits ahead of the version gate so its result is available to registerSuperProps
     // below, and so a rollback is classified before anything else reads the bundle state.
-    await this.liveUpdate.resolveBundleState();
+    //
+    // A true return means a rollback fallback just fired LiveUpdate.reload() — this webview is
+    // about to be torn down, so nothing else in this boot (the version gate, registerSuperProps,
+    // callReady, the setup gate) may run against it.
+    const fellBackToLastHealthy = await this.liveUpdate.resolveBundleState();
+    if (fellBackToLastHealthy) {
+      this.loading.set(false);
+      return;
+    }
 
     // Moved ahead of registerSuperProps so the live-update ready() decision (below) can reuse
     // its result: this is the qualifying "real backend round-trip" for rollback confirmation.
@@ -161,11 +169,21 @@ export class AppComponent implements OnInit, OnDestroy {
     this.mixpanel.handleAppActive();
 
     // Confirm this bundle works (cancels the native rollback timer). Fire-and-forget — it must
-    // not delay routing. The gate's own attempt is proof enough when it succeeded, which is the
-    // overwhelmingly common case; only when it failed do we retry, and then strictly within
-    // whatever is left of readyTimeout, so the retry can never outlive the native deadline it
-    // is racing.
-    if (gate.reachedBackend) {
+    // not delay routing.
+    //
+    // The native watchdog arms on EVERY launch (confirmed from the plugin's own source), not only
+    // after an update — so a bundle that already proved itself on a previous boot skips the
+    // network probe entirely and confirms immediately. Re-proving an unchanged, already-working
+    // bundle on every single cold start would re-risk the whole OTA chain on one network call for
+    // no reason: it cannot have broken while sitting untouched on disk between launches.
+    //
+    // Otherwise, the gate's own attempt is proof enough when it succeeded, which is the
+    // overwhelmingly common case for a bundle running for the first time; only when it failed do
+    // we retry, and then strictly within whatever is left of readyTimeout, so the retry can never
+    // outlive the native deadline it is racing.
+    if (await this.liveUpdate.alreadyConfirmedHealthy()) {
+      this.liveUpdate.callReady(true);
+    } else if (gate.reachedBackend) {
       this.liveUpdate.callReady(true);
     } else {
       const budget = Math.max(
@@ -255,7 +273,15 @@ export class AppComponent implements OnInit, OnDestroy {
     };
 
     try {
-      if (gate.reachedBackend) {
+      if (this.liveUpdate.bundleState() === 'ota_after_fallback') {
+        // Just landed here via the rollback fallback, THIS launch (see
+        // LiveUpdateService.applyRollbackFallback). Don't stack a second reload on top of the one
+        // that already happened — possibly right back into the same bundle that just failed.
+        // Stage silently; a normal resume or relaunch applies anything newer once this boot has
+        // had a chance to settle.
+        this.liveUpdate.checkAndApply(false);
+        finishSetup();
+      } else if (gate.reachedBackend) {
         this.liveUpdate.syncAndInstallNow(reloadDeadline).then(finishSetup, finishSetup);
       } else {
         // Already know the network is unreliable — stage only, and never hold the screen for it.

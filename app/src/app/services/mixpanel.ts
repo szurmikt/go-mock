@@ -299,6 +299,21 @@ export class MixpanelService {
     this.track('bundle_apply_deferred', { ...p });
   }
 
+  /**
+   * Landed on lastHealthyBundleId instead of the native watchdog's default rollback target —
+   * see LiveUpdateService.applyRollbackFallback. Fires ahead of registerSuperProps on this boot
+   * (the fallback is decided before the version gate), so it carries the PREVIOUS boot's super
+   * properties, not this one's — bundle_id on the event itself is the reliable field.
+   */
+  trackBundleFallbackApplied(p: { bundle_id: string }): void {
+    this.track('bundle_fallback_applied', { ...p });
+  }
+
+  /** Same super-properties caveat as trackBundleFallbackApplied — see its doc. */
+  trackBundleFallbackDeclined(p: { reason: string }): void {
+    this.track('bundle_fallback_declined', { ...p });
+  }
+
   // ---- core ----
 
   track(event: string, props: Record<string, unknown> = {}): void {

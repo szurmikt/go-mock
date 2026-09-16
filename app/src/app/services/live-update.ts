@@ -2,12 +2,14 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { LiveUpdate } from '@capawesome/capacitor-live-update';
 import * as Sentry from '@sentry/angular';
-import { READY_RACE_MS } from '../config/live-update.const';
+import { FALLBACK_TELEMETRY_TIMEOUT_MS, READY_RACE_MS } from '../config/live-update.const';
 import { Config } from '../config/config';
 import {
   BundleBootState,
   LiveUpdateState,
+  decideReadyGate,
   decideReloadBeforeReady,
+  decideRollbackFallback,
   emptyState,
   keepSetFor,
   reconcileBootState,
@@ -93,9 +95,30 @@ export class LiveUpdateService {
   /**
    * Whether the persisted record has been read this session. Boot reads it once; later writers
    * re-read rather than caching a mutable copy, since a reload can land between any two writes.
+   *
+   * Normalizes every field on every read (rather than trusting the stored shape), because a
+   * record written before the lastHealthyBundleId rename/fallback fields were added has none of
+   * them — `previousBundleId` was the old name for lastHealthyBundleId, and the three new fields
+   * were simply absent. Safe to remove once the fleet has rewritten every record under the new
+   * shape at least once (any boot that reaches writeRecord() does that).
    */
   private async readRecord(): Promise<LiveUpdateState | null> {
-    return this.storage.get<LiveUpdateState>(Config.STORAGE_LIVE_UPDATE_KEY);
+    const raw = await this.storage.get<
+      Partial<LiveUpdateState> & { previousBundleId?: string | null }
+    >(Config.STORAGE_LIVE_UPDATE_KEY);
+    if (!raw) return null;
+    return {
+      versionCode: raw.versionCode ?? '',
+      installedBundleId: raw.installedBundleId ?? null,
+      installedBundleChannel: raw.installedBundleChannel ?? null,
+      lastHealthyBundleId: raw.lastHealthyBundleId ?? raw.previousBundleId ?? null,
+      lastHealthyBundleChannel: raw.lastHealthyBundleChannel ?? null,
+      lastResolvedChannel: raw.lastResolvedChannel ?? null,
+      stagedBundleId: raw.stagedBundleId ?? null,
+      stagedBundleChannel: raw.stagedBundleChannel ?? null,
+      fallbackAttemptedFor: raw.fallbackAttemptedFor ?? null,
+      fallbackAttemptedAt: raw.fallbackAttemptedAt ?? null,
+    };
   }
 
   private async writeRecord(record: LiveUpdateState): Promise<void> {
@@ -148,11 +171,16 @@ export class LiveUpdateService {
    * Runs once at boot, after initBundleVersion() and before the version gate — it is entirely
    * local (no network) and its result feeds both the sync channel and the bundle_state super
    * property. All the branching lives in reconcileBootState(); this method is the I/O around it.
+   *
+   * Returns true when a rollback fallback was just applied — LiveUpdate.reload() has already been
+   * called, so the caller (AppComponent.ngOnInit) MUST stop immediately rather than continue the
+   * rest of boot (a redundant version-gate call, a redundant callReady(), etc.) against a webview
+   * that is about to be torn down anyway.
    */
-  async resolveBundleState(): Promise<void> {
+  async resolveBundleState(): Promise<boolean> {
     if (!this.available()) {
       this.bundleState.set(Capacitor.isNativePlatform() ? 'native_plugin_missing' : 'native_web');
-      return;
+      return false;
     }
     try {
       const { versionCode } = await LiveUpdate.getVersionCode();
@@ -179,10 +207,112 @@ export class LiveUpdateService {
       this.bundleState.set(state);
       await this.writeRecord(nextRecord);
 
+      if (await this.applyRollbackFallback(state, nextRecord)) {
+        return true;
+      }
+
       await this.pruneBundles(currentBundleId, nextRecord);
+      return false;
     } catch (error) {
       Sentry.captureException(error, { tags: { context: 'live_update_resolve_state' } });
+      return false;
     }
+  }
+
+  /**
+   * When the watchdog reverted to native, try to land on lastHealthyBundleId instead of accepting
+   * native — see decideRollbackFallback for the full rule set. Called from resolveBundleState()
+   * after the reconciled record is persisted but before pruning (pruning already skips a
+   * `!currentBundleId` boot, so the candidate is guaranteed still on disk here).
+   *
+   * Deliberately does NOT call LiveUpdate.ready() to record the original rollback itself — doing
+   * so would consume the plugin's rollbackPerformed flag before the fallback bundle's own boot
+   * gets a chance to read it. Left alone, that next boot's callReady() — which decideReadyGate
+   * resolves to 'confirm-immediately' precisely because the fallback target IS
+   * lastHealthyBundleId — naturally calls ready() and reports rollback:true with the plugin's own
+   * authoritative previousBundleId (the flag is still set; nothing reset it in between), so the
+   * original rollback still gets recorded, one boot later, with better data than could be
+   * reconstructed here.
+   *
+   * Returns true when a fallback was applied.
+   */
+  private async applyRollbackFallback(
+    state: BundleBootState,
+    record: LiveUpdateState,
+  ): Promise<boolean> {
+    if (state !== 'native_after_rollback') return false;
+    try {
+      const [downloaded, blocked] = await Promise.all([
+        LiveUpdate.getDownloadedBundles().catch(() => ({ bundleIds: [] as string[] })),
+        LiveUpdate.getBlockedBundles().catch(() => ({ bundleIds: [] as string[] })),
+      ]);
+
+      const decision = decideRollbackFallback({
+        state,
+        lastHealthyBundleId: record.lastHealthyBundleId,
+        fallbackAttemptedFor: record.fallbackAttemptedFor,
+        fallbackAttemptedAt: record.fallbackAttemptedAt,
+        now: Date.now(),
+        downloadedBundleIds: downloaded.bundleIds,
+        blockedBundleIds: blocked.bundleIds,
+      });
+
+      if (!decision.apply) {
+        this.mixpanel.trackBundleFallbackDeclined({ reason: decision.reason });
+        return false;
+      }
+
+      const { bundleId } = decision;
+
+      // The only durable record of this attempt — nothing downstream re-derives it the way the
+      // plain rollback event gets recovered (see this method's doc above). Recorded before
+      // reload(), which can kill an in-flight fetch, so it's capped: a dead network must not be
+      // allowed to delay landing the device on a working bundle.
+      this.mixpanel.trackBundleFallbackApplied({ bundle_id: bundleId });
+      await Promise.race([
+        this.events.record({
+          reason: 'rollback_fallback_applied',
+          previousBundleId: bundleId,
+          downloadedBundleIds: downloaded.bundleIds,
+        }),
+        sleep(FALLBACK_TELEMETRY_TIMEOUT_MS),
+      ]);
+
+      // Marker written BEFORE setNextBundle/reload — a crash in between still boots onto this
+      // bundle next time with the attempt already recorded (so it declines and accepts native,
+      // i.e. today's behaviour). The reverse order risks booting onto it with NO marker recorded,
+      // which is exactly the reload loop this marker exists to prevent.
+      await this.writeRecord({
+        ...record,
+        fallbackAttemptedFor: bundleId,
+        fallbackAttemptedAt: Date.now(),
+      });
+
+      await LiveUpdate.setNextBundle({ bundleId });
+      await LiveUpdate.reload();
+      return true;
+    } catch (error) {
+      Sentry.captureException(error, { tags: { context: 'live_update_fallback' } });
+      return false;
+    }
+  }
+
+  /**
+   * Whether THIS boot's running bundle already proved itself on a previous boot — see
+   * decideReadyGate. When true, AppComponent skips the backend probe entirely and confirms
+   * immediately: the native watchdog arms on every launch, not only after an update, so without
+   * this a bundle that has been running unchanged for weeks would still re-risk the whole OTA
+   * chain on one network call, every single time it starts. A bundle cannot have broken while
+   * sitting untouched on disk between launches.
+   */
+  async alreadyConfirmedHealthy(): Promise<boolean> {
+    const record = await this.readRecord();
+    return (
+      decideReadyGate({
+        currentBundleId: this.currentBundleId(),
+        lastHealthyBundleId: record?.lastHealthyBundleId ?? null,
+      }) === 'confirm-immediately'
+    );
   }
 
   /**
@@ -205,7 +335,7 @@ export class LiveUpdateService {
       const keep = keepSetFor({
         current: currentBundleId,
         next: nextBundleId,
-        previous: record.previousBundleId,
+        previous: record.lastHealthyBundleId,
       });
       const { bundleIds } = await LiveUpdate.getDownloadedBundles();
       for (const bundleId of bundleIds.filter(id => !keep.has(id))) {
@@ -247,6 +377,16 @@ export class LiveUpdateService {
         } else if (currentBundleId && currentBundleId !== previousBundleId) {
           this.mixpanel.trackBundleApplied({ bundle_id: currentBundleId });
         }
+
+        // Independent of `rollback` above, deliberately: that flag can be stale. After the
+        // rollback fallback (applyRollbackFallback) lands on a known-good bundle, the plugin's
+        // rollbackPerformed flag from the ORIGINAL failure is often still set — nothing consumed
+        // it in between — so this exact call can legitimately report rollback:true for a bundle
+        // that is perfectly healthy. What actually means "healthy" is that ready() resolved with
+        // a non-null currentBundleId at all: the watchdog is cancelled for it, full stop.
+        if (currentBundleId) {
+          await this.markBundleHealthy(currentBundleId);
+        }
       } catch (error) {
         Sentry.captureException(error, { tags: { context: 'live_update_ready' } });
       }
@@ -254,6 +394,23 @@ export class LiveUpdateService {
 
     this.readyDone = run();
     return this.readyDone;
+  }
+
+  /**
+   * Records that `bundleId` is now the rollback-fallback candidate for next time, and clears any
+   * in-progress fallback attempt marker. Re-reads the record rather than reusing a cached copy —
+   * this runs from inside callReady()'s fire-and-forget run(), and a reload can land between any
+   * two writes.
+   */
+  private async markBundleHealthy(bundleId: string): Promise<void> {
+    const record = (await this.readRecord()) ?? emptyState('');
+    await this.writeRecord({
+      ...record,
+      lastHealthyBundleId: bundleId,
+      lastHealthyBundleChannel: record.installedBundleChannel,
+      fallbackAttemptedFor: null,
+      fallbackAttemptedAt: null,
+    });
   }
 
   private async safeDownloadedBundleIds(): Promise<string[]> {

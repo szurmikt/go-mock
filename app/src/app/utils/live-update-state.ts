@@ -5,7 +5,17 @@
  * @capawesome/capacitor-live-update, so anything living there can only be exercised on a device.
  * Everything here is a pure function over plain data, so the rules that decide which bundle runs
  * — and which ones get deleted — are unit-testable in karma with no plugin and no device.
+ *
+ * IMPORTANT CONTEXT, confirmed from the plugin's own native source (LiveUpdate.swift:42 /
+ * LiveUpdate.java:130): the rollback watchdog arms in the plugin's CONSTRUCTOR, i.e. on EVERY
+ * app launch — not only after a new bundle is applied. A bundle that has been running happily for
+ * weeks is re-given 15 seconds to prove backend reachability on every single cold start, or it is
+ * dropped straight to the embedded native bundle. `decideReadyGate` exists to stop re-litigating a
+ * bundle that already proved itself; `decideRollbackFallback` exists so that when the watchdog
+ * does fire, it lands on a bundle known to have worked rather than on native.
  */
+
+import { FALLBACK_COOLDOWN_MS } from '../config/live-update.const';
 
 /** The channels bundles can be published to. Shared with LiveUpdateService's own validation. */
 const VALID_CHANNELS = ['prod', 'early', 'dev'];
@@ -24,7 +34,8 @@ export type BundleBootState =
   | 'native_after_rollback'
   | 'native_after_binary_change'
   | 'native_plugin_missing'
-  | 'native_web';
+  | 'native_web'
+  | 'ota_after_fallback';
 
 export interface LiveUpdateState {
   /** getVersionCode() when this record was last written. Invalidates everything when it changes. */
@@ -33,10 +44,21 @@ export interface LiveUpdateState {
   installedBundleId: string | null;
   installedBundleChannel: string | null;
   /**
-   * The bundle the installed one replaced. Retained on disk by the prune (see keepSetFor) both as
-   * evidence for the live_update_events rollback row and as the future last-working target.
+   * The last bundle the plugin's ready() actually confirmed healthy — written by
+   * LiveUpdateService.callReady()/markBundleHealthy(), NOT positionally by "a newer bundle
+   * replaced this one" (that was the old `previousBundleId`'s behaviour; renamed and re-scoped so
+   * the rollback-fallback target is genuinely "known to have worked", never merely "was installed
+   * before the one that just failed"). Retained on disk by the prune (see keepSetFor) as the
+   * rollback-fallback's only candidate.
    */
-  previousBundleId: string | null;
+  lastHealthyBundleId: string | null;
+  /**
+   * The channel `lastHealthyBundleId` was running under. Needed because rule (c) clears
+   * installedBundleChannel on a rollback, so the fallback target's channel is otherwise
+   * unrecoverable — without this, applyChannelChangeIfNeeded would see no recorded channel for
+   * the fallback bundle and could wrongly treat a real mismatch as already-correct.
+   */
+  lastHealthyBundleChannel: string | null;
   /**
    * The channel of the property last selected in a session. Session state — cleared on logout by
    * AuthService.clearSessionData(), unlike installedBundleChannel which is a fact about the disk.
@@ -45,6 +67,17 @@ export interface LiveUpdateState {
   /** A downloaded-but-not-yet-applied bundle. Promoted to installed* once it is actually running. */
   stagedBundleId: string | null;
   stagedBundleChannel: string | null;
+  /**
+   * The bundle id the rollback fallback last force-applied via setNextBundle(), or null. The loop
+   * guard: decideRollbackFallback refuses to re-attempt this same candidate within
+   * FALLBACK_COOLDOWN_MS, which is what stops native → fallback → fails-again → native → ... from
+   * looping when the real cause is a backend outage rather than the candidate bundle itself.
+   * Cleared by LiveUpdateService.callReady() once ready() actually confirms a bundle is running —
+   * see that method's doc for why it is NOT cleared the moment the fallback bundle merely boots.
+   */
+  fallbackAttemptedFor: string | null;
+  /** Paired with fallbackAttemptedFor — when the attempt above was made, for the cooldown check. */
+  fallbackAttemptedAt: number | null;
 }
 
 export function emptyState(versionCode: string): LiveUpdateState {
@@ -52,10 +85,13 @@ export function emptyState(versionCode: string): LiveUpdateState {
     versionCode,
     installedBundleId: null,
     installedBundleChannel: null,
-    previousBundleId: null,
+    lastHealthyBundleId: null,
+    lastHealthyBundleChannel: null,
     lastResolvedChannel: null,
     stagedBundleId: null,
     stagedBundleChannel: null,
+    fallbackAttemptedFor: null,
+    fallbackAttemptedAt: null,
   };
 }
 
@@ -125,9 +161,20 @@ export function reconcileBootState(
   const base = record ?? emptyState(versionCode);
 
   // (b) A staged bundle is now the running one, so the apply succeeded. This is the only place
-  // installedBundleChannel is written: doing it at download time would claim a channel the disk
-  // does not have if the apply never happened or was rolled back.
+  // installedBundleChannel is written from a plain sync: doing it at download time would claim a
+  // channel the disk does not have if the apply never happened or was rolled back.
+  //
+  // lastHealthyBundleId is deliberately NOT written here (unlike the old previousBundleId it
+  // replaces) — it must only ever be set once LiveUpdateService.callReady() has actually seen
+  // ready() confirm the bundle, never positionally just because a newer bundle displaced it. A
+  // bundle that was "installed" but never survived to a confirmed ready() call is not "known to
+  // have worked", and must not become a rollback-fallback candidate.
   if (currentBundleId && currentBundleId === base.stagedBundleId) {
+    // A plain sync+apply is unrelated to a pending forced fallback UNLESS this happens to be
+    // exactly the fallback candidate arriving back through the ordinary channel — in that case
+    // leave the marker for callReady() to clear once ready() actually confirms it, rather than
+    // clearing it here on the strength of it merely being staged.
+    const isFallbackCandidate = currentBundleId === base.fallbackAttemptedFor;
     return {
       state: 'ota',
       nextRecord: {
@@ -135,9 +182,10 @@ export function reconcileBootState(
         versionCode,
         installedBundleId: currentBundleId,
         installedBundleChannel: base.stagedBundleChannel,
-        previousBundleId: base.installedBundleId,
         stagedBundleId: null,
         stagedBundleChannel: null,
+        fallbackAttemptedFor: isFallbackCandidate ? base.fallbackAttemptedFor : null,
+        fallbackAttemptedAt: isFallbackCandidate ? base.fallbackAttemptedAt : null,
       },
     };
   }
@@ -145,11 +193,14 @@ export function reconcileBootState(
   // (c) Running the embedded native bundle. Either nothing was ever applied, or the native
   // watchdog rolled back. Native has no channel, so clear it — the next boot correctly defaults to
   // prod, and a device that is really on early/dev is corrected at property selection.
-  // previousBundleId is deliberately KEPT: it is what the rollback row records as still-on-disk,
-  // and the future last-working fallback's only candidate.
+  // lastHealthyBundleId is deliberately KEPT: it is the rollback-fallback's only candidate.
+  //
+  // Reports native_after_rollback only when this record shows real prior bundle activity — a
+  // record can otherwise exist (e.g. only lastResolvedChannel set) for a device that has never
+  // actually received a bundle, which must report native_fresh, not falsely claim a rollback.
   if (!currentBundleId) {
     return {
-      state: record ? 'native_after_rollback' : 'native_fresh',
+      state: base.installedBundleId || base.lastHealthyBundleId ? 'native_after_rollback' : 'native_fresh',
       nextRecord: {
         ...base,
         versionCode,
@@ -157,6 +208,30 @@ export function reconcileBootState(
         installedBundleChannel: null,
         stagedBundleId: null,
         stagedBundleChannel: null,
+      },
+    };
+  }
+
+  // (c2) The bundle the rollback fallback force-applied (see LiveUpdateService.applyRollbackFallback
+  // and decideRollbackFallback) is now the running one. Distinct from (b): this arrives via
+  // setNextBundle(), never through stagedBundleId, so rule (b) never sees it. installedBundleChannel
+  // is recovered from lastHealthyBundleChannel, since (c) already cleared installedBundleChannel and
+  // the fallback bundle's own channel is otherwise unrecoverable.
+  //
+  // `!base.installedBundleId` makes this idempotent: it fires once, on the fallback bundle's first
+  // boot. Once installedBundleId is set, later boots correctly fall through to steady-state (d),
+  // even before callReady() gets around to clearing fallbackAttemptedFor.
+  //
+  // The marker is deliberately left untouched here — LiveUpdateService.callReady() clears it once
+  // ready() actually confirms this bundle, not merely on the strength of it now being current.
+  if (currentBundleId === base.fallbackAttemptedFor && !base.installedBundleId) {
+    return {
+      state: 'ota_after_fallback',
+      nextRecord: {
+        ...base,
+        versionCode,
+        installedBundleId: currentBundleId,
+        installedBundleChannel: base.lastHealthyBundleChannel,
       },
     };
   }
@@ -223,4 +298,93 @@ export function keepSetFor(ids: {
   previous: string | null;
 }): Set<string> {
   return new Set([ids.current, ids.next, ids.previous].filter((id): id is string => !!id));
+}
+
+/** Whether this launch must earn ready() the hard way, or can confirm it immediately. */
+export type ReadyGateDecision = 'confirm-immediately' | 'probe-required';
+
+/**
+ * Whether the running bundle already proved itself on a previous boot.
+ *
+ * The native watchdog arms on EVERY launch (LiveUpdate.swift:42 / LiveUpdate.java:130), not only
+ * after a new bundle is applied — so without this, a bundle that has been running unchanged for
+ * weeks re-risks the entire OTA chain on one network call, every single time the app starts. A
+ * bundle cannot have become broken while sitting untouched on disk between launches; only a
+ * bundle running for the FIRST time (or one that was applied but never confirmed) needs to earn
+ * its ready() over the network.
+ */
+export function decideReadyGate(facts: {
+  currentBundleId: string | null;
+  lastHealthyBundleId: string | null;
+}): ReadyGateDecision {
+  if (facts.currentBundleId && facts.currentBundleId === facts.lastHealthyBundleId) {
+    return 'confirm-immediately';
+  }
+  return 'probe-required';
+}
+
+/** Why the rollback fallback declined to force-apply lastHealthyBundleId. */
+export type FallbackDeclineReason =
+  | 'not-after-rollback'
+  | 'no-candidate'
+  | 'already-attempted'
+  | 'not-downloaded'
+  | 'blocked';
+
+export type RollbackFallbackDecision =
+  | { apply: true; bundleId: string }
+  | { apply: false; reason: FallbackDeclineReason };
+
+/**
+ * Whether to force-apply lastHealthyBundleId instead of accepting the native watchdog's default
+ * rollback target (the embedded native bundle) — see LiveUpdateService.applyRollbackFallback for
+ * the I/O this drives.
+ *
+ * Order is load-bearing (each check has its own test): state and candidate first — cheapest,
+ * decided without touching the plugin further — then the cooldown, before the disk/blocklist
+ * checks, so a repeat attempt on the same candidate within the window is rejected without needing
+ * fresh plugin data at all.
+ */
+export function decideRollbackFallback(facts: {
+  state: BundleBootState;
+  lastHealthyBundleId: string | null;
+  fallbackAttemptedFor: string | null;
+  fallbackAttemptedAt: number | null;
+  now: number;
+  downloadedBundleIds: string[];
+  blockedBundleIds: string[];
+}): RollbackFallbackDecision {
+  // Not native_after_binary_change: a bundle built against the previous native binary may call an
+  // API this one no longer has — the same reason rule (a) wipes all bundle state on a version
+  // change. Not native_fresh: nothing has ever run, so there is no candidate by definition either.
+  if (facts.state !== 'native_after_rollback') {
+    return { apply: false, reason: 'not-after-rollback' };
+  }
+
+  const candidate = facts.lastHealthyBundleId;
+  if (!candidate) return { apply: false, reason: 'no-candidate' };
+
+  // A marker that never clears must not kill the feature forever — only refuse a REPEAT of the
+  // same candidate within the cooldown window. `now - attemptedAt` is negative (and so already
+  // "less than" the cooldown) if the clock has moved backwards since the attempt, which correctly
+  // keeps that case inside the window too, with no special-casing needed.
+  if (
+    facts.fallbackAttemptedFor === candidate &&
+    facts.fallbackAttemptedAt !== null &&
+    facts.now - facts.fallbackAttemptedAt < FALLBACK_COOLDOWN_MS
+  ) {
+    return { apply: false, reason: 'already-attempted' };
+  }
+
+  if (!facts.downloadedBundleIds.includes(candidate)) {
+    return { apply: false, reason: 'not-downloaded' };
+  }
+
+  // The plugin blocklisted this bundle after a rollback it caused itself (autoBlockRolledBackBundles)
+  // — respect that rather than override it.
+  if (facts.blockedBundleIds.includes(candidate)) {
+    return { apply: false, reason: 'blocked' };
+  }
+
+  return { apply: true, bundleId: candidate };
 }
