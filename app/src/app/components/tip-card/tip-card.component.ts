@@ -23,6 +23,15 @@ export type TipCardVariant = 'home' | 'list';
   standalone: true,
   imports: [TranslatePipe],
   templateUrl: './tip-card.component.html',
+  // Without this, the <app-tip-card> host defaults to `display: inline` (the browser default
+  // for any custom element with no stylesheet rule for it) — which ignores `height` entirely.
+  // On the Help & Tips list this went unnoticed because each card sits as a direct child of a
+  // `display: flex` column, where flex items are auto-"blockified" per spec regardless of their
+  // own display value; on Home the card sits inside a plain (non-flex) wrapper div, where an
+  // inline host can't receive the wrapper's explicit height at all and instead sizes itself
+  // from its own content (the image), rendering visibly taller. `display: block` makes the
+  // host participate in layout the same way in both places.
+  styles: [':host { display: block; height: 100%; }'],
 })
 export class TipCardComponent {
   @Input({ required: true }) card!: TipCard;
