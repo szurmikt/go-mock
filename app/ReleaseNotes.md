@@ -13,6 +13,12 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+### 2026-09-23 — dev — 2dfa357b-1397-4799-9f9e-164fade555e8
+> git `b611b5e`. Implements `app/docs/feature-education-cards-handoff.md`.
+- New Help & tips education-card feature: Home shows up to 3 unseen bundled tip cards below arrivals (never above), tapping one opens a content-sized detail sheet (image/title/body/optional "Try it" deep link/thumbs feedback/Next tip), Settings gains a "Help & tips" entry leading to a searchable, category-filtered full list
+- Seed cards cover real shipped features only: Auto-Lock interval, Language switching, Search, "Open in PMS", ID scanning
+- "Reset Scan Tour" moved from Settings onto the new Help & Tips page
+
 ### 2026-09-08 — dev — 6e0fefa1-a4a8-409c-a728-2dc78649cdf7
 > Rebuild from `main` (git `b1754b9`) after merging `idscanly-identity-doc-address` in full — same content as the bundle below plus one addition.
 - Debug-only: Sentry breadcrumb instrumentation on the scan-result Edit path (temporary, no user-facing change)
