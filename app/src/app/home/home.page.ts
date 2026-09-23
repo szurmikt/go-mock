@@ -144,7 +144,11 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
     const el = event.target as HTMLElement;
     if (!el.clientWidth) return;
     const idx = Math.round(el.scrollLeft / el.clientWidth);
-    if (idx === this.activeTipIndex() || idx < 0 || idx >= this.tipCardsSnapshot().length) return;
+    // +1 slide count for the trailing "See all tips" slide, which isn't a real TipCard —
+    // trackTipShownIfNew already no-ops for it (tipCardsSnapshot()[idx] is undefined there),
+    // this just lets the dot indicator follow it too.
+    const slideCount = this.tipCardsSnapshot().length + 1;
+    if (idx === this.activeTipIndex() || idx < 0 || idx >= slideCount) return;
     this.activeTipIndex.set(idx);
     this.trackTipShownIfNew(idx);
   }
