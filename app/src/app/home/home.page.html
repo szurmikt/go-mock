@@ -45,36 +45,6 @@
       </div>
     </div>
 
-    <!-- THROWAWAY MOCK — single-property morning-briefing widget. Remove with pages/briefing. -->
-    @if (showBriefing()) {
-      <button class="card tap-anim tappable briefing-widget-in" (click)="goBriefing()"
-        style="display: flex; align-items: stretch; width: calc(100% - 32px); margin: 8px var(--pad) 12px; text-align: left; cursor: pointer">
-        <!-- Left part (~70%, flexes to absorb the 1px divider) -->
-        <span style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 10px; padding-right: 14px">
-          <span style="width: 36px; height: 36px; border-radius: var(--radius-xs); background: var(--primary-soft-bg); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/>
-              <circle cx="12" cy="12" r="4"/>
-            </svg>
-          </span>
-          <span style="flex: 1; min-width: 0">
-            <span style="display: block; font-size: var(--font-base); font-weight: 800; color: var(--ink); letter-spacing: -0.01em">Good morning, {{ firstName() }}</span>
-            <span style="display: block; font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); margin-top: 2px">4 things need you</span>
-            <span style="display: block; font-size: var(--font-sm); font-weight: 600; color: var(--ink-3)">22 arrivals today</span>
-          </span>
-        </span>
-        <!-- Divider -->
-        <span style="flex: 0 0 1px; background: var(--line); align-self: stretch"></span>
-        <!-- Right part (30%) -->
-        <span style="flex: 0 0 30%; display: flex; align-items: center; justify-content: center; gap: 4px; padding-left: 14px; font-size: var(--font-sm); font-weight: 800; color: var(--primary)">
-          Open briefing
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0">
-            <path d="M9 18l6-6-6-6"/>
-          </svg>
-        </span>
-      </button>
-    }
-
     <!-- Search bar (tappable, navigates to search page) -->
     <button class="search-field" style="text-align: left; cursor: pointer; width: calc(100% - 32px)" (click)="goSearch()">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-4); flex-shrink: 0">
