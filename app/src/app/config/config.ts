@@ -35,6 +35,14 @@ export const Config = {
   // scan-onboarding.service.ts. A "seen once ever" flag, not a preference — never reset except
   // by clearing app storage.
   STORAGE_SCAN_ONBOARDING_SEEN_KEY: 'scanOnboardingSeen',
+  // Per-user Help & tips card seen/dismissed state — see tips.service.ts. One blob keyed by
+  // auth.userId() so GO's shared front-desk devices don't hide a card from one staff member
+  // just because a colleague already saw it. Deliberately NOT cleared by
+  // AuthService.clearSessionData() (logout/property-switch) — this is per-user history, not
+  // property-scoped session data, and must survive so the same user sees their own progress
+  // again on their next login on this device (same precedent as
+  // STORAGE_SCAN_ONBOARDING_SEEN_KEY above, just namespaced per user instead of global).
+  STORAGE_TIP_STATE_KEY: 'tipCardState',
   // One JSON record (LiveUpdateState, see utils/live-update-state.ts) rather than split keys:
   // it is read once at boot and mutated as a unit, and a reload mid-write across several keys
   // would leave torn state. Deliberately NOT cleared by AuthService.clearSessionData() — most of

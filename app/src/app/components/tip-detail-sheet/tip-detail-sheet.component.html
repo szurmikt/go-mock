@@ -1,0 +1,58 @@
+@if (visible()) {
+  <div class="sheet-backdrop" (click)="close()">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      @if (current(); as card) {
+        <div class="head">
+          <button class="icon-btn" [attr.aria-label]="'common.close' | tr" (click)="close()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+          @if (hasNext()) {
+            <button (click)="next()"
+              style="background: none; border: none; padding: 4px; cursor: pointer; display: flex; align-items: center; gap: 2px; color: var(--primary); font-size: var(--font-sm); font-weight: 800; font-family: inherit">
+              {{ 'helpTips.nextTip' | tr }}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </button>
+          }
+        </div>
+
+        <img [src]="card.image" alt="" style="width: 100%; border-radius: var(--radius); margin-top: 12px; display: block" />
+
+        <div style="margin-top: 16px; font-size: var(--font-xl); font-weight: 800; color: var(--ink); letter-spacing: -0.01em">
+          {{ card.titleKey | tr }}
+        </div>
+        <div style="margin-top: 8px; font-size: var(--font-base); font-weight: 500; color: var(--ink-2); line-height: 1.5">
+          {{ card.bodyKey | tr }}
+        </div>
+
+        @if (card.action; as action) {
+          <button class="btn" style="margin-top: 20px" (click)="tryIt()">{{ action.labelKey | tr }}</button>
+        }
+
+        <div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line)">
+          <button (click)="giveFeedback('up')" [attr.aria-label]="'helpTips.ariaThumbsUp' | tr"
+            [style.color]="feedback() === 'up' ? 'var(--success)' : 'var(--ink-3)'"
+            [style.borderColor]="feedback() === 'up' ? 'var(--success)' : 'var(--line-strong)'"
+            style="width: 44px; height: 44px; border-radius: 50%; border-width: 1.5px; border-style: solid; background: none; display: flex; align-items: center; justify-content: center; cursor: pointer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+              <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+            </svg>
+          </button>
+          <button (click)="giveFeedback('down')" [attr.aria-label]="'helpTips.ariaThumbsDown' | tr"
+            [style.color]="feedback() === 'down' ? 'var(--warn)' : 'var(--ink-3)'"
+            [style.borderColor]="feedback() === 'down' ? 'var(--warn)' : 'var(--line-strong)'"
+            style="width: 44px; height: 44px; border-radius: 50%; border-width: 1.5px; border-style: solid; background: none; display: flex; align-items: center; justify-content: center; cursor: pointer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/>
+              <path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/>
+            </svg>
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}

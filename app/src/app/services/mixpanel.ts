@@ -268,6 +268,37 @@ export class MixpanelService {
     this.track('home_segment_changed', { segment });
   }
 
+  // ---- help & tips ----
+
+  /**
+   * Fires when a tip card is actually visible on screen — for Home's carousel this means the
+   * card scrolled into view (activeTipIndex in home.page.ts), NOT merely present in the
+   * array. A one-card-at-a-time carousel only shows one of up to 3 cards at once, so tying
+   * this to array membership would overcount cards 2 and 3 as "shown" before the user ever
+   * scrolled to them.
+   */
+  trackTipCardShown(p: { card_id: string; category: string; surface: 'home' | 'list' }): void {
+    this.track('help_card_shown', { ...p });
+  }
+
+  trackTipCardOpened(p: { card_id: string; category: string; surface: 'home' | 'list' }): void {
+    this.track('help_card_opened', { ...p });
+  }
+
+  trackTipCardTryItTapped(p: { card_id: string; category: string }): void {
+    this.track('help_card_try_it_tapped', { ...p });
+  }
+
+  trackTipCardDismissed(p: { card_id: string; category: string }): void {
+    this.track('help_card_dismissed', { ...p });
+  }
+
+  /** One event with a `rating` enum, not two separate up/down events — same convention as
+   *  trackSessionUnlockResult's `outcome` field. */
+  trackTipCardFeedback(p: { card_id: string; category: string; rating: 'up' | 'down' }): void {
+    this.track('help_card_feedback', { ...p });
+  }
+
   // ---- live updates (OTA) ----
 
   trackBundleDownloaded(p: { bundle_id: string; channel: string }): void {

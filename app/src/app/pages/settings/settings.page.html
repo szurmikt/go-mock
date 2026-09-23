@@ -38,6 +38,16 @@
           {{ 'settings.autoLock' | tr }}: {{ 'settings.autoLockValue' | tr:{value: biometric.autoLockMinutes()} }}
         </button>
 
+        <!-- Help & tips -->
+        <button class="btn secondary" (click)="goHelpTips()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          {{ 'helpTips.title' | tr }}
+        </button>
+
         <!-- Language -->
         <button class="btn secondary" (click)="openLangPicker()">{{ 'settings.language' | tr }}</button>
 
@@ -59,18 +69,6 @@
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
             Lock Now
-          </button>
-        }
-
-        <!-- Reset Scan Tour — debug-only, gated to the internal test property
-             (see scan-onboarding-debug.const.ts) -->
-        @if (scanTourResetEnabled()) {
-          <button class="btn secondary" (click)="resetScanTour()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 12a9 9 0 1 0 3-6.7"/>
-              <path d="M3 4v5h5"/>
-            </svg>
-            {{ scanTourReset() ? 'Reset — it will show next scan' : 'Reset Scan Tour' }}
           </button>
         }
 
