@@ -17,6 +17,7 @@ import { LocalizedDatePipe } from '../pipes/localized-date.pipe';
 import { TranslatePipe } from '../pipes/translate.pipe';
 import { FeedbackSheetComponent } from '../components/feedback-sheet/feedback-sheet.component';
 import { TipDetailSheetComponent } from '../components/tip-detail-sheet/tip-detail-sheet.component';
+import { TipCardComponent } from '../components/tip-card/tip-card.component';
 // THROWAWAY MOCK — single-property morning-briefing widget. Remove with pages/briefing.
 import { BRIEFING_PROPERTY_ID } from '../pages/briefing/briefing.const';
 
@@ -44,6 +45,7 @@ function localDateStr(offset: number): string {
     TranslatePipe,
     FeedbackSheetComponent,
     TipDetailSheetComponent,
+    TipCardComponent,
   ],
 })
 export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, AfterViewInit, OnDestroy {
@@ -147,8 +149,7 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
     this.trackTipShownIfNew(idx);
   }
 
-  async dismissTip(card: TipCard, event: Event): Promise<void> {
-    event.stopPropagation();
+  async dismissTip(card: TipCard): Promise<void> {
     await this.tips.dismiss(this.auth.userId(), card.id);
     this.mixpanel.trackTipCardDismissed({ card_id: card.id, category: card.category });
     // The one case where the visible list SHOULD update immediately — the user just

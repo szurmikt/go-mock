@@ -7,6 +7,7 @@ import { TipCard } from '../../models/tip-card.interface';
 import { normalizeText } from '../../utils/text';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { TipDetailSheetComponent } from '../../components/tip-detail-sheet/tip-detail-sheet.component';
+import { TipCardComponent } from '../../components/tip-card/tip-card.component';
 import { ScanOnboardingService } from '../../idscanly/services/scan-onboarding.service';
 import { SCAN_ONBOARDING_DEBUG_PROPERTY_ID } from '../../idscanly/scan-onboarding-debug.const';
 
@@ -19,7 +20,7 @@ interface TipCardGroup {
   selector: 'app-help-tips',
   templateUrl: './help-tips.page.html',
   standalone: true,
-  imports: [IonContent, TranslatePipe, TipDetailSheetComponent],
+  imports: [IonContent, TranslatePipe, TipDetailSheetComponent, TipCardComponent],
 })
 export class HelpTipsPage {
   tips = inject(TipsService);

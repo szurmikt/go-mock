@@ -65,37 +65,12 @@
           <div style="padding: 16px var(--pad) 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-4)">
             {{ categoryLabel(group.category) }}
           </div>
-          @for (card of group.cards; track card.id) {
-            <button class="tappable" (click)="tipSheet.open(card, 'list')"
-              style="display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--line); padding: 12px var(--pad); cursor: pointer; font-family: inherit">
-              <span style="position: relative; flex-shrink: 0; display: block">
-                <img [src]="card.image" alt="" style="width: 48px; height: 48px; border-radius: var(--radius-xs); display: block; object-fit: cover" />
-                <!-- Blue dot for unseen — the only unread signal (never fade an unseen card;
-                     seen rows must remain fully usable, so there's no opacity difference). -->
-                @if (!tips.isSeen(auth.userId(), card.id)) {
-                  <span style="position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); border: 2px solid var(--surface)"></span>
-                }
-              </span>
-              <span style="flex: 1; min-width: 0">
-                <span style="display: flex; align-items: center; gap: 6px">
-                  <span style="font-size: var(--font-base); font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ card.titleKey | tr }}</span>
-                  <!-- NEW badge: independent of seen state — a card can show both this and the
-                       unseen dot at once. -->
-                  @if (card.featured) {
-                    <span style="flex-shrink: 0; background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; padding: 1px 6px; border-radius: 999px">
-                      {{ 'helpTips.newBadge' | tr }}
-                    </span>
-                  }
-                </span>
-                <span style="display: block; margin-top: 2px; font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
-                  {{ card.summaryKey | tr }}
-                </span>
-              </span>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-4); flex-shrink: 0">
-                <path d="M9 18l6-6-6-6"/>
-              </svg>
-            </button>
-          }
+          <div style="margin: 0 var(--pad) 16px; display: flex; flex-direction: column; gap: 8px">
+            @for (card of group.cards; track card.id) {
+              <app-tip-card [card]="card" variant="list" [unseen]="!tips.isSeen(auth.userId(), card.id)"
+                (open)="tipSheet.open(card, 'list')" />
+            }
+          </div>
         }
       }
 

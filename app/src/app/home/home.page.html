@@ -203,25 +203,10 @@
         <div (scroll)="onTipCarouselScroll($event)"
           style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding: 0 var(--pad) 4px">
           @for (card of tipCardsSnapshot(); track card.id) {
-            <div class="card tap-anim tappable"
-              style="flex: 0 0 calc(100% - 32px); scroll-snap-align: center; position: relative; overflow: hidden; padding: 0"
-              (click)="tipSheet.open(card, 'home')">
-              <button (click)="dismissTip(card, $event)" [attr.aria-label]="'helpTips.ariaDismiss' | tr"
-                style="position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.85); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" style="color: var(--ink-3)">
-                  <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-              </button>
-              <img [src]="card.image" alt="" style="width: 100%; display: block" />
-              <div style="padding: var(--card-pad)">
-                <div style="font-size: var(--font-md); font-weight: 800; color: var(--ink)">{{ card.titleKey | tr }}</div>
-                @if (card.featured) {
-                  <span style="display: inline-block; margin-top: 4px; background: var(--primary); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 999px">
-                    {{ 'helpTips.newBadge' | tr }}
-                  </span>
-                }
-                <div style="margin-top: 6px; font-size: var(--font-sm); font-weight: 600; color: var(--ink-3); line-height: 1.4">{{ card.summaryKey | tr }}</div>
-              </div>
+            <div style="flex: 0 0 calc(100% - 32px); scroll-snap-align: center">
+              <app-tip-card [card]="card" variant="home"
+                (open)="tipSheet.open(card, 'home')"
+                (dismiss)="dismissTip(card)" />
             </div>
           }
         </div>
