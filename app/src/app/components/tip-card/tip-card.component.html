@@ -1,9 +1,16 @@
 <div class="card tap-anim tappable" (click)="open.emit()"
   style="position: relative; display: flex; align-items: stretch; padding: 0; border-radius: 12px; overflow: hidden; min-height: 78px; height: 100%; box-sizing: border-box; cursor: pointer">
 
-  <!-- Image — 30% width, full card height, matching the reference design exactly -->
+  <!-- Image — 30% width, full card height, matching the reference design exactly.
+       The img is absolutely positioned (not width/height:100%) so its own intrinsic
+       aspect ratio (the tip SVGs are viewBox 400x300, i.e. 4:3) can never inflate the
+       row's height on a page with no explicit-height ancestor (e.g. the Help & Tips
+       list) — percentage height on a statically-positioned img falls back to that
+       intrinsic ratio when no definite containing-block height exists, which is what
+       made the list cards render taller than Home's, where an explicit wrapper height
+       happened to mask the same issue. -->
   <div style="width: 30%; flex-shrink: 0; align-self: stretch; position: relative; overflow: hidden">
-    <img [src]="card.image" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block" />
+    <img [src]="card.image" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block" />
   </div>
 
   <div style="flex: 1; min-width: 0; padding: 12px 12px 12px 14px; display: flex; flex-direction: column; justify-content: center">
