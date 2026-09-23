@@ -9,11 +9,17 @@ import { AuthService } from '../services/auth';
 import { ReservationService, pillStatus, pillLabel } from '../services/reservation';
 import { OptionsService } from '../services/options.service';
 import { MixpanelService } from '../services/mixpanel';
+import { TipsService } from '../services/tips.service';
 import { PropertyInterface } from '../models/property.interface';
 import { ReservationInterface } from '../models/reservation.interface';
+import { TipCard } from '../models/tip-card.interface';
 import { LocalizedDatePipe } from '../pipes/localized-date.pipe';
 import { TranslatePipe } from '../pipes/translate.pipe';
 import { FeedbackSheetComponent } from '../components/feedback-sheet/feedback-sheet.component';
+import { TipDetailSheetComponent } from '../components/tip-detail-sheet/tip-detail-sheet.component';
+import { TipCardComponent } from '../components/tip-card/tip-card.component';
+// THROWAWAY MOCK — single-property morning-briefing widget. Remove with pages/briefing.
+import { BRIEFING_PROPERTY_ID } from '../pages/briefing/briefing.const';
 
 type Tab = 'Yesterday' | 'Today' | 'Tomorrow';
 
@@ -31,7 +37,16 @@ function localDateStr(offset: number): string {
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
   standalone: true,
-  imports: [IonContent, IonRefresher, IonRefresherContent, LocalizedDatePipe, TranslatePipe, FeedbackSheetComponent],
+  imports: [
+    IonContent,
+    IonRefresher,
+    IonRefresherContent,
+    LocalizedDatePipe,
+    TranslatePipe,
+    FeedbackSheetComponent,
+    TipDetailSheetComponent,
+    TipCardComponent,
+  ],
 })
 export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, AfterViewInit, OnDestroy {
   @ViewChildren('segBtn') segBtns!: QueryList<ElementRef<HTMLButtonElement>>;
@@ -99,6 +114,59 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
   // may not even arrive today, and the point is to surface it regardless of tab.
   readonly openInPms = computed(() => this.res.reservations().filter(r => r.open_in_pms));
 
+  // Help & tips carousel. Deliberately a plain signal, NOT a computed() off TipsService's
+  // live seen/dismissed state: opening a card's detail sheet marks it seen immediately (per
+  // the handoff), and if this list were reactive it would shrink/reshuffle under the user
+  // while that sheet is still open on top of it. Instead it's snapshotted once per real visit
+  // to Home (refreshTipCards(), called from ionViewWillEnter below) — the next actual return
+  // to Home is what picks up the new state, never a background reshuffle mid-interaction.
+  tipCardsSnapshot = signal<TipCard[]>([]);
+  activeTipIndex = signal(0);
+  private shownTipIds = new Set<string>();
+  private tips = inject(TipsService);
+
+  private refreshTipCards(): void {
+    this.tipCardsSnapshot.set(this.tips.homeCards(this.auth.userId()));
+    this.activeTipIndex.set(0);
+    if (this.tipCardsSnapshot().length > 0) this.trackTipShownIfNew(0);
+  }
+
+  /** Ties "shown" to the carousel card actually scrolled into view (activeTipIndex), not
+   *  merely present in tipCardsSnapshot — in a one-card-at-a-time carousel, cards 2 and 3
+   *  aren't visible until scrolled to, so firing on array membership alone would overcount. */
+  private trackTipShownIfNew(index: number): void {
+    const card = this.tipCardsSnapshot()[index];
+    if (!card || this.shownTipIds.has(card.id)) return;
+    this.shownTipIds.add(card.id);
+    this.mixpanel.trackTipCardShown({ card_id: card.id, category: card.category, surface: 'home' });
+  }
+
+  onTipCarouselScroll(event: Event): void {
+    const el = event.target as HTMLElement;
+    if (!el.clientWidth) return;
+    const idx = Math.round(el.scrollLeft / el.clientWidth);
+    // +1 slide count for the trailing "See all tips" slide, which isn't a real TipCard —
+    // trackTipShownIfNew already no-ops for it (tipCardsSnapshot()[idx] is undefined there),
+    // this just lets the dot indicator follow it too.
+    const slideCount = this.tipCardsSnapshot().length + 1;
+    if (idx === this.activeTipIndex() || idx < 0 || idx >= slideCount) return;
+    this.activeTipIndex.set(idx);
+    this.trackTipShownIfNew(idx);
+  }
+
+  async dismissTip(card: TipCard): Promise<void> {
+    await this.tips.dismiss(this.auth.userId(), card.id);
+    this.mixpanel.trackTipCardDismissed({ card_id: card.id, category: card.category });
+    // The one case where the visible list SHOULD update immediately — the user just
+    // performed this action themselves and expects instant feedback (unlike marking a card
+    // seen on open, which deliberately does not touch this snapshot — see above).
+    this.tipCardsSnapshot.update(cards => cards.filter(c => c.id !== card.id));
+  }
+
+  goHelpTips(): void {
+    this.router.navigate(['/help-tips']);
+  }
+
   // Foreground polling while Home is the active view (Part B, Phase 0 of the
   // open-in-PMS investigation — see the plan doc): no push/websocket exists yet,
   // so this is the fastest way to surface a PMS-side change without backend work.
@@ -122,6 +190,7 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
   // staleness gate in fetchReservations dedupes redundant calls.
   ionViewWillEnter() {
     this.res.fetchReservations();
+    this.refreshTipCards();
   }
 
   ionViewDidEnter() {

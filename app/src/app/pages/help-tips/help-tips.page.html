@@ -1,0 +1,95 @@
+<ion-content>
+  <div class="page">
+
+    <div class="sub-header">
+      <button class="back" (click)="back()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+      <span class="title">{{ 'helpTips.title' | tr }}</span>
+    </div>
+
+    <div class="search-field" style="margin: 0 var(--pad) 12px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-4); flex-shrink: 0">
+        <circle cx="11" cy="11" r="7"/>
+        <path d="m21 21-4.3-4.3"/>
+      </svg>
+      <input
+        type="text"
+        [placeholder]="'helpTips.searchPlaceholder' | tr"
+        [value]="query()"
+        (input)="query.set($any($event.target).value)"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        style="flex: 1; border: none; background: none; outline: none; font-weight: 600; color: var(--ink); font-family: inherit" />
+      @if (query().length > 0) {
+        <button (click)="query.set('')" style="background: none; border: none; padding: 0; cursor: pointer; color: var(--ink-4); display: flex; align-items: center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      }
+    </div>
+
+    <!-- Category filter chips -->
+    <div style="display: flex; gap: 8px; overflow-x: auto; padding: 0 var(--pad) 12px">
+      <button (click)="selectCategory(null)"
+        [style.background]="selectedCategory() === null ? 'var(--primary-soft-bg)' : 'var(--surface)'"
+        [style.borderColor]="selectedCategory() === null ? 'var(--primary)' : 'var(--line)'"
+        [style.color]="selectedCategory() === null ? 'var(--primary)' : 'var(--ink)'"
+        style="flex-shrink: 0; border-width: 1.5px; border-style: solid; border-radius: 20px; padding: 6px 14px; font-size: var(--font-sm); font-weight: 700; cursor: pointer; font-family: inherit">
+        {{ 'helpTips.categoryAll' | tr }}
+      </button>
+      @for (cat of categories(); track cat) {
+        <button (click)="selectCategory(cat)"
+          [style.background]="selectedCategory() === cat ? 'var(--primary-soft-bg)' : 'var(--surface)'"
+          [style.borderColor]="selectedCategory() === cat ? 'var(--primary)' : 'var(--line)'"
+          [style.color]="selectedCategory() === cat ? 'var(--primary)' : 'var(--ink)'"
+          style="flex-shrink: 0; border-width: 1.5px; border-style: solid; border-radius: 20px; padding: 6px 14px; font-size: var(--font-sm); font-weight: 700; cursor: pointer; font-family: inherit">
+          {{ categoryLabel(cat) }}
+        </button>
+      }
+    </div>
+
+    <div class="app-scroll" style="padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px))">
+
+      @if (grouped().length === 0) {
+        <div class="empty-state">{{ 'helpTips.noResults' | tr }}</div>
+      } @else {
+        @for (group of grouped(); track group.category) {
+          <div style="padding: 16px var(--pad) 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-4)">
+            {{ categoryLabel(group.category) }}
+          </div>
+          <div style="margin: 0 var(--pad) 16px; display: flex; flex-direction: column; gap: 8px">
+            @for (card of group.cards; track card.id) {
+              <app-tip-card [card]="card" variant="list" [unseen]="!tips.isSeen(auth.userId(), card.id)"
+                (open)="tipSheet.open(card, 'list')" />
+            }
+          </div>
+        }
+      }
+
+      <!-- Reset Scan Tour — debug-only, gated to the internal test property (moved here from
+           Settings, see scan-onboarding-debug.const.ts) -->
+      @if (scanTourResetEnabled()) {
+        <div style="padding: 24px var(--pad) 0">
+          <button class="btn secondary" (click)="resetScanTour()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 3-6.7"/>
+              <path d="M3 4v5h5"/>
+            </svg>
+            {{ scanTourReset() ? 'Reset — it will show next scan' : 'Reset Scan Tour' }}
+          </button>
+        </div>
+      }
+
+    </div>
+  </div>
+</ion-content>
+
+<app-tip-detail-sheet #tipSheet />

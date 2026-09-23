@@ -87,6 +87,55 @@
     <!-- Scrollable content -->
     <div class="app-scroll" style="padding-top: 12px; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px))">
 
+      <!-- Help & tips carousel — directly under the search field. Hidden entirely when
+           nothing is unseen; no empty state, no section title. -->
+      @if (tipCardsSnapshot().length > 0) {
+        <div (scroll)="onTipCarouselScroll($event)"
+          style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding: 0 var(--pad) 4px">
+          @for (card of tipCardsSnapshot(); track card.id) {
+            <div style="flex: 0 0 calc(100% - 32px); scroll-snap-align: center; height: 78px">
+              <app-tip-card [card]="card" variant="home"
+                (open)="tipSheet.open(card, 'home')"
+                (dismiss)="dismissTip(card)" />
+            </div>
+          }
+
+          <!-- Trailing "See all tips" slide — same card shell (border/radius/height) for
+               visual consistency, but not dismissible and not a real TipCard: it's a
+               navigation slide, not tip content. Disappears along with the whole carousel
+               once tipCardsSnapshot() is empty (the @if above gates both). Wrapper height is
+               explicit (matching the real cards' wrapper) rather than relying on each card's
+               own min-height — two sibling flex items with only min-height (no shared parent
+               height) don't reliably end up the same rendered height, which is what caused
+               the visible mismatch between this slide and the real cards. -->
+          <div style="flex: 0 0 calc(100% - 32px); scroll-snap-align: center; height: 78px">
+            <div class="card tap-anim tappable" (click)="goHelpTips()"
+              style="display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 12px; height: 100%; box-sizing: border-box; cursor: pointer">
+              <span style="display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 800; color: var(--primary)">
+                {{ 'helpTips.seeAllTips' | tr }}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagination dots — one extra dot for the trailing "See all tips" slide -->
+        <div style="display: flex; justify-content: center; gap: 6px; margin: 10px 0 24px">
+          @for (card of tipCardsSnapshot(); track card.id; let i = $index) {
+            <span
+              [style.width.px]="i === activeTipIndex() ? 16 : 6"
+              [style.opacity]="i === activeTipIndex() ? 1 : 0.3"
+              style="height: 6px; border-radius: 3px; background: var(--primary); transition: width 0.2s ease"></span>
+          }
+          <span
+            [style.width.px]="activeTipIndex() === tipCardsSnapshot().length ? 16 : 6"
+            [style.opacity]="activeTipIndex() === tipCardsSnapshot().length ? 1 : 0.3"
+            style="height: 6px; border-radius: 3px; background: var(--primary); transition: width 0.2s ease"></span>
+        </div>
+      }
+
       <!-- Open in PMS: reservations currently open in the desktop PMS, regardless of tab -->
       @if (openInPms().length > 0) {
         <div class="section-title">
@@ -198,6 +247,8 @@
   </div>
 
 </ion-content>
+
+<app-tip-detail-sheet #tipSheet />
 
 <!-- Property switcher sheet — rendered outside ion-content so position:fixed reaches the viewport -->
 @if (switchOpen()) {

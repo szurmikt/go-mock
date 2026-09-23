@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="searchBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#bedbff"/>
+      <stop offset="1" stop-color="#eef6ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" rx="24" fill="url(#searchBg)"/>
+  <circle cx="330" cy="70" r="90" fill="#ffffff" opacity="0.35"/>
+  <circle cx="300" cy="230" r="60" fill="#ffffff" opacity="0.25"/>
+  <g transform="translate(200 150)">
+    <circle r="58" fill="#008eff"/>
+    <circle cx="-6" cy="-6" r="24" fill="none" stroke="#ffffff" stroke-width="8"/>
+    <line x1="14" y1="14" x2="30" y2="30" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+  </g>
+</svg>

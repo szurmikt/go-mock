@@ -158,6 +158,29 @@ meaningless.
   session (or from the last Card/Passport bucket switch, which restarts the timer) to this
   successful submit.
 
+### Help & tips
+
+| Event | When | Properties |
+|---|---|---|
+| `help_card_shown` | a Home carousel card is actually scrolled into view (not just present in the array — a one-card-at-a-time carousel only shows one of up to 3 at once) | `card_id`, `category`, `surface` = `home` |
+| `help_card_opened` | the detail sheet opens (from Home or the Help & Tips list) | `card_id`, `category`, `surface` = `home` \| `list` |
+| `help_card_try_it_tapped` | the sheet's "Try it" deep-link button is tapped | `card_id`, `category` |
+| `help_card_dismissed` | the X is tapped on a Home carousel card | `card_id`, `category` |
+| `help_card_feedback` | thumbs up/down in the detail sheet | `card_id`, `category`, `rating` = `up` \| `down` |
+
+- **"Is the education actually changing behavior?"** → the whole point of this feature. Cross-
+  reference `help_card_opened` for `card_id: 'auto-lock'` against the existing
+  `auto_lock_interval` people-property (set only on an explicit Settings pick, see "App lock /
+  unlock" above) — did more users change their Auto-Lock interval after seeing that card than
+  before it shipped?
+- **"Are staff finding tips useful?"** → ratio of `up` to `down` in `help_card_feedback`,
+  broken down by `card_id`.
+- **"Is the carousel or the full list doing the work?"** → `help_card_opened` broken down by
+  `surface`.
+- `help_card_shown` only fires for `surface: 'home'` — the full Help & Tips list has no
+  scroll-visibility tracking (every row is reachable by a simple scroll, not gated behind a
+  one-at-a-time carousel), so "reach" there is better read from `help_card_opened` directly.
+
 ---
 
 ## Suggested first reports

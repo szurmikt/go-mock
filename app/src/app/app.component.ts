@@ -17,6 +17,7 @@ import { LanguageService } from './services/language.service';
 import { LiveUpdateService } from './services/live-update';
 import { MixpanelService } from './services/mixpanel';
 import { OptionsService } from './services/options.service';
+import { TipsService } from './services/tips.service';
 import {
   BOOT_SETUP_BUDGET_NATIVE_MS,
   BOOT_SETUP_BUDGET_OTA_MS,
@@ -94,6 +95,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private liveUpdate = inject(LiveUpdateService);
   private capturePreference = inject(CapturePreferenceService);
   private scanOnboarding = inject(ScanOnboardingService);
+  private tips = inject(TipsService);
 
   constructor(
     readonly auth: AuthService,
@@ -142,6 +144,9 @@ export class AppComponent implements OnInit, OnDestroy {
     // dependency, must resolve before the Scan page's first ionViewWillEnter can decide whether
     // to show it.
     await this.scanOnboarding.init();
+    // Purely local read (per-user Help & tips seen/dismissed state) — no network dependency,
+    // must resolve before Home's first ionViewWillEnter can compute its tip carousel.
+    await this.tips.init();
     await this.apiEnv.init();
     // Which OTA bundle is running — a purely local read, deliberately not gated on any backend
     // call, so bundle_version is correct on the very first event even on a flaky network.
