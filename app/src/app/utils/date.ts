@@ -43,3 +43,96 @@ function isValid(y: string, m: string, d: string): boolean {
     dt.getUTCDate() === day
   );
 }
+
+let localInstantFormatter: Intl.DateTimeFormat | null = null;
+function getLocalInstantFormatter(): Intl.DateTimeFormat {
+  if (!localInstantFormatter) {
+    localInstantFormatter = new Intl.DateTimeFormat(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+  return localInstantFormatter;
+}
+
+/**
+ * Formats an "instant" timestamp from the API — e.g. a reservation's
+ * `checked_in_time`/`checked_out_time`, or (once it ships) a comment's
+ * created-at — as a 24h `HH:MM` string. Unlike `toInputDate` above, this is for
+ * fields that represent a specific moment in time, not a calendar day.
+ *
+ * The API sends these as naive `"YYYY-MM-DD HH:MM:SS"` strings with no
+ * timezone marker. `GET /properties/settings` now returns the property's real
+ * timezone as an IANA name (e.g. "Europe/Budapest") in `property_time_zone`
+ * (see `PropertySettingsService`, wired through `AuthService` and consumed by
+ * `ReservationDetailPage`) — confirmed live (2026-09-13) that the naive
+ * strings are true UTC instants, not property-local wall-clock time. When a
+ * `timeZone` is passed, the value is treated as a UTC instant (`Z` appended)
+ * and converted to that zone for display.
+ *
+ * Omitting `timeZone` is the graceful-degradation path — a property with no
+ * timezone on record, or a failed `PropertySettingsService.load()` — and reads
+ * the naive string as if it's already in the viewer's own local time (exactly
+ * how this function's predecessor, the inline logic in `LocalizedTimePipe`,
+ * has always behaved). Its behavior must stay byte-for-byte stable except by
+ * a deliberate, reviewed change, since it's still what renders whenever the
+ * real timezone isn't available.
+ */
+export function formatPropertyInstant(
+  value: string | null | undefined,
+  timeZone?: string | null,
+): string {
+  if (value == null || value.trim() === '') return '';
+  const normalized = value.replace(' ', 'T');
+
+  if (!timeZone) {
+    const d = new Date(normalized);
+    if (Number.isNaN(d.getTime())) {
+      const m = value.match(/(\d{1,2}:\d{2})/);
+      return m ? m[1] : '';
+    }
+    return getLocalInstantFormatter().format(d);
+  }
+
+  // Confirmed UTC-instant assumption — see the doc comment above.
+  const d = new Date(`${normalized}Z`);
+  if (Number.isNaN(d.getTime())) {
+    const m = value.match(/(\d{1,2}:\d{2})/);
+    return m ? m[1] : '';
+  }
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone,
+    }).format(d);
+  } catch {
+    // Invalid/garbage IANA string — fall back to the no-timezone rendering
+    // rather than throwing or blanking the UI.
+    return getLocalInstantFormatter().format(d);
+  }
+}
+
+/**
+ * Produces "now" as a naive `"YYYY-MM-DD HH:MM:SS"` UTC-instant string — the
+ * exact format the API uses for every timestamp field (`checked_in_time`,
+ * `created_datetime`, a comment's `created_datetime`, etc.), so a
+ * client-constructed value renders identically through `formatPropertyInstant`
+ * / `LocalizedTimePipe` / `LocalizedDatePipe` as a server-provided one.
+ */
+export function nowAsApiTimestamp(): string {
+  return new Date().toISOString().slice(0, 19).replace('T', ' ');
+}
+
+/**
+ * Converts one of the API's naive `"YYYY-MM-DD HH:MM:SS"` UTC-instant strings
+ * (same convention as `formatPropertyInstant` above) to epoch milliseconds,
+ * for comparing timestamps (e.g. against a stored "last seen" watermark)
+ * rather than displaying them. Returns `NaN` for an empty/invalid value.
+ */
+export function parseApiInstant(value: string | null | undefined): number {
+  if (!value) return NaN;
+  return new Date(`${value.replace(' ', 'T')}Z`).getTime();
+}

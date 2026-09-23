@@ -6,14 +6,25 @@ import { ApiService } from './api';
 import { LanguageService } from './language.service';
 import { PropertyConfigService } from './property-config.service';
 import { ApiResponse } from '../models/auth.interfaces';
-import { ReservationInterface } from '../models/reservation.interface';
+import { ReservationInterface, ReservationNoteInterface } from '../models/reservation.interface';
 import { GuestInterface } from '../models/guest.interface';
+import { nowAsApiTimestamp } from '../utils/date';
 
 function dateStr(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+// Parses a "YYYY-MM-DD" calendar-date string into its integer components without
+// ever constructing a `Date` from it — `new Date("YYYY-MM-DD")` parses as UTC
+// midnight, and reading that back with local getters silently shifts the date by
+// a day for anyone west of UTC. Calendar dates (arrival/departure) have no
+// timezone of their own; this keeps them as pure numbers end to end.
+function parseCalendarDate(s: string): { y: number; m: number; d: number } {
+  const [y, m, d] = s.split('-').map(Number);
+  return { y, m, d };
 }
 
 export function pillStatus(apiStatus: string): string {
@@ -42,6 +53,37 @@ export function pillLabel(apiStatus: string): string {
     case 'noshow':     return 'No show';
     default:           return 'Option';
   }
+}
+
+// The four settable reservation-status stages, in flow order. Keys match both
+// what `POST /reservations/status` accepts and what `pillStatus`/`pillLabel`
+// above already switch on — no new status vocabulary. `tsField` names the
+// `ReservationInterface` field holding that step's timestamp (once reached).
+export interface StatusStep {
+  key: string;
+  labelKey: string;
+  tsField: 'created_datetime' | 'checked_in_time' | 'onboard_time' | 'checked_out_time';
+}
+
+export const STATUS_STEPS: StatusStep[] = [
+  { key: 'confirmed',  labelKey: 'reservationDetail.statusReserved',   tsField: 'created_datetime' },
+  { key: 'checkedin',  labelKey: 'reservationDetail.statusCheckedIn',  tsField: 'checked_in_time' },
+  { key: 'onboard',    labelKey: 'reservationDetail.statusOnboard',    tsField: 'onboard_time' },
+  { key: 'checkedout', labelKey: 'reservationDetail.statusCheckedOut', tsField: 'checked_out_time' },
+];
+
+// After a manual status revert (long-press an earlier step in the timeline), the steps
+// now AHEAD of the reverted-to one must stop showing a timestamp — even though the API
+// is not expected to clear those fields on a backward transition, so changeStatus()'s
+// verify-by-refetch would otherwise keep returning them. In-memory only: a later fresh
+// fetch (app restart, a fresh fetchDetail) can surface the stale value again until the
+// guest genuinely reaches that step for real.
+export function blankTimestampsAfter(r: ReservationInterface, targetIndex: number): ReservationInterface {
+  const patch: Partial<ReservationInterface> = {};
+  STATUS_STEPS.forEach((step, i) => {
+    if (i > targetIndex) patch[step.tsField] = '';
+  });
+  return { ...r, ...patch };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -225,6 +267,258 @@ export class ReservationService {
     }
   }
 
+  /**
+   * Changes a reservation's status via POST /reservations/status, then re-fetches
+   * the reservation (fetchDetail is always-uncached) to verify the API actually
+   * applied it before reporting success to the caller — a single attempt each way,
+   * matching this app's existing single-attempt mutation convention (no retries).
+   */
+  async changeStatus(reservationCode: string, status: string): Promise<ReservationInterface> {
+    const payload = { reservation_code: reservationCode, status };
+    let resp: ApiResponse<unknown>;
+    try {
+      resp = await firstValueFrom(
+        this.api.post<ApiResponse<unknown>>('reservations/status', payload),
+      );
+    } catch (e) {
+      this.reportStatusChangeFailure(reservationCode, status, null, e);
+      throw e;
+    }
+    if (!resp.success) {
+      this.reportStatusChangeFailure(reservationCode, status, resp.errors, null);
+      const err = new Error('Failed to change status') as Error & { apiErrors?: unknown };
+      err.apiErrors = resp.errors;
+      throw err;
+    }
+
+    const updated = await this.fetchDetail(reservationCode);
+    if (updated.status !== status) {
+      this.reportStatusChangeFailure(reservationCode, status, { unverified: updated.status }, null);
+      throw new Error(this.lang.t('errors.failedChangeStatus'));
+    }
+
+    this._reservations.update(list =>
+      list.map(r => (r.reservation_code === reservationCode ? updated : r)),
+    );
+    return updated;
+  }
+
+  private reportStatusChangeFailure(
+    reservationCode: string,
+    requestedStatus: string,
+    apiErrors: unknown,
+    exception: unknown,
+  ): void {
+    try {
+      const captureContext = {
+        tags: {
+          context: 'status_change',
+          failure_kind: exception != null ? 'http_error' : 'api_rejected',
+        },
+        contexts: {
+          status_change: {
+            reservation_code: reservationCode,
+            requested_status: requestedStatus,
+            api_errors: safeJson(apiErrors).slice(0, 4000),
+          },
+        },
+      };
+      if (exception != null) {
+        Sentry.captureException(exception, captureContext);
+      } else {
+        Sentry.captureMessage('reservation status change rejected or unverified', {
+          level: 'error',
+          ...captureContext,
+        });
+      }
+    } catch {
+      // Reporting must never mask or replace the original failure.
+    }
+  }
+
+  /**
+   * Posts a new reservation- or room-level note via PUT /reservations/comment. Unlike
+   * changeStatus(), the create response never echoes the created note back
+   * (`data: []`), and per product decision there's no need to verify the write
+   * landed with a re-fetch — so on success the new note is appended locally,
+   * built from what the caller already knows (the text, the logged-in user's
+   * display name) plus a real "now" timestamp (via nowAsApiTimestamp()) so it
+   * renders through the same provider-timezone pipes as a server-provided one.
+   * `authorName` is passed in by the caller rather than injecting AuthService
+   * here, since auth.ts already imports ReservationService (would be circular).
+   *
+   * `show_for_housekeeper` is only meaningful (and only sent) for a 'reservation'
+   * note; `comment_dates` is only meaningful (and only sent) for a 'room' note —
+   * mirrors the API contract, which documents each field as scoped to one type.
+   */
+  //
+  // Takes the caller's own current `reservation` (not looked up from `_reservations`)
+  // as the base to append onto — `_reservations` is the Home arrivals list cache, built
+  // from GET /reservations (a bulk, date-ranged endpoint with no nested `comments` field),
+  // so its copy of any given reservation's `notes` is always `[]`/stale. Merging onto
+  // that cache instead of the caller's fully-loaded reservation (from fetchDetail(), which
+  // does return real notes) was an earlier bug: every post silently replaced the whole
+  // note history with just the notes added from this device.
+  async postNote(
+    reservation: ReservationInterface,
+    params: {
+      type: 'reservation' | 'room';
+      comment: string;
+      showForHousekeeper?: boolean;
+      commentDates?: string[];
+    },
+    authorName: string,
+  ): Promise<ReservationInterface> {
+    const reservationCode = reservation.reservation_code;
+    const payload: Record<string, unknown> = {
+      reservation_code: reservationCode,
+      type: params.type,
+      comment: params.comment,
+    };
+    if (params.type === 'reservation') {
+      payload['show_for_housekeeper'] = params.showForHousekeeper ?? false;
+    } else {
+      payload['comment_dates'] = params.commentDates ?? [];
+    }
+
+    let resp: ApiResponse<unknown>;
+    try {
+      resp = await firstValueFrom(
+        this.api.put<ApiResponse<unknown>>('reservations/comment', payload),
+      );
+    } catch (e) {
+      this.reportNotePostFailure(reservationCode, payload, null, e);
+      throw e;
+    }
+    if (!resp.success) {
+      this.reportNotePostFailure(reservationCode, payload, resp.errors, null);
+      const err = new Error('Failed to post note') as Error & { apiErrors?: unknown };
+      err.apiErrors = resp.errors;
+      throw err;
+    }
+
+    const newNote: ReservationNoteInterface = {
+      comment_id: -Date.now(),
+      type: params.type,
+      comment: params.comment,
+      comment_date: null,
+      comment_dates: params.type === 'room' ? (params.commentDates ?? []) : null,
+      created_datetime: nowAsApiTimestamp(),
+      user: authorName,
+      show_for_housekeeper: params.type === 'reservation' ? (params.showForHousekeeper ?? false) : false,
+    };
+    const updated: ReservationInterface = { ...reservation, notes: [...reservation.notes, newNote] };
+    // Best-effort sync of the Home list cache, if this reservation happens to be in it —
+    // never the source of truth for the merge above.
+    this._reservations.update(list =>
+      list.map(r => (r.reservation_code === reservationCode ? updated : r)),
+    );
+    return updated;
+  }
+
+  /**
+   * Deletes a note via DELETE /reservations/comment ({ comment_id, type }) and, on
+   * success, removes it from the caller's own reservation (same "caller's current
+   * reservation is the merge base, _reservations is only a best-effort sync target"
+   * reasoning as postNote() — see that method's comment for why).
+   */
+  async deleteNote(
+    reservation: ReservationInterface,
+    note: ReservationNoteInterface,
+  ): Promise<ReservationInterface> {
+    const reservationCode = reservation.reservation_code;
+    const payload = { comment_id: note.comment_id, type: note.type };
+
+    let resp: ApiResponse<unknown>;
+    try {
+      resp = await firstValueFrom(
+        this.api.delete<ApiResponse<unknown>>('reservations/comment', payload),
+      );
+    } catch (e) {
+      this.reportNoteDeleteFailure(reservationCode, payload, null, e);
+      throw e;
+    }
+    if (!resp.success) {
+      this.reportNoteDeleteFailure(reservationCode, payload, resp.errors, null);
+      const err = new Error('Failed to delete note') as Error & { apiErrors?: unknown };
+      err.apiErrors = resp.errors;
+      throw err;
+    }
+
+    const updated: ReservationInterface = {
+      ...reservation,
+      notes: reservation.notes.filter(n => n.comment_id !== note.comment_id),
+    };
+    this._reservations.update(list =>
+      list.map(r => (r.reservation_code === reservationCode ? updated : r)),
+    );
+    return updated;
+  }
+
+  private reportNoteDeleteFailure(
+    reservationCode: string,
+    payload: unknown,
+    apiErrors: unknown,
+    exception: unknown,
+  ): void {
+    try {
+      const captureContext = {
+        tags: {
+          context: 'note_delete',
+          failure_kind: exception != null ? 'http_error' : 'api_rejected',
+        },
+        contexts: {
+          note_delete: {
+            reservation_code: reservationCode,
+            api_errors: safeJson(apiErrors).slice(0, 4000),
+          },
+        },
+      };
+      if (exception != null) {
+        Sentry.captureException(exception, captureContext);
+      } else {
+        Sentry.captureMessage('reservation note delete rejected by API', {
+          level: 'error',
+          ...captureContext,
+        });
+      }
+    } catch {
+      // Reporting must never mask or replace the original failure.
+    }
+  }
+
+  private reportNotePostFailure(
+    reservationCode: string,
+    payload: unknown,
+    apiErrors: unknown,
+    exception: unknown,
+  ): void {
+    try {
+      const captureContext = {
+        tags: {
+          context: 'note_post',
+          failure_kind: exception != null ? 'http_error' : 'api_rejected',
+        },
+        contexts: {
+          note_post: {
+            reservation_code: reservationCode,
+            api_errors: safeJson(apiErrors).slice(0, 4000),
+          },
+        },
+      };
+      if (exception != null) {
+        Sentry.captureException(exception, captureContext);
+      } else {
+        Sentry.captureMessage('reservation note post rejected by API', {
+          level: 'error',
+          ...captureContext,
+        });
+      }
+    } catch {
+      // Reporting must never mask or replace the original failure.
+    }
+  }
+
   // Synchronous cache peek so screens can paint instantly before an SWR refresh lands.
   peekGuests(reservationCode: string): GuestInterface[] | null {
     return this._guestCache.get(reservationCode) ?? null;
@@ -295,11 +589,11 @@ export class ReservationService {
   }
 
   private convert(r: any): ReservationInterface {
-    const arrival = new Date(r.arrival_date);
-    const departure = new Date(r.departure_date);
+    const arrival = parseCalendarDate(r.arrival_date);
+    const departure = parseCalendarDate(r.departure_date);
     const nights = Math.round(
-      (Date.UTC(departure.getFullYear(), departure.getMonth(), departure.getDate()) -
-       Date.UTC(arrival.getFullYear(), arrival.getMonth(), arrival.getDate())) /
+      (Date.UTC(departure.y, departure.m - 1, departure.d) -
+       Date.UTC(arrival.y, arrival.m - 1, arrival.d)) /
       86_400_000,
     );
     return {
@@ -312,9 +606,11 @@ export class ReservationService {
         last_name: r.booker.last_name,
         email: r.booker.email,
       },
-      arrival_date: dateStr(arrival),
-      departure_date: dateStr(departure),
+      arrival_date: r.arrival_date ?? '',
+      departure_date: r.departure_date ?? '',
+      created_datetime: r.created_datetime ?? '',
       checked_in_time: r.checked_in_time ?? '',
+      onboard_time: r.onboard_time ?? '',
       checked_out_time: r.checked_out_time ?? '',
       status: r.status ?? '',
       room_type_id: r.room_type_id ?? '',
@@ -329,7 +625,27 @@ export class ReservationService {
       number_of_guests: r.number_of_guests ?? 0,
       nights,
       open_in_pms: r.open_in_pms === true,
+      notes: this.convertNotes(r.comments),
     };
+  }
+
+  // `comments` (the API's field name) is `null` on a reservation with none.
+  // Sorted ascending by created_datetime as a defensive measure — don't assume
+  // server order.
+  private convertNotes(comments: any): ReservationNoteInterface[] {
+    if (!Array.isArray(comments)) return [];
+    return comments
+      .map((c: any): ReservationNoteInterface => ({
+        comment_id: c.comment_id,
+        type: c.type === 'room' ? 'room' : 'reservation',
+        comment: c.comment ?? '',
+        comment_date: c.comment_date ?? null,
+        comment_dates: Array.isArray(c.comment_dates) ? c.comment_dates : null,
+        created_datetime: c.created_datetime ?? '',
+        user: c.user ?? '',
+        show_for_housekeeper: c.show_for_housekeeper === true,
+      }))
+      .sort((a, b) => a.created_datetime.localeCompare(b.created_datetime));
   }
 }
 

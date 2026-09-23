@@ -76,7 +76,34 @@
     "reporting": "Jelentés",
     "cityTaxLiable": "Idegenforgalmi adóköteles",
     "booker": "(Foglaló)",
-    "noGuests": "Nincs regisztrált vendég"
+    "noGuests": "Nincs regisztrált vendég",
+    "changeStatus": "Státusz módosítása",
+    "reservationStatusTitle": "Foglalás státusza",
+    "statusReserved": "Foglalva",
+    "statusCheckedIn": "Bejelentkezés",
+    "statusOnboard": "Onboard",
+    "statusCheckedOut": "Kijelentkezés",
+    "updatingStatus": "Státusz frissítése…",
+    "revertHoldLabel": "Visszaállítás: {{status}}",
+    "statusHelpToggle": "Súgó",
+    "statusHelpTap": "Egy koppintás: tovább a következő státuszra",
+    "statusHelpHold": "Hosszú nyomás: visszaállítás egy korábbi státuszra",
+    "checkoutConfirmTitle": "Kijelentkezteti a vendéget?",
+    "checkoutConfirmMessage": "Ez a vendég csak most lett onboardolva. A közvetlen kijelentkeztetés szokatlan — biztosan folytatja?",
+    "checkoutConfirmButton": "Kijelentkezés",
+    "revertConfirmTitle": "Visszavonja a kijelentkezést?",
+    "revertConfirmMessage": "Ez a vendég már ki van jelentkeztetve. A visszaállítás törli a kijelentkezés rögzítését — biztosan folytatja?",
+    "revertConfirmButton": "Visszaállítás",
+    "notes": "Jegyzetek",
+    "notesEmpty": "Még nincsenek jegyzetek",
+    "notesPlaceholder": "Írjon jegyzetet…",
+    "newNotes": "{{n}} új jegyzet",
+    "reservationTypeSeg": "Foglalás",
+    "roomTypeSeg": "Szoba",
+    "visibleToHousekeeper": "Látható a takarítóknak is",
+    "roomNoteTag": "Szoba",
+    "housekeeperTag": "Látható a takarítóknak is",
+    "deleteNoteAria": "Jegyzet törlése"
   },
   "guestDetail": {
     "title": "Vendég adatai",
@@ -274,6 +301,9 @@
     "networkError": "Hálózati hiba",
     "failedLoadGuest": "A vendég betöltése sikertelen",
     "failedSave": "A mentés sikertelen",
-    "scanInitError": "Hiba az okmányolvasó inicializálásakor"
+    "failedChangeStatus": "Nem sikerült megerősíteni a státuszváltást. Frissítsen és próbálja újra.",
+    "failedPostNote": "A jegyzet küldése sikertelen",
+    "scanInitError": "Hiba az okmányolvasó inicializálásakor",
+    "failedDeleteNote": "A jegyzet törlése sikertelen"
   }
 }

@@ -421,6 +421,249 @@ ion-refresher {
     .l { font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; }
     .v { font-size: var(--font-lg); color: var(--ink); font-weight: 700; margin-top: 2px; }
   }
+
+  // Notes sheet — same shell as every other sheet, but as a flex column so
+  // only .notes-list scrolls internally while the head and compose bar stay
+  // pinned (grows with content up to the shared 88% max-height above).
+  &.notes-sheet {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+}
+
+/* ─── Notes ───────────────────────────────────────────────── */
+
+// Bleeds to the sheet's edges like .head and .notes-compose already do, so a swiped
+// row's grey backdrop can reach the true edge — .note-row re-adds the horizontal inset
+// itself (padding, not margin) so its content still lines up with the header/composer.
+.notes-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 4px calc(var(--pad) * -1) 0;
+}
+
+.notes-empty {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--ink-4);
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+// Swipe-to-delete wrapper — .note-delete-btn sits underneath (absolute, right-aligned),
+// .note-row sits on top and slides left via `transform` to reveal it. The divider lives
+// on the wrapper (not .note-row) so it stays put while the row content swipes over it.
+.note-swipe {
+  position: relative;
+  overflow: hidden;
+  background: var(--line-strong);
+  border-bottom: 1px solid var(--line);
+  touch-action: pan-y;
+
+  &:last-child { border-bottom: none; }
+}
+
+.note-swipe-actions {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 76px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.note-delete-btn {
+  width: 44px; height: 44px; flex-shrink: 0;
+  border: none; border-radius: 999px;
+  background: var(--warn);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+
+  &:disabled { opacity: 0.55; }
+}
+
+.note-row {
+  display: flex; gap: 12px; padding: 14px var(--pad);
+  background: var(--surface);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  &--dragging { transition: none; }
+}
+
+.note-avatar {
+  width: 36px; height: 36px; flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--primary-soft-bg); border: 1px solid var(--primary-soft); color: var(--primary);
+  font-size: 13px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.note-body { flex: 1; min-width: 0; }
+
+.note-meta {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; flex-wrap: wrap;
+}
+
+.note-author { font-size: var(--font-base); font-weight: 800; color: var(--ink); }
+
+.note-time {
+  font-size: var(--font-xs); font-weight: 600; color: var(--ink-4);
+  white-space: nowrap; flex-shrink: 0;
+}
+
+.note-message {
+  margin-top: 3px;
+  font-size: var(--font-md); color: var(--ink-2); line-height: 1.4;
+}
+
+// Per-item type/visibility tags (Room, Visible to Housekeeper) — the compact
+// "1b" composer switch only scopes the note being typed, so once a note is
+// saved its type/visibility is only readable from these small tags.
+.note-tags {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 6px;
+}
+
+.note-tag {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  font-size: var(--font-xs); font-weight: 700;
+
+  &--room        { background: var(--primary-soft-bg); color: var(--primary); }
+  &--housekeeper { background: var(--success-soft); color: var(--success); }
+}
+
+.note-error {
+  color: var(--warn); font-size: var(--font-sm); font-weight: 700;
+  margin: 8px 0 0; text-align: center;
+}
+
+.notes-compose {
+  display: flex; flex-direction: column; gap: 14px;
+  flex-shrink: 0;
+  // Bleeds to the sheet's edges like .head does, so the top border and
+  // background span full width.
+  margin: 0 calc(var(--pad) * -1);
+  padding: 12px var(--pad) calc(max(env(safe-area-inset-bottom, 0px) - 8px, 8px) + 8px);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+// Row above the composer: the Reservation/Room switch + the housekeeper
+// checkbox (Reservation only). Deliberately NOT the shared .segment/.seg/
+// .seg-thumb component — that component's base rule is defined later in
+// this file, so a same-specificity override placed here (earlier) loses the
+// cascade regardless of source order tricks; a small self-contained control
+// avoids that class of bug entirely and matches the approved Claude Design
+// mockup's own (thumb-less — each button's background just switches
+// directly) behavior more closely anyway.
+.note-controls {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.note-type-toggle {
+  display: flex; flex-shrink: 0;
+  background: rgb(241, 242, 245);
+  border-radius: 9px;
+  padding: 4px; gap: 3px;
+}
+
+.note-type-btn {
+  padding: 8px 14px;
+  border: 0; border-radius: 7px;
+  font: inherit; font-size: 12.5px; font-weight: 600;
+  color: var(--ink-3);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+
+  &.active {
+    background: var(--surface);
+    color: var(--primary);
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.note-checkbox {
+  display: flex; align-items: center; gap: 8px;
+  flex: 1; min-width: 150px;
+  padding: 6px 4px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink-2);
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.note-checkbox-box {
+  width: 17px; height: 17px; flex-shrink: 0;
+  border: 2px solid var(--primary); border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  background: var(--surface);
+  transition: background-color 0.15s;
+
+  &.checked { background: var(--primary); }
+}
+
+.note-date-pills {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+
+.note-date-pill {
+  padding: 9px 14px;
+  border-radius: 9px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface); color: var(--ink-2);
+  font: inherit; font-size: 12.5px; font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+
+  &.selected {
+    background: var(--primary); border-color: var(--primary); color: #fff;
+  }
+}
+
+.notes-input-row {
+  display: flex; align-items: flex-end; gap: 10px;
+
+  textarea {
+    flex: 1; resize: none;
+    border: 1.5px solid var(--line-strong); border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font: inherit; font-size: var(--font-base); color: var(--ink);
+    background: var(--bg);
+    line-height: 1.35;
+    max-height: 90px;
+    transition: border-color 0.18s;
+
+    &:focus { outline: none; border-color: var(--primary); }
+  }
+}
+
+.note-send {
+  width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--primary); color: #fff; border: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+
+  &:active    { transform: scale(0.94); }
+  &:disabled  { opacity: 0.4; cursor: default; }
+}
+
+// A blue-on-blue spinner (the shared .status-spinner) would be invisible on
+// this button's solid --primary background — white-on-translucent instead,
+// reusing the same status-spin keyframes.
+.note-send-spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.4); border-top-color: #fff;
+  border-radius: 50%; animation: status-spin 0.8s linear infinite;
 }
 
 /* ─── Action items (sheet lists) ──────────────────────────── */
@@ -629,6 +872,29 @@ ion-refresher {
   .v { font-size: var(--font-md); font-weight: 700; color: var(--ink); margin-top: 2px; }
 }
 
+/* ─── "New" indicators ────────────────────────────────────── */
+
+// Inline marker sitting right after the associated text (the "N New Notes"
+// value, the FAB menu's "Notes" label, a note's author name) — not a
+// corner badge on an icon/avatar, so it reads as attached to what's new.
+.new-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 999px;
+  background: var(--warn);
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.fact .v .new-dot,
+.note-author .new-dot {
+  margin-left: 6px;
+}
+
+// .action-item's flex `gap` already spaces its children (icon, label) — 14px
+// is too wide a gap for a small trailing dot, so pull it back in.
+.action-item .new-dot { margin-left: -8px; }
+
 /* ─── FAB ─────────────────────────────────────────────────── */
 
 .fab {
@@ -642,6 +908,150 @@ ion-refresher {
 
   &:hover  { transform: scale(1.05); }
   &:active { transform: scale(0.95); }
+}
+
+/* ─── Reservation Status sheet — vertical history timeline ─── */
+
+.status-timeline { display: flex; flex-direction: column; margin-top: 20px; margin-bottom: 8px; }
+
+.status-step {
+  display: flex; gap: 14px;
+
+  .node-col { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 48px; }
+
+  .icon-circle {
+    position: relative;
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: transform 0.15s;
+  }
+
+  &.done .icon-circle, &.current .icon-circle { background: var(--primary); color: #fff; }
+
+  // Only .done (not .current) is a long-press-to-revert target — cursor + a subtle
+  // press-scale signal it's interactive, matching .next's own :active treatment below.
+  &.done .icon-circle {
+    cursor: pointer;
+    &:active { transform: scale(0.94); }
+  }
+  // Upcoming steps beyond the next one — solid grey fill with a white icon
+  // (matching the real PMS's own "Status and timeline" stepper coloring) —
+  // only the next step (below) reads as reachable/tappable.
+  &.future .icon-circle { background: var(--line-strong); border: none; color: #fff; }
+
+  // The immediate-next step's circle is the one a tap advances — white fill
+  // with a blue outline (overriding the grey .future default above), sized up,
+  // so it visibly reads as tappable, not just another future waypoint. No glow
+  // here — that stays reserved for the FAB (--shadow-fab), the app's one
+  // "primary action" signal; size + border + bold label already set this circle
+  // apart from the plain future ones.
+  &.next .icon-circle {
+    width: 48px; height: 48px; cursor: pointer;
+    background: #fff; border: 2px solid var(--primary); color: var(--primary);
+
+    &:active   { transform: scale(0.92); }
+    &.updating { cursor: default; }
+
+    svg { width: 24px; height: 24px; }
+  }
+
+  // Sized here (not on the svg elements in the template) so every step's glyph
+  // stays legible at a glance — the fine detail in some of these icons (e.g.
+  // the PMS's calendar-account glyph) got muddy at the smaller size first tried.
+  .icon-circle svg { width: 20px; height: 20px; }
+
+  // The onboard glyph (mdi-home-import-outline) is thinner/lower-coverage within
+  // its own 24x24 box than the other three (bulkier filled shapes) — reads
+  // visibly smaller at the same width/height even though the box matches.
+  // Scaled up rather than given a separate fixed size so it stays proportional
+  // whether this step is the enlarged .next circle or a plain one.
+  .icon-circle svg.icon-onboard { transform: scale(1.25); }
+
+  .connector { width: 3px; flex: 1; min-height: 16px; background: var(--primary); margin: 2px 0; }
+  // Grey below the current/reached point — matches the grey fill the upcoming
+  // steps' icon circles already use.
+  &.future .connector { background: var(--line-strong); }
+
+  // Long-press-to-revert "rewind": while holding an earlier step, every connector
+  // between it and the current status drains from blue to grey, showing the span of
+  // history about to be undone. animation-duration/-delay are set inline per element
+  // (ReservationDetailPage.connectorDrainDuration/Delay) so the whole span finishes
+  // draining in sequence, bottom (current) to top (target), exactly as the hold
+  // completes — only the animation-name/timing/fill-mode live here.
+  .connector.rewinding {
+    animation-name: connector-drain;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+
+  .body { flex: 1; min-width: 0; padding-bottom: 22px; }
+  &.last .body { padding-bottom: 0; }
+
+  .label-line { display: flex; align-items: center; min-height: 40px; }
+  &.next .label-line { min-height: 48px; }
+
+  .body h4 { margin: 0; font-size: var(--font-xl); font-weight: 800; color: var(--ink); }
+  // Only done/current/next stay bold, full-size text — steps beyond the next
+  // one are a smaller, normal-weight, muted preview (:not(.next), since the
+  // next step also carries .future).
+  &.future:not(.next) .body h4 { color: var(--ink-4); font-weight: 400; font-size: var(--font-lg); }
+
+  .body .ts { font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; margin-top: 2px; }
+  // visibility, not display — keeps the row's height (and so the sheet's) stable
+  // while a hold/revert is temporarily overriding the label above it.
+  .body .ts.ts-hidden { visibility: hidden; }
+}
+
+.status-spinner {
+  width: 20px; height: 20px;
+  border: 3px solid var(--primary-soft); border-top-color: var(--primary);
+  border-radius: 50%; animation: status-spin 0.8s linear infinite;
+}
+@keyframes status-spin { to { transform: rotate(360deg); } }
+
+@keyframes connector-drain { to { background: var(--line-strong); } }
+
+// Small "how does this work" info toggle, pinned to the status sheet's bottom-right
+// corner. `.sheet` is `position: relative` already (see .sheet rules) — the
+// timeline's rows never reach the sheet's full width, so this always has clear
+// space beside the last row to sit in without a dedicated row/extra vertical space.
+// Swaps to a chevron (pointing at the disclosure it now closes) while open.
+//
+// Offset tied to --sheet-radius-bottom, not a fixed pixel value: `.sheet` combines
+// border-radius with non-visible overflow, so a child positioned into the corner is
+// genuinely clipped to the ROUNDED shape, not just a rectangle. That radius (R) is
+// 48px on iOS native (concentric with the device's own screen corner) vs. 24px
+// elsewhere — a fixed 12px offset left this button's 24px circle sitting almost
+// exactly on the containment boundary on iOS (real margin: R - r - (R-r)/√2 ≈ 10.5px
+// for R=48, r=12 — a hair under the 12px used), visually clipped by/overlapping the
+// curve. R/2 keeps comfortable margin under that same inequality on every platform
+// (for R=24 elsewhere it lands the button's center exactly on the arc's own center)
+// while scaling automatically instead of needing a per-platform magic number.
+.status-help-btn {
+  position: absolute; bottom: calc(var(--sheet-radius-bottom) / 2); right: calc(var(--sheet-radius-bottom) / 2);
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--line); color: var(--ink-3);
+  border: none; padding: 0; cursor: pointer;
+}
+
+// Revealed by the button above, appended at the end of the sheet's content — a plain
+// 1px divider then two short usage lines. No entrance animation of its own; growing
+// the sheet's content is what produces the "push up" effect (see the template comment).
+.status-help {
+  margin-top: 16px;
+
+  // Bleeds edge-to-edge past .sheet's own padding, same convention as .head's
+  // negative margins — a plain inset line reads as a scoped divider, not a full
+  // section break. (Not affected by the paragraphs' own padding-right below —
+  // that's scoped to them, not this container, so it can't eat into the bleed.)
+  &__line { height: 1px; background: var(--line); margin: 0 calc(var(--pad) * -1) 12px; }
+
+  // Clears the pinned corner button, which sits over this block's own bottom-right
+  // once open — the timeline rows are short enough to not need this, but these are
+  // full sentences and can run closer to the sheet's right edge.
+  p { margin: 0 0 6px; padding-right: 32px; font-size: var(--font-sm); color: var(--ink-3); font-weight: 600; }
+  p:last-child { margin-bottom: 0; }
 }
 
 /* ─── Floating-label form fields ──────────────────────────── */

@@ -14,8 +14,6 @@ import { ReservationInterface } from '../models/reservation.interface';
 import { LocalizedDatePipe } from '../pipes/localized-date.pipe';
 import { TranslatePipe } from '../pipes/translate.pipe';
 import { FeedbackSheetComponent } from '../components/feedback-sheet/feedback-sheet.component';
-// THROWAWAY MOCK — single-property morning-briefing widget. Remove with pages/briefing.
-import { BRIEFING_PROPERTY_ID } from '../pages/briefing/briefing.const';
 
 type Tab = 'Yesterday' | 'Today' | 'Tomorrow';
 
@@ -73,9 +71,10 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
   }
 
   // THROWAWAY MOCK — single-property morning-briefing widget. Remove with pages/briefing.
-  readonly showBriefing = computed(() =>
-    String(this.auth.selectedProperty()?.property_id) === BRIEFING_PROPERTY_ID,
-  );
+  // Disabled outright (including for its one gated property, briefing.const.ts's
+  // BRIEFING_PROPERTY_ID) per explicit request — the widget/route/const are left
+  // in place, just never shown.
+  readonly showBriefing = computed(() => false);
   readonly firstName = computed(() => this.auth.name().trim().split(/\s+/)[0] || 'there');
   goBriefing() { this.router.navigate(['/briefing']); }
 

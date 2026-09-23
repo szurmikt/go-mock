@@ -8,6 +8,7 @@ import { ApiEnvironmentService } from './api-environment';
 import { ReservationService } from './reservation';
 import { DocuscanService } from './docuscan';
 import { PropertyConfigService } from './property-config.service';
+import { PropertySettingsService } from './property-settings.service';
 import { MixpanelService } from './mixpanel';
 import { LanguageService } from './language.service';
 import { LiveUpdateService } from './live-update';
@@ -99,6 +100,7 @@ export class AuthService {
     private mixpanel: MixpanelService,
     private lang: LanguageService,
     private propertyConfig: PropertyConfigService,
+    private propertySettings: PropertySettingsService,
     private liveUpdate: LiveUpdateService,
     private appVersion: AppVersionService,
   ) {}
@@ -164,6 +166,7 @@ export class AuthService {
     this.reservations.clear();
     this.docuscan.clear();
     this.propertyConfig.clear();
+    this.propertySettings.clear();
     // Reset the plugin's persisted channel too — propertyConfig.clear() only resets our signal,
     // and a device must never stay pinned to a previous property's early/dev channel.
     this.liveUpdate.setChannelForProperty('prod');
@@ -190,6 +193,9 @@ export class AuthService {
       // extendedLogging) and the live-update channel, so both are populated without
       // waiting for a manual switch.
       this.loadPropertyConfig(property.property_id, false);
+      // Same reasoning for the property's timezone (used to render checked_in_time/
+      // checked_out_time correctly) — fire-and-forget, best-effort.
+      this.propertySettings.load().catch(() => {});
     }
     const properties = await this.storage.get<PropertyInterface[]>(Config.STORAGE_PROPERTIES_KEY);
     if (properties?.length) {
@@ -423,6 +429,9 @@ export class AuthService {
       this.clearSessionData();
     }
     this._selectedProperty.set(property);
+    // Fire-and-forget — a slow/failing timezone fetch must not delay or fail property
+    // selection; formatPropertyInstant() already degrades gracefully with no timezone.
+    this.propertySettings.load().catch(() => {});
     await this.storage.set(Config.STORAGE_PROPERTY_KEY, property);
     const result = await this.fetchUser();
     this.identifyToMixpanel();

@@ -25,7 +25,7 @@
       </div>
     } @else if (reservation(); as r) {
 
-      <div class="app-scroll" style="padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px))">
+      <div class="app-scroll" style="padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px))">
 
         <!-- Detail block -->
         <div class="detail-block">
@@ -33,9 +33,17 @@
             <span style="color: var(--primary); font-size: var(--font-xl); font-weight: 800; letter-spacing: 0.02em">
               {{ r.reservation_code }}
             </span>
-            <span class="pill" [attr.data-status]="pillStatus(r.status)">
-              {{ pillLabel(r.status) }}
-            </span>
+            @if (inStatusFlow()) {
+              <button (click)="openStatusSheet()" style="background: transparent; border: 0; padding: 0; cursor: pointer">
+                <span class="pill" [attr.data-status]="pillStatus(r.status)">
+                  {{ pillLabel(r.status) }}
+                </span>
+              </button>
+            } @else {
+              <span class="pill" [attr.data-status]="pillStatus(r.status)">
+                {{ pillLabel(r.status) }}
+              </span>
+            }
           </div>
           <div class="name">{{ r.booker.first_name }} {{ r.booker.last_name }}</div>
           <div class="fact-grid">
@@ -49,7 +57,7 @@
                 </svg>
                 {{ 'reservationDetail.checkIn' | tr }}
               </div>
-              <div class="v">{{ r.arrival_date | localizedDate:'dayMonth' }}{{ r.checked_in_time ? '  ' + (r.checked_in_time | localizedTime) : '' }}</div>
+              <div class="v">{{ r.arrival_date | localizedDate:'dayMonth' }}{{ r.checked_in_time ? '  ' + (r.checked_in_time | localizedTime:propertySettings.timeZone()) : '' }}</div>
             </div>
             <div class="fact">
               <div class="l">
@@ -61,7 +69,7 @@
                 </svg>
                 {{ 'reservationDetail.checkOut' | tr }}
               </div>
-              <div class="v">{{ r.departure_date | localizedDate:'dayMonth' }}{{ r.checked_out_time ? '  ' + (r.checked_out_time | localizedTime) : '' }}</div>
+              <div class="v">{{ r.departure_date | localizedDate:'dayMonth' }}{{ r.checked_out_time ? '  ' + (r.checked_out_time | localizedTime:propertySettings.timeZone()) : '' }}</div>
             </div>
             <div class="fact">
               <div class="l">
@@ -95,6 +103,22 @@
               </div>
               <div class="v">{{ r.room_name }} ({{ r.room_type_name }})</div>
             </div>
+            @if (newNoteCount() > 0) {
+              <div class="fact tap-anim tappable" style="grid-column: 1 / -1" (click)="openNotesSheet()">
+                <div class="l">
+                  <svg width="16" height="16" viewBox="0 0 56 56" fill="none">
+                    <path d="M9 12 H47 A5 5 0 0 1 52 17 V35 A5 5 0 0 1 47 40 H24 L14 48 V40 H9 A5 5 0 0 1 4 35 V17 A5 5 0 0 1 9 12 Z" stroke="currentColor" stroke-width="3.4" stroke-linejoin="round"/>
+                    <circle cx="17" cy="26" r="2.6" fill="currentColor"/>
+                    <circle cx="28" cy="26" r="2.6" fill="currentColor"/>
+                    <circle cx="39" cy="26" r="2.6" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div class="v">
+                  {{ 'reservationDetail.newNotes' | tr:{n: newNoteCount()} }}
+                  <span class="new-dot"></span>
+                </div>
+              </div>
+            }
           </div>
         </div>
 
@@ -167,3 +191,359 @@
 
   </div>
 </ion-content>
+
+<!-- FAB and its sheets live outside ion-content so they don't scroll -->
+@if (inStatusFlow() && reservation(); as r) {
+  <button class="fab" (click)="menuOpen.set(true)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="3" y="3" width="7" height="7" rx="1"/>
+      <rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/>
+      <rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  </button>
+
+  @if (menuOpen()) {
+    <div class="sheet-backdrop" (click)="menuOpen.set(false)">
+      <div class="sheet" (click)="$event.stopPropagation()">
+        <div class="head">
+          <h3>{{ r.reservation_code }}</h3>
+          <button class="icon-btn" (click)="menuOpen.set(false)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div style="margin-top: 8px">
+          <button class="action-item" (click)="openStatusSheet()">
+            <span class="action-icon">
+              <svg width="26" height="26" viewBox="0 0 56 56" fill="none">
+                <line x1="14" y1="12" x2="14" y2="44" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="14" cy="12" r="6" fill="currentColor"/>
+                <circle cx="14" cy="30" r="6" fill="currentColor"/>
+                <circle cx="14" cy="44" r="6" fill="#fff" stroke="currentColor" stroke-width="3"/>
+                <path d="M28 30 H44" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/>
+                <path d="M38.5 22.5 L46.5 30 L38.5 37.5" stroke="currentColor" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </span>
+            {{ 'reservationDetail.changeStatus' | tr }}
+          </button>
+          <button class="action-item" (click)="openNotesSheet()">
+            <span class="action-icon">
+              <svg width="26" height="26" viewBox="0 0 56 56" fill="none">
+                <path d="M9 12 H47 A5 5 0 0 1 52 17 V35 A5 5 0 0 1 47 40 H24 L14 48 V40 H9 A5 5 0 0 1 4 35 V17 A5 5 0 0 1 9 12 Z" stroke="currentColor" stroke-width="3.4" stroke-linejoin="round"/>
+                <circle cx="17" cy="26" r="2.6" fill="currentColor"/>
+                <circle cx="28" cy="26" r="2.6" fill="currentColor"/>
+                <circle cx="39" cy="26" r="2.6" fill="currentColor"/>
+              </svg>
+            </span>
+            {{ 'reservationDetail.notes' | tr }}
+            @if (newNoteCount() > 0) {
+              <span class="new-dot"></span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+}
+
+<!-- Reservation Status — vertical history timeline -->
+@if (statusSheetOpen()) {
+  <div class="sheet-backdrop" (click)="closeStatusSheet()">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      <div class="head">
+        <h3>{{ 'reservationDetail.reservationStatusTitle' | tr }}</h3>
+        <button class="icon-btn" (click)="closeStatusSheet()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="status-timeline">
+        <!-- The whole next-step row is the tap target (not just the icon) — the icon
+             alone sits at the sheet's far-left edge, an awkward reach one-handed.
+             Same pattern as .guest-card's scan-btn above: any button added inside a
+             row later must (click)="$event.stopPropagation(); ..." or it will also
+             fire this row's advanceStatus(). Done rows have no click action — instead
+             a long-press (pointerdown held HOLD_MS) reverts the reservation back to
+             that step; startHold()/cancelHold() themselves no-op for the current/next
+             rows, so binding the pointer handlers on every row is harmless. -->
+        @for (step of statusSteps; track step.key; let i = $index; let last = $last) {
+          <div class="status-step"
+               [class.done]="i < statusIndex()"
+               [class.current]="i === statusIndex()"
+               [class.future]="i > statusIndex()"
+               [class.next]="i === statusIndex() + 1"
+               [class.tap-anim]="i === statusIndex() + 1"
+               [class.tappable]="i === statusIndex() + 1"
+               [class.last]="last"
+               (click)="i === statusIndex() + 1 ? advanceStatus() : null"
+               (pointerdown)="startHold(step, i)"
+               (pointerup)="cancelHold()"
+               (pointerleave)="cancelHold()"
+               (pointercancel)="cancelHold()">
+            <div class="node-col">
+              <div class="icon-circle" [class.updating]="isUpdatingRow(i)">
+                @if (isUpdatingRow(i)) {
+                  <div class="status-spinner"></div>
+                } @else if (holdingIndex() === i) {
+                  <!-- Held row swaps to an undo glyph for the duration of the hold —
+                       reinforces "this is a revert," same idea as the label swap below. -->
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+                  </svg>
+                } @else {
+                  <!-- Icons match the real PMS's "Status and timeline" widget
+                       (calendar-account / login / home-import / logout, Material Design Icons). -->
+                  @switch (step.key) {
+                    @case ('confirmed') {
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3H18V1H16V3H8V1H6V3H5C3.9 3 3 3.9 3 5V19C3 20.11 3.9 21 5 21H19C20.11 21 21 20.11 21 19V5C21 3.9 20.11 3 19 3M19 19H5V9H19V19M19 7H5V5H19M12 10C14 10 15 12.42 13.59 13.84C12.17 15.26 9.75 14.25 9.75 12.25C9.75 11 10.75 10 12 10M16.5 17.88V18H7.5V17.88C7.5 16.63 9.5 15.63 12 15.63S16.5 16.63 16.5 17.88Z"/>
+                      </svg>
+                    }
+                    @case ('checkedin') {
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11 7L9.6 8.4L12.2 11H2V13H12.2L9.6 15.6L11 17L16 12L11 7M20 19H12V21H20C21.1 21 22 20.1 22 19V5C22 3.9 21.1 3 20 3H12V5H20V19Z"/>
+                      </svg>
+                    }
+                    @case ('onboard') {
+                      <svg class="icon-onboard" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M15 13L11 17V14H2V12H11V9L15 13M5 20V16H7V18H17V10.19L12 5.69L7.21 10H4.22L12 3L22 12H19V20H5Z"/>
+                      </svg>
+                    }
+                    @case ('checkedout') {
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17 7L15.59 8.41L18.17 11H8V13H18.17L15.59 15.58L17 17L22 12M4 5H12V3H4C2.9 3 2 3.9 2 5V19C2 20.1 2.9 21 4 21H12V19H4V5Z"/>
+                      </svg>
+                    }
+                  }
+                }
+              </div>
+              @if (!last) {
+                <div class="connector"
+                     [class.rewinding]="isRewinding(i)"
+                     [style.animation-duration.ms]="isRewinding(i) ? connectorDrainDuration(i) : null"
+                     [style.animation-delay.ms]="isRewinding(i) ? connectorDrainDelay(i) : null"></div>
+              }
+            </div>
+            <div class="body">
+              <div class="label-line">
+                <h4>{{ holdingIndex() === i ? holdLabel(step) : (isUpdatingRow(i) ? ('reservationDetail.updatingStatus' | tr) : (step.labelKey | tr)) }}</h4>
+              </div>
+              @if (i <= statusIndex()) {
+                <div class="ts" [class.ts-hidden]="isTimestampHidden(i)">{{ stepTimestamp(step) | localizedDate:'dayMonth':propertySettings.timeZone() }} {{ stepTimestamp(step) | localizedTime:propertySettings.timeZone() }}</div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (statusUpdateError()) {
+        <p style="color: var(--warn); font-size: var(--font-sm); font-weight: 700; margin: -8px 0 0; text-align: center">
+          {{ statusUpdateError() }}
+        </p>
+      }
+
+      <!-- Inline help disclosure, toggled by the small corner button. Pinned to the
+           sheet's bottom-right corner (the timeline's rows never use the sheet's full
+           width, so there's always clear space beside the last row for it — no
+           dedicated row needed). Revealing the disclosure appends new content at the
+           end of the sheet; since the sheet is bottom-anchored (see .sheet-backdrop)
+           and sized to its content up to max-height, that growth visually pushes the
+           rest of the sheet up and carries the button down with it (still the
+           bottom-right corner of the now-taller sheet), with no explicit animation
+           needed. -->
+      <button class="status-help-btn" (click)="toggleHelp()" [attr.aria-expanded]="helpOpen()" [attr.aria-label]="'reservationDetail.statusHelpToggle' | tr">
+        @if (helpOpen()) {
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 15l6-6 6 6"/>
+          </svg>
+        } @else {
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+        }
+      </button>
+
+      @if (helpOpen()) {
+        <div class="status-help">
+          <div class="status-help__line"></div>
+          <p>{{ 'reservationDetail.statusHelpTap' | tr }}</p>
+          <p>{{ 'reservationDetail.statusHelpHold' | tr }}</p>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- Onboard → Check-out guard -->
+@if (checkoutConfirmOpen()) {
+  <div class="sheet-backdrop" (click)="checkoutConfirmOpen.set(false)">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      <div class="head">
+        <h3>{{ 'reservationDetail.checkoutConfirmTitle' | tr }}</h3>
+        <button class="icon-btn" (click)="checkoutConfirmOpen.set(false)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div style="margin-top: 16px; font-size: var(--font-base); color: var(--ink-2); line-height: 1.5">
+        {{ 'reservationDetail.checkoutConfirmMessage' | tr }}
+      </div>
+      <div class="actions">
+        <button class="btn secondary" (click)="checkoutConfirmOpen.set(false)">{{ 'common.cancel' | tr }}</button>
+        <button class="btn" (click)="confirmCheckout()">{{ 'reservationDetail.checkoutConfirmButton' | tr }}</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Revert-away-from-Check-out guard — the one revert target that undoes a completed
+     stay; every other revert (from Check-in/Onboard) fires immediately on hold-completion. -->
+@if (revertConfirmOpen()) {
+  <div class="sheet-backdrop" (click)="cancelRevertConfirm()">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      <div class="head">
+        <h3>{{ 'reservationDetail.revertConfirmTitle' | tr }}</h3>
+        <button class="icon-btn" (click)="cancelRevertConfirm()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div style="margin-top: 16px; font-size: var(--font-base); color: var(--ink-2); line-height: 1.5">
+        {{ 'reservationDetail.revertConfirmMessage' | tr }}
+      </div>
+      <div class="actions">
+        <button class="btn secondary" (click)="cancelRevertConfirm()">{{ 'common.cancel' | tr }}</button>
+        <button class="btn" (click)="confirmRevert()">{{ 'reservationDetail.revertConfirmButton' | tr }}</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Notes -->
+@if (notesSheetOpen()) {
+  <div class="sheet-backdrop" (click)="closeNotesSheet()">
+    <div class="sheet notes-sheet" (click)="$event.stopPropagation()">
+      <div class="head">
+        <h3>{{ 'reservationDetail.notes' | tr }}</h3>
+        <button class="icon-btn" (click)="closeNotesSheet()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="notes-list" #notesList>
+        @if ((reservation()?.notes ?? []).length === 0) {
+          <div class="notes-empty">{{ 'reservationDetail.notesEmpty' | tr }}</div>
+        }
+        @for (c of reservation()?.notes ?? []; track c.comment_id) {
+          <div class="note-swipe">
+            <div class="note-swipe-actions">
+              <button type="button" class="note-delete-btn" [attr.aria-label]="'reservationDetail.deleteNoteAria' | tr"
+                      [disabled]="deletingNoteId() === c.comment_id" (click)="deleteNote(c)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 6h18"/>
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6"/>
+                  <path d="M14 11v6"/>
+                </svg>
+              </button>
+            </div>
+            <div class="note-row" [class.note-row--dragging]="dragNoteId() === c.comment_id"
+                 [style.transform]="noteRowTransform(c)"
+                 (touchstart)="onNoteTouchStart($event, c)" (touchmove)="onNoteTouchMove($event)"
+                 (touchend)="onNoteTouchEnd($event, c)" (touchcancel)="onNoteTouchEnd($event, c)"
+                 (click)="closeSwipe()">
+              <div class="note-avatar">{{ initials(c.user) }}</div>
+              <div class="note-body">
+                <div class="note-meta">
+                  <span class="note-author">
+                    {{ c.user }}
+                    @if (newNoteIds().has(c.comment_id)) {
+                      <span class="new-dot"></span>
+                    }
+                  </span>
+                  <span class="note-time">
+                    {{ c.created_datetime | localizedDate:'dayMonth':propertySettings.timeZone() }} · {{ c.created_datetime | localizedTime:propertySettings.timeZone() }}
+                  </span>
+                </div>
+                <div class="note-message">{{ c.comment }}</div>
+                @if (c.type === 'room' || c.show_for_housekeeper) {
+                  <div class="note-tags">
+                    @if (c.type === 'room') {
+                      <span class="note-tag note-tag--room">{{ 'reservationDetail.roomNoteTag' | tr }}</span>
+                    }
+                    @if (c.show_for_housekeeper) {
+                      <span class="note-tag note-tag--housekeeper">{{ 'reservationDetail.housekeeperTag' | tr }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (noteError()) {
+        <p class="note-error">{{ noteError() }}</p>
+      }
+
+      <div class="notes-compose">
+        <div class="note-controls">
+          <div class="note-type-toggle">
+            @for (t of noteTypes; track t.key) {
+              <button type="button" class="note-type-btn" [class.active]="noteType() === t.key" (click)="setNoteType(t.key)">{{ t.labelKey | tr }}</button>
+            }
+          </div>
+          @if (noteType() === 'reservation') {
+            <label class="note-checkbox" (click)="toggleHousekeeper()">
+              <span class="note-checkbox-box" [class.checked]="housekeeperVisible()">
+                @if (housekeeperVisible()) {
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 6L9 17l-5-5"/>
+                  </svg>
+                }
+              </span>
+              {{ 'reservationDetail.visibleToHousekeeper' | tr }}
+            </label>
+          }
+        </div>
+
+        @if (noteType() === 'room' && noteDates().length > 0) {
+          <div class="note-date-pills">
+            @for (d of noteDates(); track d.date) {
+              <button type="button" class="note-date-pill" [class.selected]="d.selected" (click)="toggleNoteDate(d.date)">{{ d.label }}</button>
+            }
+          </div>
+        }
+
+        <div class="notes-input-row">
+          <textarea rows="1"
+                    [placeholder]="'reservationDetail.notesPlaceholder' | tr"
+                    [ngModel]="noteDraft()"
+                    (ngModelChange)="noteDraft.set($event)"
+                    name="noteDraft"
+                    [disabled]="postingNote()"></textarea>
+          <button class="note-send" [disabled]="!canSendNote()" (click)="sendNote()">
+            @if (postingNote()) {
+              <div class="note-send-spinner"></div>
+            } @else {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>
+              </svg>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
