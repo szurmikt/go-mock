@@ -115,6 +115,39 @@ export function formatPropertyInstant(
   }
 }
 
+let todayFormatterCache: { tz: string; fmt: Intl.DateTimeFormat } | null = null;
+
+/**
+ * Today's calendar date as `YYYY-MM-DD`, in the given IANA timezone (e.g. a
+ * property's real `property_time_zone`) — for comparing against a reservation's
+ * own plain calendar-date fields (`arrival_date`/`departure_date`), which have
+ * no timezone of their own and must be compared against "today" in the same
+ * frame of reference (the property's day, not the device's).
+ *
+ * Omitting `timeZone` falls back to the device's local calendar date — the
+ * same graceful-degradation posture as `formatPropertyInstant` for a property
+ * with no timezone on record, or a failed `PropertySettingsService.load()`.
+ * An invalid IANA string also falls back to local rather than throwing.
+ */
+export function todayInTimeZone(timeZone?: string | null): string {
+  if (!timeZone) {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  try {
+    if (!todayFormatterCache || todayFormatterCache.tz !== timeZone) {
+      todayFormatterCache = { tz: timeZone, fmt: new Intl.DateTimeFormat('en-CA', { timeZone }) };
+    }
+    // en-CA formats as YYYY-MM-DD.
+    return todayFormatterCache.fmt.format(new Date());
+  } catch {
+    return todayInTimeZone(null);
+  }
+}
+
 /**
  * Produces "now" as a naive `"YYYY-MM-DD HH:MM:SS"` UTC-instant string — the
  * exact format the API uses for every timestamp field (`checked_in_time`,

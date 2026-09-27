@@ -16,7 +16,7 @@
   <div style="flex: 1; min-width: 0; padding: 12px 12px 12px 14px; display: flex; flex-direction: column; justify-content: center">
     <div style="display: flex; align-items: center; gap: 6px; min-width: 0">
       <span style="font-size: 15px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0">
-        {{ card.titleKey | tr }}
+        {{ card.title }}
       </span>
       @if (card.featured) {
         <span style="flex-shrink: 0; background: var(--primary); color: #fff; font-size: 9px; font-weight: 800; letter-spacing: 0.03em; padding: 2px 6px; border-radius: 4px">
@@ -28,7 +28,7 @@
       }
     </div>
     <div style="font-size: 13px; color: var(--ink-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
-      {{ card.summaryKey | tr }}
+      {{ card.summary }}
     </div>
   </div>
 

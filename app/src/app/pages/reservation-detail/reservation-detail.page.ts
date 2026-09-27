@@ -15,7 +15,7 @@ import { GuestInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { LocalizedTimePipe } from '../../pipes/localized-time.pipe';
 import { TranslatePipe } from '../../pipes/translate.pipe';
-import { parseApiInstant } from '../../utils/date';
+import { parseApiInstant, todayInTimeZone } from '../../utils/date';
 import { getNotesLastSeen, markNotesSeen } from '../../utils/notes-seen.util';
 
 type NoteType = 'reservation' | 'room';
@@ -145,6 +145,24 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   readonly nextStep = computed<StatusStep | null>(() => {
     const i = this.statusIndex();
     return i >= 0 && i < STATUS_STEPS.length - 1 ? STATUS_STEPS[i + 1] : null;
+  });
+
+  // A guest can't board or leave a property before they've arrived — the API already
+  // rejects an onboard/checkedout transition while arrival_date is still in the
+  // future, this just avoids the round trip. arrival_date is a plain calendar-date
+  // string ("YYYY-MM-DD", no timezone of its own), so it's compared against "today"
+  // in the property's own timezone, not the device's — same reasoning as
+  // buildNoteDatePills' date handling below. Check-in itself is deliberately not
+  // gated here — an early/pre-arrival check-in is allowed.
+  readonly arrivalIsFuture = computed(() => {
+    const r = this.reservation();
+    if (!r) return false;
+    return r.arrival_date > todayInTimeZone(this.propertySettings.timeZone());
+  });
+
+  readonly nextStepBlockedByArrival = computed(() => {
+    const next = this.nextStep();
+    return !!next && (next.key === 'onboard' || next.key === 'checkedout') && this.arrivalIsFuture();
   });
 
   constructor(
@@ -349,6 +367,10 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   advanceStatus() {
     const next = this.nextStep();
     if (!next || this.statusUpdating()) return;
+    if (this.nextStepBlockedByArrival()) {
+      this.statusUpdateError.set(this.lang.t('reservationDetail.arrivalInFutureError'));
+      return;
+    }
     if (this.reservation()?.status === 'onboard' && next.key === 'checkedout') {
       this.checkoutConfirmOpen.set(true);
       return;

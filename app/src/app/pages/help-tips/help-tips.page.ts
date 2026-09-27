@@ -8,8 +8,6 @@ import { normalizeText } from '../../utils/text';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { TipDetailSheetComponent } from '../../components/tip-detail-sheet/tip-detail-sheet.component';
 import { TipCardComponent } from '../../components/tip-card/tip-card.component';
-import { ScanOnboardingService } from '../../idscanly/services/scan-onboarding.service';
-import { SCAN_ONBOARDING_DEBUG_PROPERTY_ID } from '../../idscanly/scan-onboarding-debug.const';
 
 interface TipCardGroup {
   category: string;
@@ -25,11 +23,9 @@ interface TipCardGroup {
 export class HelpTipsPage {
   tips = inject(TipsService);
   lang = inject(LanguageService);
-  private scanOnboarding = inject(ScanOnboardingService);
 
   query = signal('');
   selectedCategory = signal<string | null>(null);
-  scanTourReset = signal(false);
 
   // The full library, unfiltered by seen/dismissed state — this list is the recovery path
   // for anything dismissed from Home (see TipsService.getCards()'s doc comment). Reactive
@@ -56,7 +52,7 @@ export class HelpTipsPage {
     return this.allCards.filter(c => {
       if (cat && c.category !== cat) return false;
       if (!q) return true;
-      const text = normalizeText(`${this.lang.t(c.titleKey)} ${this.lang.t(c.summaryKey)}`);
+      const text = normalizeText(`${c.title} ${c.summary}`);
       return text.includes(q);
     });
   });
@@ -72,10 +68,6 @@ export class HelpTipsPage {
       .filter(cat => groups.has(cat))
       .map(category => ({ category, cards: groups.get(category)! }));
   });
-
-  readonly scanTourResetEnabled = computed(
-    () => String(this.auth.selectedProperty()?.property_id) === SCAN_ONBOARDING_DEBUG_PROPERTY_ID,
-  );
 
   constructor(public auth: AuthService) {}
 
@@ -95,11 +87,5 @@ export class HelpTipsPage {
     const key = 'helpTips.category' + category.charAt(0).toUpperCase() + category.slice(1);
     const translated = this.lang.t(key);
     return translated === key ? category : translated;
-  }
-
-  async resetScanTour() {
-    await this.scanOnboarding.reset();
-    this.scanTourReset.set(true);
-    setTimeout(() => this.scanTourReset.set(false), 2000);
   }
 }

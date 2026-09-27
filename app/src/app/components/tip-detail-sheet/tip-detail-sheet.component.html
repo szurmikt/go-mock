@@ -22,14 +22,13 @@
         <img [src]="card.image" alt="" style="width: 100%; border-radius: var(--radius); margin-top: 12px; display: block" />
 
         <div style="margin-top: 16px; font-size: var(--font-xl); font-weight: 800; color: var(--ink); letter-spacing: -0.01em">
-          {{ card.titleKey | tr }}
+          {{ card.title }}
         </div>
-        <div style="margin-top: 8px; font-size: var(--font-base); font-weight: 500; color: var(--ink-2); line-height: 1.5">
-          {{ card.bodyKey | tr }}
-        </div>
+        <div style="margin-top: 8px; font-size: var(--font-base); font-weight: 500; color: var(--ink-2); line-height: 1.5"
+          [innerHTML]="card.body | mdLite"></div>
 
-        @if (card.action; as action) {
-          <button class="btn" style="margin-top: 20px" (click)="tryIt()">{{ action.labelKey | tr }}</button>
+        @if (card.action && card.actionLabel) {
+          <button class="btn" style="margin-top: 20px" (click)="tryIt()">{{ card.actionLabel }}</button>
         }
 
         <div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line)">

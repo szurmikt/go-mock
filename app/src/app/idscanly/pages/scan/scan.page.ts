@@ -27,12 +27,10 @@ import { makeThumbnail, toDataUrl } from '../../utils/canvas.util';
 import { isManualCaptureNagDue, markManualCaptureNagShown } from '../../utils/manual-capture-nag.util';
 import { LanguageService } from '../../../services/language.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
-import { AuthService } from '../../../services/auth';
 import { MixpanelService } from '../../../services/mixpanel';
 import { PropertyConfigService } from '../../../services/property-config.service';
 import { CapturePreferenceService } from '../../services/capture-preference.service';
 import { ScanOnboardingService } from '../../services/scan-onboarding.service';
-import { IDSCANLY_DEBUG_PROPERTY_ID } from '../../idscanly-debug.const';
 
 const ORDINAL_KEYS = ['idscanly.ordinal1', 'idscanly.ordinal2', 'idscanly.ordinal3', 'idscanly.ordinal4'];
 const FLIP_PROMPT_MIN_MS = 3000;
@@ -49,7 +47,6 @@ export class IdscanScanPage implements OnDestroy {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly lang = inject(LanguageService);
-  private readonly auth = inject(AuthService);
   private readonly mixpanel = inject(MixpanelService);
   private readonly propertyConfig = inject(PropertyConfigService);
   private readonly capturePreference = inject(CapturePreferenceService);
@@ -248,10 +245,9 @@ export class IdscanScanPage implements OnDestroy {
     () => this.selectedType() !== null && this.status() === 'idle' && !this.errorMessage(),
   );
 
-  /** Dev/QA "Show debug" tooling — see idscanly-debug.const.ts. */
-  readonly debugToolsEnabled = computed(
-    () => String(this.auth.selectedProperty()?.property_id) === IDSCANLY_DEBUG_PROPERTY_ID,
-  );
+  /** Dev/QA "Show debug" tooling — gated by OTA channel, not a hardcoded property ID; 'dev'
+   *  already designates the internal test cohort for live-update rollout. */
+  readonly debugToolsEnabled = computed(() => this.propertyConfig.liveUpdateChannel() === 'dev');
 
   ionViewWillEnter(): void {
     const type = this.session.documentType();

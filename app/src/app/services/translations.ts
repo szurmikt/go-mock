@@ -113,6 +113,7 @@ export const TRANSLATIONS: TranslationMap = {
     revertConfirmTitle: 'Undo check-out?',
     revertConfirmMessage: 'This guest was already checked out. Reverting will remove the check-out record — are you sure you want to continue?',
     revertConfirmButton: 'Revert',
+    arrivalInFutureError: 'This reservation can\'t move to this status before the arrival date',
     notes: 'Notes',
     notesEmpty: 'No notes yet',
     notesPlaceholder: 'Write a note…',
@@ -291,6 +292,7 @@ export const TRANSLATIONS: TranslationMap = {
     categorySecurity: 'Security',
     categoryGeneral: 'General',
     categoryScanning: 'Scanning',
+    categoryReservations: 'Reservations',
     seeAllTips: 'See all tips',
     newBadge: 'NEW',
     nextTip: 'Next tip',
@@ -298,29 +300,54 @@ export const TRANSLATIONS: TranslationMap = {
     ariaDismiss: 'Dismiss tip',
     ariaThumbsUp: 'This was helpful',
     ariaThumbsDown: "This wasn't helpful",
-    cardAutoLockTitle: 'Choose when the app locks',
-    cardAutoLockSummary: 'Set how long GO stays open before asking for your passcode.',
+    cardScanBasicsTitle: 'Scanning basics',
+    cardScanBasicsSummary: 'Point, hold steady, and let the camera do the rest.',
+    cardScanBasicsBody:
+      "- Hold the ID or passport steady inside the frame — it **captures automatically** once in focus, no shutter button needed\n- If it's too dark, you'll see a warning — tap the **flashlight icon** to turn on the torch\n- Scanning an ID card's back side and don't need it? Tap **Skip** to jump straight to review\n- Review the extracted details before saving — you can always *retake* a blurry page\n- Works with ID cards (front and back), passports, driving licences, and address cards",
+    cardScanShortcutTitle: 'Scan straight from the guest list',
+    cardScanShortcutSummary: 'No need to open the guest profile first.',
+    cardScanShortcutBody:
+      "- Tap the **scan icon** at the top-right corner of a guest card to jump straight into the camera\n- Already-scanned guests show a different icon, so you can see at a glance who's still missing one\n- A quick win during busy check-ins, when every tap counts",
+    cardChangeStatusTitle: 'Changing Reservation Status',
+    cardChangeStatusSummary: 'Move a reservation through check-in and check-out right from your phone.',
+    cardChangeStatusBody:
+      '- Tap **Change Status** from the action menu to see the full timeline\n- Tap the next status to change — *Confirmed → Check-in → Onboard → Check-out*\n- Made a mistake? **Press and hold** an earlier step to revert',
+    cardAddNotesTitle: 'Add Reservation Notes',
+    cardAddNotesSummary: 'Keep the whole team in the loop.',
+    cardAddNotesBody:
+      "- Choose **Reservation** (a guest request) or **Room** (something for housekeeping)\n- Reservation notes can be marked **Visible to Housekeeper**\n- Room notes can be tagged to specific *dates* of the stay\n- Everyone sees notes in real time — no more handwritten logs at the desk",
+    cardDeleteNotesTitle: 'Delete Reservation Notes',
+    cardDeleteNotesSummary: 'Swipe left on any note to remove it.',
+    cardDeleteNotesBody:
+      '- **Swipe a note to the left** to reveal a delete button\n- Tap it to remove the note for good\n- No separate edit option — fixing a typo means deleting and adding a corrected one',
+    cardSearchTitle: 'Search',
+    cardSearchSummary: 'Search by name, email, code, or room.',
+    cardSearchBody:
+      "- Tap the search bar on Home to look up a reservation by guest **name**/**email**, **reservation code**, or **room**\n- Results update as you type\n- Tap any result to jump straight into its details",
+    cardSearchAction: 'Open Search',
+    cardAutoLockTitle: 'Auto-Lock interval',
+    cardAutoLockSummary: 'Set how long the app waits before locking itself.',
     cardAutoLockBody:
-      'The app locks itself to protect guest data. You can choose how long it waits before locking — go to Settings → Auto-Lock and pick the interval that fits your shift.',
+      "- Go to **Settings → Auto-Lock** to pick 10 minutes up to 2 hours\n- *Shorter* = more secure on a shared device\n- *Longer* = fewer unlock prompts during a busy shift\n- Set per device — each phone or tablet can differ",
     cardAutoLockAction: 'Open Auto-Lock setting',
+    cardBiometricUnlockTitle: 'Face ID / Touch ID unlock',
+    cardBiometricUnlockSummary: 'Unlock with a glance, not a password.',
+    cardBiometricUnlockBody:
+      "- Unlock with **Face ID**, **Touch ID**, or your device passcode\n- A quick *session lock*, not a sign-out — you won't need to log in again\n- No biometrics set up? You'll get the passcode prompt instead\n- After a few failed attempts, fall back to signing in with your password",
+    cardFeedbackTitle: 'Send feedback / request a feature',
+    cardFeedbackSummary: 'Spotted a bug or have an idea? Let us know from right inside the app.',
+    cardFeedbackBody:
+      '- Tap the **lightbulb icon** on Home, or **Settings → Request a Feature**\n- Choose **Feature Request** or **Feedback**\n- We read every submission, and may follow up if we have questions',
+    cardFeedbackAction: 'Open Feedback Form',
     cardLanguageTitle: "Switch the app's language",
     cardLanguageSummary: 'GO speaks your language — change it anytime in Settings.',
     cardLanguageBody:
       'Tap Settings → Language to pick from the available languages. Your choice is remembered on this device.',
     cardLanguageAction: 'Open Language setting',
-    cardSearchTitle: 'Find any reservation fast',
-    cardSearchSummary: 'Search by guest name, reservation code, room, or property.',
-    cardSearchBody:
-      "Use the search bar on Home to find a reservation by guest name, reservation code, room type, or even property ID — accents and capitalization don't matter.",
-    cardSearchAction: 'Open Search',
     cardOpenInPmsTitle: "See what's open in the PMS",
     cardOpenInPmsSummary: 'Reservations a colleague has open in the desktop PMS show up right on Home.',
     cardOpenInPmsBody:
       'If a reservation is currently open on the desktop PMS, it appears in its own "Open in PMS" section at the top of your arrivals list — so you know what a colleague is working on before you touch it.',
-    cardIdScanTitle: 'Scan ID documents in seconds',
-    cardIdScanSummary: "Scan a guest's ID or passport to fill in their details automatically.",
-    cardIdScanBody:
-      "From a guest's details screen, tap the scan icon to capture their ID or passport with the camera — their name, birth date, and document details fill in automatically.",
   },
   feedback: {
     featureRequestSeg: 'Feature Request',

@@ -60,10 +60,10 @@
       <!-- Help & tips carousel — directly under the search field. Hidden entirely when
            nothing is unseen; no empty state, no section title. -->
       @if (tipCardsSnapshot().length > 0) {
-        <div (scroll)="onTipCarouselScroll($event)"
+        <div (scroll)="onTipCarouselScroll($event)" class="no-scrollbar"
           style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding: 0 var(--pad) 4px">
           @for (card of tipCardsSnapshot(); track card.id) {
-            <div style="flex: 0 0 calc(100% - 32px); scroll-snap-align: center; height: 78px">
+            <div style="flex: 0 0 calc(100% - 32px); min-width: 0; scroll-snap-align: center; height: 78px">
               <app-tip-card [card]="card" variant="home"
                 (open)="tipSheet.open(card, 'home')"
                 (dismiss)="dismissTip(card)" />
@@ -78,7 +78,7 @@
                own min-height — two sibling flex items with only min-height (no shared parent
                height) don't reliably end up the same rendered height, which is what caused
                the visible mismatch between this slide and the real cards. -->
-          <div style="flex: 0 0 calc(100% - 32px); scroll-snap-align: center; height: 78px">
+          <div style="flex: 0 0 calc(100% - 32px); min-width: 0; scroll-snap-align: center; height: 78px">
             <div class="card tap-anim tappable" (click)="goHelpTips()"
               style="display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 12px; height: 100%; box-sizing: border-box; cursor: pointer">
               <span style="display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 800; color: var(--primary)">

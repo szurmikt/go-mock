@@ -17,6 +17,7 @@ import { LanguageService } from './services/language.service';
 import { LiveUpdateService } from './services/live-update';
 import { MixpanelService } from './services/mixpanel';
 import { OptionsService } from './services/options.service';
+import { RemoteTipsService } from './services/remote-tips.service';
 import { TipsService } from './services/tips.service';
 import {
   BOOT_SETUP_BUDGET_NATIVE_MS,
@@ -95,6 +96,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private liveUpdate = inject(LiveUpdateService);
   private capturePreference = inject(CapturePreferenceService);
   private scanOnboarding = inject(ScanOnboardingService);
+  private remoteTips = inject(RemoteTipsService);
   private tips = inject(TipsService);
 
   constructor(
@@ -144,6 +146,10 @@ export class AppComponent implements OnInit, OnDestroy {
     // dependency, must resolve before the Scan page's first ionViewWillEnter can decide whether
     // to show it.
     await this.scanOnboarding.init();
+    // Cache-hydrates instantly from local storage (no network await); the real fetch against
+    // Supabase's tip_cards table runs in the background — see RemoteTipsService.init(). Must
+    // run before tips.init() below reads getCards() for the first time.
+    await this.remoteTips.init();
     // Purely local read (per-user Help & tips seen/dismissed state) — no network dependency,
     // must resolve before Home's first ionViewWillEnter can compute its tip carousel.
     await this.tips.init();

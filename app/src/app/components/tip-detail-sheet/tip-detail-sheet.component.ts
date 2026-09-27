@@ -5,6 +5,7 @@ import { MixpanelService } from '../../services/mixpanel';
 import { TipsService } from '../../services/tips.service';
 import { TipCard } from '../../models/tip-card.interface';
 import { TranslatePipe } from '../../pipes/translate.pipe';
+import { MarkdownLitePipe } from '../../pipes/markdown-lite.pipe';
 
 type TipSheetSurface = 'home' | 'list';
 
@@ -16,7 +17,7 @@ type TipSheetSurface = 'home' | 'list';
 @Component({
   selector: 'app-tip-detail-sheet',
   standalone: true,
-  imports: [TranslatePipe],
+  imports: [TranslatePipe, MarkdownLitePipe],
   templateUrl: './tip-detail-sheet.component.html',
 })
 export class TipDetailSheetComponent {
@@ -80,7 +81,7 @@ export class TipDetailSheetComponent {
     // deliberate even though it means "Next tip" consumes the library as you read; see
     // TipsService.nextUnseenCard's doc comment and the Home carousel's snapshot-on-visit
     // design (home.page.ts) for why that doesn't visibly disrupt the Home screen.
-    this.tips.markSeen(this.auth.userId(), card.id);
+    this.tips.markSeen(this.auth.userId(), card.id, card.updatedAt);
     this.mixpanel.trackTipCardOpened({
       card_id: card.id,
       category: card.category,

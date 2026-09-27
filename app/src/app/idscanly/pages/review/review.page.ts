@@ -15,7 +15,6 @@ import { MixpanelService } from '../../../services/mixpanel';
 import { CaptureQuality } from '../../models/capture-quality';
 import { LanguageService } from '../../../services/language.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
-import { IDSCANLY_DEBUG_PROPERTY_ID } from '../../idscanly-debug.const';
 
 interface ReviewImage {
   side: Side;
@@ -107,10 +106,9 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
   /** Dev/QA toggle for the per-side metrics readout — mirrors the Scan page's debug overlay. */
   readonly showDebug = signal(false);
 
-  /** Dev/QA "Show debug" tooling — see idscanly-debug.const.ts. */
-  readonly debugToolsEnabled = computed(
-    () => String(this.auth.selectedProperty()?.property_id) === IDSCANLY_DEBUG_PROPERTY_ID,
-  );
+  /** Dev/QA "Show debug" tooling — gated by OTA channel, not a hardcoded property ID; 'dev'
+   *  already designates the internal test cohort for live-update rollout. */
+  readonly debugToolsEnabled = computed(() => this.propertyConfig.liveUpdateChannel() === 'dev');
 
   /** Discard-confirmation dialog — opened by the header X, since real captures exist here. */
   readonly confirmDiscardOpen = signal(false);

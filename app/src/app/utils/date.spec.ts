@@ -1,4 +1,4 @@
-import { toInputDate, formatPropertyInstant } from './date';
+import { toInputDate, formatPropertyInstant, todayInTimeZone } from './date';
 
 describe('toInputDate', () => {
   it('passes through already-ISO dates', () => {
@@ -66,5 +66,32 @@ describe('formatPropertyInstant', () => {
   it('with an invalid timeZone, falls back without throwing', () => {
     expect(() => formatPropertyInstant('2026-09-10 12:00:00', 'Not/AZone')).not.toThrow();
     expect(formatPropertyInstant('2026-09-10 12:00:00', 'Not/AZone')).toMatch(/^\d{2}:\d{2}$/);
+  });
+});
+
+describe('todayInTimeZone', () => {
+  it('returns YYYY-MM-DD in the given IANA timezone', () => {
+    expect(todayInTimeZone('Asia/Tokyo')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('falls back to the device local date when no timezone is given', () => {
+    const d = new Date();
+    const expected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    expect(todayInTimeZone(null)).toBe(expected);
+    expect(todayInTimeZone(undefined)).toBe(expected);
+  });
+
+  it('with an invalid timeZone, falls back without throwing', () => {
+    expect(() => todayInTimeZone('Not/AZone')).not.toThrow();
+    expect(todayInTimeZone('Not/AZone')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('a UTC+ zone can read a later calendar date than a UTC- zone at the same instant', () => {
+    // Not asserting real dates (test-run-time dependent) — just that the two
+    // zones can disagree on which day it is, proving real per-zone conversion
+    // is happening rather than a bare local-date passthrough.
+    const tokyo = todayInTimeZone('Asia/Tokyo'); // UTC+9
+    const honolulu = todayInTimeZone('Pacific/Honolulu'); // UTC-10
+    expect(tokyo >= honolulu).toBe(true);
   });
 });

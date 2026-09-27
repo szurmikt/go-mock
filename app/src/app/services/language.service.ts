@@ -6,6 +6,7 @@ import { Capacitor } from '@capacitor/core';
 
 import { ApiService } from './api';
 import { StorageService } from './storage';
+import { MixpanelService } from './mixpanel';
 import { ApiResponse } from '../models/auth.interfaces';
 import { TRANSLATIONS, TranslationMap } from './translations';
 import { environment } from '../../environments/environment';
@@ -38,6 +39,7 @@ const STORAGE_KEY_ENABLED_LANGS = 'enabledLanguages';
 export class LanguageService {
   private storage = inject(StorageService);
   private api = inject(ApiService);
+  private mixpanel = inject(MixpanelService);
 
   readonly currentLanguage = signal<string>('En');
   readonly translations = signal<TranslationMap>(TRANSLATIONS);
@@ -66,6 +68,7 @@ export class LanguageService {
     const stored = await this.storage.get<string>(STORAGE_KEY_LANG);
     const deviceLang = await this.getDeviceLang();
     this.currentLanguage.set(this.normalize(stored ?? deviceLang));
+    this.mixpanel.setLanguage(this.currentLanguage());
 
     const cached = await this.storage.get<TranslationMap>(
       STORAGE_KEY_TRANSLATIONS,
@@ -117,6 +120,7 @@ export class LanguageService {
 
   async setLanguage(code: string): Promise<void> {
     this.currentLanguage.set(this.normalize(code));
+    this.mixpanel.setLanguage(this.currentLanguage());
     await this.storage.set(STORAGE_KEY_LANG, this.currentLanguage());
     await this.fetchLanguages();
   }

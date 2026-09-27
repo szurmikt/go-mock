@@ -145,7 +145,7 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
   }
 
   async dismissTip(card: TipCard): Promise<void> {
-    await this.tips.dismiss(this.auth.userId(), card.id);
+    await this.tips.dismiss(this.auth.userId(), card.id, card.updatedAt);
     this.mixpanel.trackTipCardDismissed({ card_id: card.id, category: card.category });
     // The one case where the visible list SHOULD update immediately — the user just
     // performed this action themselves and expects instant feedback (unlike marking a card

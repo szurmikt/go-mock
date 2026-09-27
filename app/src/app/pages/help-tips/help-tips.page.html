@@ -67,25 +67,11 @@
           </div>
           <div style="margin: 0 var(--pad) 16px; display: flex; flex-direction: column; gap: 8px">
             @for (card of group.cards; track card.id) {
-              <app-tip-card [card]="card" variant="list" [unseen]="!tips.isSeen(auth.userId(), card.id)"
+              <app-tip-card [card]="card" variant="list" [unseen]="!tips.isSeen(auth.userId(), card.id, card.updatedAt)"
                 (open)="tipSheet.open(card, 'list')" />
             }
           </div>
         }
-      }
-
-      <!-- Reset Scan Tour — debug-only, gated to the internal test property (moved here from
-           Settings, see scan-onboarding-debug.const.ts) -->
-      @if (scanTourResetEnabled()) {
-        <div style="padding: 24px var(--pad) 0">
-          <button class="btn secondary" (click)="resetScanTour()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 12a9 9 0 1 0 3-6.7"/>
-              <path d="M3 4v5h5"/>
-            </svg>
-            {{ scanTourReset() ? 'Reset — it will show next scan' : 'Reset Scan Tour' }}
-          </button>
-        </div>
       }
 
     </div>

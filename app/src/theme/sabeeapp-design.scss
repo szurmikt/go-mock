@@ -166,6 +166,15 @@ ion-refresher {
   &::-webkit-scrollbar { width: 0; height: 0; }
 }
 
+/* Hides the native scroll indicator on a horizontally-scrolling element (the Help & tips
+   carousel) — a scroll-snap carousel already communicates position via its own pagination
+   dots, so the browser/OS scrollbar is just noise, not a second source of truth. */
+.no-scrollbar {
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* legacy Edge */
+  &::-webkit-scrollbar { display: none; width: 0; height: 0; } /* WebKit/Chromium, incl. iOS WKWebView */
+}
+
 /* ─── Page header ─────────────────────────────────────────── */
 
 .page-header {
@@ -989,6 +998,13 @@ ion-refresher {
 
   .label-line { display: flex; align-items: center; min-height: 40px; }
   &.next .label-line { min-height: 48px; }
+
+  // The next step is styled/enlarged as usual (still shows what's coming), but
+  // can't actually be advanced yet — arrival_date hasn't happened. Dims the whole
+  // row and drops the pointer cursor rather than hiding it, so it still reads as
+  // "next" without inviting a tap that will just show an error.
+  &.blocked { opacity: 0.55; }
+  &.blocked .icon-circle { cursor: default; &:active { transform: none; } }
 
   .body h4 { margin: 0; font-size: var(--font-xl); font-weight: 800; color: var(--ink); }
   // Only done/current/next stay bold, full-size text — steps beyond the next

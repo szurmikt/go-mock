@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth';
@@ -10,6 +10,9 @@ import { LanguageService } from '../../services/language.service';
 import { FeedbackSheetComponent } from '../../components/feedback-sheet/feedback-sheet.component';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { LOCK_DEBUG_PROPERTY_ID } from './lock-debug.const';
+import { PropertyConfigService } from '../../services/property-config.service';
+import { TipsService } from '../../services/tips.service';
+import { ScanOnboardingService } from '../../idscanly/services/scan-onboarding.service';
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.page.html',
@@ -21,10 +24,17 @@ export class SettingsPage implements OnInit {
   loadingLangs = signal(false);
   langOpen = signal(false);
   autoLockOpen = signal(false);
+  @ViewChild('fb', { static: true }) feedbackSheet!: FeedbackSheetComponent;
   lang = inject(LanguageService);
   biometric = inject(BiometricService);
   private mixpanel = inject(MixpanelService);
   private route = inject(ActivatedRoute);
+  private propertyConfig = inject(PropertyConfigService);
+  private tips = inject(TipsService);
+  private scanOnboarding = inject(ScanOnboardingService);
+
+  scanTourReset = signal(false);
+  tipsReset = signal(false);
 
   private appVersionService = inject(AppVersionService);
   // Same source AppComponent already resolved at boot (AppVersionService.init()) — read
@@ -58,17 +68,23 @@ export class SettingsPage implements OnInit {
     () => String(this.auth.selectedProperty()?.property_id) === LOCK_DEBUG_PROPERTY_ID,
   );
 
+  // Shared gate for the Reset Scan Tour / Reset Tip Cards debug buttons below (moved here from
+  // the Help & Tips page) — properties on the 'dev' OTA channel are the internal test cohort,
+  // reused instead of yet another hardcoded property-ID const.
+  readonly devDebugEnabled = computed(() => this.propertyConfig.liveUpdateChannel() === 'dev');
+
   constructor(
     public auth: AuthService,
     private router: Router,
   ) {}
 
-  /** Deep-link target for the Auto-Lock/Language Help & tips cards' "Try it" button — lands
-   *  the user directly on the open bottom sheet, not just the bare Settings page. */
+  /** Deep-link target for the Auto-Lock/Language/Feedback Help & tips cards' "Try it" button —
+   *  lands the user directly on the open bottom sheet, not just the bare Settings page. */
   ngOnInit(): void {
     const open = this.route.snapshot.queryParamMap.get('open');
     if (open === 'autoLock') this.openAutoLockPicker();
     else if (open === 'language') this.openLangPicker();
+    else if (open === 'feedback') this.feedbackSheet.open();
   }
 
   back() { window.history.back(); }
@@ -110,6 +126,18 @@ export class SettingsPage implements OnInit {
     await this.biometric.setAutoLockMinutes(minutes);
     this.mixpanel.setAutoLockInterval(minutes);
     this.autoLockOpen.set(false);
+  }
+
+  async resetScanTour() {
+    await this.scanOnboarding.reset();
+    this.scanTourReset.set(true);
+    setTimeout(() => this.scanTourReset.set(false), 2000);
+  }
+
+  async resetTips() {
+    await this.tips.reset(this.auth.userId());
+    this.tipsReset.set(true);
+    setTimeout(() => this.tipsReset.set(false), 2000);
   }
 
   async logout() {

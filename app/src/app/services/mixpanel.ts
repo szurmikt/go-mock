@@ -123,6 +123,21 @@ export class MixpanelService {
     this.safe(() => mixpanel.register({ property_id: propertyId, property_name: propertyName }));
   }
 
+  /**
+   * Attach the active language to every subsequent event (a Mixpanel super property). Call
+   * whenever the resolved language changes — cold-start restore and an explicit picker change.
+   * mixpanel.register() overwrites the previous value, so a language switch mid-session
+   * correctly re-tags all following events.
+   *
+   * Lowercased here, not by the caller: LanguageService's `code` is its own internal
+   * Title-Case form ("En", "Hu" — used to key its translation maps), not an ISO code. Normalizing
+   * at this boundary keeps Mixpanel breakdowns on one casing regardless of caller.
+   */
+  setLanguage(code: string): void {
+    if (!code) return;
+    this.safe(() => mixpanel.register({ language: code.toLowerCase() }));
+  }
+
   // ---- session lifecycle (driven by Capacitor App.appStateChange) ----
 
   handleAppActive(): void {
