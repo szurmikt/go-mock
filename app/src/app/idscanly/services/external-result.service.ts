@@ -5,7 +5,7 @@ import { AuthService } from '../../services/auth';
 import { AppVersionService } from '../../services/app-version';
 import { ApiEnvironmentService } from '../../services/api-environment';
 import { PropertyConfigService } from '../../services/property-config.service';
-import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
+import { GuestInterface } from '../../models/guest.interface';
 import { toIdscanlyFields } from '../utils/to-idscanly-fields';
 
 /** Discriminates submit() failures, mirroring IdRecognitionService's taggedError(). */
@@ -48,10 +48,9 @@ export class ExternalResultService {
     guest: GuestInterface,
     reservationCode: string,
     isIdentityDocument: boolean,
-    documentNumberKey?: ScanResultInterface['documentNumberKey'],
   ): void {
     if (!sessionId) return;
-    const fields = toIdscanlyFields(guest, isIdentityDocument, documentNumberKey);
+    const fields = toIdscanlyFields(guest, isIdentityDocument);
     this.submit(sessionId, fields)
       .then(response =>
         this.logOutcome(sessionId, reservationCode, guest.guest_id, isIdentityDocument, fields, response, null),

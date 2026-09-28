@@ -130,6 +130,7 @@
     "document": "Travelling document",
     "docType": "Document type",
     "docNumber": "Number",
+    "turkishIdNumber": "Turkish Republic identity number",
     "scanned": "Scanned",
     "notScanned": "Not scanned",
     "editGuest": "Edit guest",
@@ -157,12 +158,14 @@
     "selectDocType": "— Select type —",
     "documentType": "Document Type",
     "documentNumber": "Document Number",
+    "turkishIdNumber": "Turkish Republic identity number",
     "saved": "Guest details saved"
   },
   "idScan": {
     "fullName": "First & Last name",
     "docType": "Document type",
     "docNumber": "Document number",
+    "turkishIdNumber": "Turkish Republic identity number",
     "age": "Age",
     "gender": "Gender",
     "birthPlace": "Place of birth",

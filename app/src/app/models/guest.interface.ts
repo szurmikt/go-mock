@@ -25,6 +25,10 @@ export interface GuestInterface {
     document_type: string;
     document_number: string;
     date_of_issue_of_the_document: string;
+    // Added 2026-09-28: the TC Kimlik No., distinct from document_number (the card serial) —
+    // see idscanly-docuscan.service.ts's mapToScanResult for the extraction rule. Only
+    // meaningful for a Turkish ID card; null otherwise.
+    turkish_republic_identity_number: string | null;
   } | null;
   scanned_data: ScannedDataInterface | null;
   locked: boolean;
@@ -46,6 +50,7 @@ export interface ScannedDataInterface {
     document_type: string;
     document_number: string;
     date_of_issue_of_the_document: string;
+    turkish_republic_identity_number: string | null;
   } | null;
   // Populated when an address card (lakcímkártya) is scanned, or when an identity
   // document (ID card/passport) happens to embed an address; nested by
@@ -84,12 +89,4 @@ export interface ScanResultInterface {
    * ExternalResultService.
    */
   sessionId?: string;
-  /**
-   * Which IDScanly field the saved document_number corresponds to. 'identityNumber' only
-   * for Turkish ID cards (which carry both a card serial and a TC Kimlik No — see
-   * idscanly/utils/turkish-id.ts); 'documentNumber' otherwise. Carried alongside sessionId
-   * so the external-result payload can key the value the same way IDScanly does, instead of
-   * reporting an identity number as a document number.
-   */
-  documentNumberKey?: 'documentNumber' | 'identityNumber';
 }

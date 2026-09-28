@@ -191,6 +191,13 @@
           <label>{{ 'guestEdit.documentNumber' | tr }}</label>
         </div>
 
+        @if (showTurkishIdField()) {
+          <div class="form-group">
+            <input placeholder=" " [(ngModel)]="form.turkish_republic_identity_number" (ngModelChange)="markDirty()" name="turkish_republic_identity_number" />
+            <label>{{ 'guestEdit.turkishIdNumber' | tr }}</label>
+          </div>
+        }
+
       </div>
 
     }

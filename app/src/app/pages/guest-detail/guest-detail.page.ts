@@ -8,6 +8,7 @@ import { OptionsService } from '../../services/options.service';
 import { DocuscanService } from '../../services/docuscan';
 import { MixpanelService } from '../../services/mixpanel';
 import { PropertyConfigService } from '../../services/property-config.service';
+import { PropertySettingsService } from '../../services/property-settings.service';
 import { CaptureSessionService } from '../../idscanly/services/capture-session.service';
 import { ExternalResultService } from '../../idscanly/services/external-result.service';
 import { DocumentTypeId, resolveScanEntryType } from '../../idscanly/models/document-type';
@@ -74,6 +75,12 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
 
   readonly scanResult = computed(() => this._idscanlyResult() ?? this._previewScanResult());
 
+  // Only shown when the current property's scan_fields (GET /properties/settings) actually
+  // lists this field — it's TR-specific and most properties never have it configured.
+  readonly showTurkishIdField = computed(() =>
+    this.propertySettings.scanFields().some(f => f.name === 'turkish_republic_identity_number'),
+  );
+
   private reservationCode!: string;
   private guestId!: string;
 
@@ -89,6 +96,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     private mixpanel: MixpanelService,
     private lang: LanguageService,
     public propertyConfig: PropertyConfigService,
+    private propertySettings: PropertySettingsService,
     private captureSession: CaptureSessionService,
     private externalResult: ExternalResultService,
     private capturePreference: CapturePreferenceService,
@@ -301,7 +309,6 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
           guest,
           this.reservationCode,
           isIdentityDoc,
-          result?.documentNumberKey,
         );
         this.docuscan.lastScanResult = null;
         this._idscanlyResult.set(null);

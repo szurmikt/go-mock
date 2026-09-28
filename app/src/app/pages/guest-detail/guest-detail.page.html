@@ -131,10 +131,16 @@
                 <div class="detail-value">{{ g.scanned_data ? ('common.yes' | tr) : ('common.no' | tr) }}</div>
               </div>
             </div>
-            <div style="padding: 12px 0 0">
+            <div [style.border-bottom]="showTurkishIdField() ? '1px solid var(--line)' : 'none'" style="padding: 12px 0">
               <div class="detail-label">{{ 'guestDetail.docNumber' | tr }}</div>
               <div class="detail-value">{{ g.document?.document_number || '—' }}</div>
             </div>
+            @if (showTurkishIdField()) {
+              <div style="padding: 12px 0 0">
+                <div class="detail-label">{{ 'guestDetail.turkishIdNumber' | tr }}</div>
+                <div class="detail-value">{{ g.document?.turkish_republic_identity_number || '—' }}</div>
+              </div>
+            }
           </div>
 
         </div>
@@ -235,6 +241,13 @@
                 <div class="detail-label">{{ 'idScan.docNumber' | tr }}</div>
                 <div class="detail-value">{{ _scannedData?.['document_number']?.['value'] | dashIfEmpty }}</div>
               </div>
+            </div>
+          }
+
+          @if (_scannedData?.['turkish_republic_identity_number']?.['value']) {
+            <div style="padding: 12px 0; border-bottom: 1px solid var(--line)">
+              <div class="detail-label">{{ 'idScan.turkishIdNumber' | tr }}</div>
+              <div class="detail-value">{{ _scannedData?.['turkish_republic_identity_number']?.['value'] | dashIfEmpty }}</div>
             </div>
           }
 

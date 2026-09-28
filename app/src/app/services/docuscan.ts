@@ -18,6 +18,7 @@ export class DocuscanService {
       'document_type',
       'document_number',
       'date_of_issue_of_the_document',
+      'turkish_republic_identity_number',
     ]);
     // Address fields (captured under address_* keys — from an address-card scan, or from
     // an identity document that happens to embed one) are nested into a single `address`
@@ -62,6 +63,7 @@ export class DocuscanService {
           document_type: '',
           document_number: '',
           date_of_issue_of_the_document: '',
+          turkish_republic_identity_number: null,
         };
         guest.document = {
           document_type: d.document_type ?? existing.document_type,
@@ -69,6 +71,10 @@ export class DocuscanService {
           date_of_issue_of_the_document:
             d.date_of_issue_of_the_document ??
             existing.date_of_issue_of_the_document,
+          turkish_republic_identity_number:
+            d.turkish_republic_identity_number ??
+            existing.turkish_republic_identity_number ??
+            null,
         };
         continue;
       }

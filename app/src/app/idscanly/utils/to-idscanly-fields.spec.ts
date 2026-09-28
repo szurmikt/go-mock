@@ -23,6 +23,7 @@ function guest(overrides: Partial<GuestInterface> = {}): GuestInterface {
       document_type: 'id',
       document_number: 'AB1234567',
       date_of_issue_of_the_document: '2018-03-15',
+      turkish_republic_identity_number: null,
     },
     scanned_data: null,
     locked: false,
@@ -43,6 +44,7 @@ describe('toIdscanlyFields', () => {
       citizenship: 'HUN',
       documentType: 'id',
       documentNumber: 'AB1234567',
+      identityNumber: null,
       dateOfIssue: '2018-03-15',
     });
   });
@@ -93,20 +95,20 @@ describe('toIdscanlyFields', () => {
     expect(result['documentNumber']).toBeUndefined();
   });
 
-  it('keys the number as identityNumber for a Turkish ID, and never both keys', () => {
+  it('reports document_number and turkish_republic_identity_number under their own separate IDScanly keys', () => {
     const result = toIdscanlyFields(
       guest({
         document: {
           document_type: 'id',
-          document_number: '82345678902',
+          document_number: 'A1B2C3D4',
           date_of_issue_of_the_document: '2018-03-15',
+          turkish_republic_identity_number: '82345678902',
         },
       }),
       true,
-      'identityNumber',
     );
+    expect(result['documentNumber']).toBe('A1B2C3D4');
     expect(result['identityNumber']).toBe('82345678902');
-    expect('documentNumber' in result).toBe(false);
   });
 
   it('merges in address fields for an identity document that embeds an address', () => {

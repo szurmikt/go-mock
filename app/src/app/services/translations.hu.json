@@ -130,6 +130,7 @@
     "document": "Úti okmány",
     "docType": "Okmány típusa",
     "docNumber": "Szám",
+    "turkishIdNumber": "Török személyazonosító szám",
     "scanned": "Beolvasva",
     "notScanned": "Nincs beolvasva",
     "editGuest": "Vendég szerkesztése",
@@ -157,12 +158,14 @@
     "selectDocType": "— Válassz típust —",
     "documentType": "Okmány típusa",
     "documentNumber": "Okmány száma",
+    "turkishIdNumber": "Török személyazonosító szám",
     "saved": "A vendég adatai elmentve"
   },
   "idScan": {
     "fullName": "Vezeték- és keresztnév",
     "docType": "Okmány típusa",
     "docNumber": "Okmány száma",
+    "turkishIdNumber": "Török személyazonosító szám",
     "age": "Életkor",
     "gender": "Nem",
     "birthPlace": "Születési hely",

@@ -1,11 +1,12 @@
-import { Component, OnDestroy, OnInit, signal, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import * as Sentry from '@sentry/angular';
 import { IonContent } from '@ionic/angular/standalone';
 import { ReservationService } from '../../services/reservation';
-import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
+import { GuestInterface } from '../../models/guest.interface';
 import { OptionsService } from '../../services/options.service';
+import { PropertySettingsService } from '../../services/property-settings.service';
 import { DocuscanService } from 'src/app/services/docuscan';
 import { ExternalResultService } from '../../idscanly/services/external-result.service';
 import { MixpanelService } from '../../services/mixpanel';
@@ -29,6 +30,13 @@ export class GuestEditPage implements OnInit, OnDestroy {
   private docuscanService = inject(DocuscanService);
   private externalResult = inject(ExternalResultService);
   private busyGuard = inject(BusyGuardService);
+  private propertySettings = inject(PropertySettingsService);
+
+  // Only shown when the current property's scan_fields (GET /properties/settings) actually
+  // lists this field — it's TR-specific and most properties never have it configured.
+  showTurkishIdField = computed(() =>
+    this.propertySettings.scanFields().some(f => f.name === 'turkish_republic_identity_number'),
+  );
 
   guest = signal<GuestInterface | null>(null);
   loading = signal(true);
@@ -54,6 +62,7 @@ export class GuestEditPage implements OnInit, OnDestroy {
     address_line: '',
     document_type: '',
     document_number: '',
+    turkish_republic_identity_number: '',
   };
 
   private reservationCode!: string;
@@ -69,7 +78,6 @@ export class GuestEditPage implements OnInit, OnDestroy {
   // leaves these untouched, and the feedback call then no-ops.
   private idscanlySessionId: string | undefined;
   private scanWasIdentityDoc = true;
-  private documentNumberKey: ScanResultInterface['documentNumberKey'];
 
   /** Whether this form currently holds the busy guard (see markDirty). */
   private dirty = false;
@@ -116,6 +124,8 @@ export class GuestEditPage implements OnInit, OnDestroy {
         address_line: found.address?.address_line ?? '',
         document_type: found.document?.document_type ?? '',
         document_number: found.document?.document_number ?? '',
+        turkish_republic_identity_number:
+          found.document?.turkish_republic_identity_number ?? '',
       };
       const last = this.docuscanService.lastScanResult;
       // TEMPORARY diagnostics (2026-09-08) for a reported "Edit kicks the user to Home"
@@ -137,7 +147,6 @@ export class GuestEditPage implements OnInit, OnDestroy {
         const isIdentityDoc = last.documentData?.is_identity_document !== false;
         this.idscanlySessionId = last.sessionId;
         this.scanWasIdentityDoc = isIdentityDoc;
-        this.documentNumberKey = last.documentNumberKey;
         const scanned = this.docuscanService.scannedDataToGuestScannedData(
           last.scannedData!,
         );
@@ -171,6 +180,9 @@ export class GuestEditPage implements OnInit, OnDestroy {
           ).toLowerCase();
           this.form.document_number =
             sd.document?.document_number ?? this.form.document_number;
+          this.form.turkish_republic_identity_number =
+            sd.document?.turkish_republic_identity_number ??
+            this.form.turkish_republic_identity_number;
           // Prefill the address fields too, when the scan carried any — nested under
           // scanned_data.address by scannedDataToGuestScannedData. Populated for an address
           // card (lakcímkártya, which captures address only) and optionally for an identity
@@ -257,6 +269,8 @@ export class GuestEditPage implements OnInit, OnDestroy {
           document_number: this.form.document_number,
           date_of_issue_of_the_document:
             g.document?.date_of_issue_of_the_document ?? '',
+          turkish_republic_identity_number:
+            this.form.turkish_republic_identity_number || null,
         },
       };
       await this.res.updateGuest(this.reservationCode, updated);
@@ -276,7 +290,6 @@ export class GuestEditPage implements OnInit, OnDestroy {
         updated,
         this.reservationCode,
         this.scanWasIdentityDoc,
-        this.documentNumberKey,
       );
       // Saved — nothing left to protect from a reload.
       this.clearDirty();

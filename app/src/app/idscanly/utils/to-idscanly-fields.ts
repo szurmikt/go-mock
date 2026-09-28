@@ -1,6 +1,4 @@
-import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
-
-type DocumentNumberKey = NonNullable<ScanResultInterface['documentNumberKey']>;
+import { GuestInterface } from '../../models/guest.interface';
 
 /**
  * Builds the payload posted back to IDScanly's external-result endpoint: the FINAL,
@@ -19,9 +17,8 @@ type DocumentNumberKey = NonNullable<ScanResultInterface['documentNumberKey']>;
 export function toIdscanlyFields(
   guest: GuestInterface,
   isIdentityDocument: boolean,
-  documentNumberKey: DocumentNumberKey = 'documentNumber',
 ): Record<string, unknown> {
-  return isIdentityDocument ? identityFields(guest, documentNumberKey) : addressFields(guest);
+  return isIdentityDocument ? identityFields(guest) : addressFields(guest);
 }
 
 /** '' / whitespace-only → null, so IDScanly sees "not present" rather than an empty string. */
@@ -30,10 +27,7 @@ function clean(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-function identityFields(
-  g: GuestInterface,
-  documentNumberKey: DocumentNumberKey,
-): Record<string, unknown> {
+function identityFields(g: GuestInterface): Record<string, unknown> {
   const givenNames = clean(g.first_name);
   const surname = clean(g.last_name);
   const fields: Record<string, unknown> = {
@@ -46,11 +40,11 @@ function identityFields(
     sex: clean(g.gender),
     citizenship: clean(g.citizenship),
     documentType: clean(g.document?.document_type),
-    // Exactly one of documentNumber / identityNumber, never both: for a Turkish ID card the
-    // saved value IS the identity number (see IdscanlyDocuscanService.mapToScanResult), so
-    // reporting it as a documentNumber would make IDScanly's field diff flag a mismatch on
-    // every Turkish scan.
-    [documentNumberKey]: clean(g.document?.document_number),
+    documentNumber: clean(g.document?.document_number),
+    // Reported under IDScanly's own field name whenever the guest has one saved — see
+    // IdscanlyDocuscanService.mapToScanResult (turkish_republic_identity_number is a
+    // dedicated GuestInterface.document field, separate from document_number).
+    identityNumber: clean(g.document?.turkish_republic_identity_number),
     dateOfIssue: clean(g.document?.date_of_issue_of_the_document),
   };
 
