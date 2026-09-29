@@ -103,7 +103,7 @@
               </div>
               <div class="v">{{ r.room_name }} ({{ r.room_type_name }})</div>
             </div>
-            @if (newNoteCount() > 0) {
+            @if (totalNoteCount() > 0) {
               <div class="fact tap-anim tappable" style="grid-column: 1 / -1" (click)="openNotesSheet()">
                 <div class="l">
                   <svg width="16" height="16" viewBox="0 0 56 56" fill="none">
@@ -114,8 +114,12 @@
                   </svg>
                 </div>
                 <div class="v">
-                  {{ 'reservationDetail.newNotes' | tr:{n: newNoteCount()} }}
-                  <span class="new-dot"></span>
+                  @if (newNoteCount() > 0) {
+                    {{ 'reservationDetail.newNotes' | tr:{n: newNoteCount(), total: totalNoteCount()} }}
+                    <span class="new-dot"></span>
+                  } @else {
+                    {{ 'reservationDetail.notesTotalCount' | tr:{total: totalNoteCount()} }}
+                  }
                 </div>
               </div>
             }
@@ -270,7 +274,7 @@
              a long-press (pointerdown held HOLD_MS) reverts the reservation back to
              that step; startHold()/cancelHold() themselves no-op for the current/next
              rows, so binding the pointer handlers on every row is harmless. -->
-        @for (step of statusSteps; track step.key; let i = $index; let last = $last) {
+        @for (step of statusSteps(); track step.key; let i = $index; let last = $last) {
           <div class="status-step"
                [class.done]="i < statusIndex()"
                [class.current]="i === statusIndex()"
@@ -481,7 +485,13 @@
                 @if (c.type === 'room' || c.show_for_housekeeper) {
                   <div class="note-tags">
                     @if (c.type === 'room') {
-                      <span class="note-tag note-tag--room">{{ 'reservationDetail.roomNoteTag' | tr }}</span>
+                      <span class="note-tag note-tag--room">
+                        @if (c.comment_date) {
+                          {{ 'reservationDetail.roomNoteTagWithDate' | tr:{date: c.comment_date | localizedDate:'dayMonth'} }}
+                        } @else {
+                          {{ 'reservationDetail.roomNoteTag' | tr }}
+                        }
+                      </span>
                     }
                     @if (c.show_for_housekeeper) {
                       <span class="note-tag note-tag--housekeeper">{{ 'reservationDetail.housekeeperTag' | tr }}</span>

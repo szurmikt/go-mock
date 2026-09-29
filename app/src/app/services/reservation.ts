@@ -338,18 +338,30 @@ export class ReservationService {
 
   /**
    * Posts a new reservation- or room-level note via PUT /reservations/comment. Unlike
-   * changeStatus(), the create response never echoes the created note back
-   * (`data: []`), and per product decision there's no need to verify the write
-   * landed with a re-fetch — so on success the new note is appended locally,
-   * built from what the caller already knows (the text, the logged-in user's
-   * display name) plus a real "now" timestamp (via nowAsApiTimestamp()) so it
-   * renders through the same provider-timezone pipes as a server-provided one.
+   * changeStatus(), the create response doesn't echo the created note's other fields
+   * back — only `data.comment_id` — and per product decision there's no need to verify
+   * the write landed with a re-fetch — so on success the new note(s) are appended
+   * locally, built from what the caller already knows (the text, the logged-in user's
+   * display name) plus a real "now" timestamp (via nowAsApiTimestamp()) so they
+   * render through the same provider-timezone pipes as a server-provided one.
    * `authorName` is passed in by the caller rather than injecting AuthService
    * here, since auth.ts already imports ReservationService (would be circular).
    *
    * `show_for_housekeeper` is only meaningful (and only sent) for a 'reservation'
    * note; `comment_dates` is only meaningful (and only sent) for a 'room' note —
    * mirrors the API contract, which documents each field as scoped to one type.
+   *
+   * **A multi-date room note is split into one row per date server-side** — confirmed
+   * by a real device test: posting one room note across 2 selected dates produced 2
+   * separate rows on the next fetch, each with its own singular `comment_date` (not
+   * one row carrying a `comment_dates` array, despite that field existing on
+   * ReservationNoteInterface for whatever the API itself might echo back per-row).
+   * `data.comment_id` is accordingly an array with one id per date, in the same
+   * order as the `comment_dates` sent in the payload. So `newNote` below is really
+   * `newNotes` — one appended note per date for a room-type post (falling back to
+   * the pre-multi-date single-note shape if the date list is ever empty), each using
+   * its own real id from the response instead of a placeholder, so an immediate
+   * deleteNote() on any of them — before any re-fetch — targets the right row.
    */
   //
   // Takes the caller's own current `reservation` (not looked up from `_reservations`)
@@ -381,10 +393,10 @@ export class ReservationService {
       payload['comment_dates'] = params.commentDates ?? [];
     }
 
-    let resp: ApiResponse<unknown>;
+    let resp: ApiResponse<{ comment_id: number[] }>;
     try {
       resp = await firstValueFrom(
-        this.api.put<ApiResponse<unknown>>('reservations/comment', payload),
+        this.api.put<ApiResponse<{ comment_id: number[] }>>('reservations/comment', payload),
       );
     } catch (e) {
       this.reportNotePostFailure(reservationCode, payload, null, e);
@@ -397,17 +409,41 @@ export class ReservationService {
       throw err;
     }
 
-    const newNote: ReservationNoteInterface = {
-      comment_id: -Date.now(),
-      type: params.type,
-      comment: params.comment,
-      comment_date: null,
-      comment_dates: params.type === 'room' ? (params.commentDates ?? []) : null,
-      created_datetime: nowAsApiTimestamp(),
-      user: authorName,
-      show_for_housekeeper: params.type === 'reservation' ? (params.showForHousekeeper ?? false) : false,
-    };
-    const updated: ReservationInterface = { ...reservation, notes: [...reservation.notes, newNote] };
+    const commentIds = resp.data?.comment_id ?? [];
+    const createdAt = nowAsApiTimestamp();
+    const roomDates = params.type === 'room' ? (params.commentDates ?? []) : [];
+
+    // A room note with N selected dates becomes N separate rows server-side (see the
+    // doc comment above) — one local note per date, each with its own real id from
+    // the response (falling back to a placeholder only if the API ever omits an id
+    // for a given date). A reservation-type note, or a room note with no dates
+    // (shouldn't happen — the composer requires at least one — but handled rather
+    // than silently dropping the note), is still exactly one row.
+    const newNotes: ReservationNoteInterface[] =
+      params.type === 'room' && roomDates.length > 0
+        ? roomDates.map((date, i) => ({
+            comment_id: commentIds[i] ?? -(Date.now() + i),
+            type: 'room',
+            comment: params.comment,
+            comment_date: date,
+            comment_dates: null,
+            created_datetime: createdAt,
+            user: authorName,
+            show_for_housekeeper: false,
+          }))
+        : [
+            {
+              comment_id: commentIds[0] ?? -Date.now(),
+              type: params.type,
+              comment: params.comment,
+              comment_date: null,
+              comment_dates: null,
+              created_datetime: createdAt,
+              user: authorName,
+              show_for_housekeeper: params.type === 'reservation' ? (params.showForHousekeeper ?? false) : false,
+            },
+          ];
+    const updated: ReservationInterface = { ...reservation, notes: [...reservation.notes, ...newNotes] };
     // Best-effort sync of the Home list cache, if this reservation happens to be in it —
     // never the source of truth for the merge above.
     this._reservations.update(list =>

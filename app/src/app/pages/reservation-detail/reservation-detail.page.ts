@@ -41,7 +41,19 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
 
   pillStatus = pillStatus;
   pillLabel = pillLabel;
-  statusSteps = STATUS_STEPS;
+
+  // The 4 STATUS_STEPS, narrowed to whichever ones this property's account actually uses
+  // (property-settings.service.ts `reservationStatuses` — e.g. an account with no online
+  // check-in gets [confirmed, onboard, checkedout], skipping the separate check-in step).
+  // Every index-based calculation below (statusIndex, nextStep, hold/revert/connector math)
+  // is deliberately computed against THIS list, not the raw STATUS_STEPS constant, so a row's
+  // template index `i` always lines up with the row it's actually rendering.
+  readonly statusSteps = computed<StatusStep[]>(() => {
+    const allowed = this.propertySettings.reservationStatuses();
+    if (!allowed || allowed.length === 0) return STATUS_STEPS;
+    const filtered = STATUS_STEPS.filter(s => allowed.includes(s.key));
+    return filtered.length > 0 ? filtered : STATUS_STEPS;
+  });
 
   // FAB action-sheet
   menuOpen = signal(false);
@@ -113,6 +125,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   // openNotesSheet()/sendNote() have advanced the watermark).
   newNoteIds = signal<Set<number>>(new Set());
   readonly newNoteCount = computed(() => this.newNoteIds().size);
+  readonly totalNoteCount = computed(() => this.reservation()?.notes.length ?? 0);
 
   // Swipe-to-delete on a note row. `openNoteId` is the note currently snapped open
   // (delete button revealed) — at most one at a time. `dragNoteId`/`dragOffsetPx`
@@ -137,14 +150,15 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   readonly statusIndex = computed(() => {
     const r = this.reservation();
     if (!r) return -1;
-    return STATUS_STEPS.findIndex(s => s.key === r.status);
+    return this.statusSteps().findIndex(s => s.key === r.status);
   });
 
   readonly inStatusFlow = computed(() => this.statusIndex() >= 0);
 
   readonly nextStep = computed<StatusStep | null>(() => {
+    const steps = this.statusSteps();
     const i = this.statusIndex();
-    return i >= 0 && i < STATUS_STEPS.length - 1 ? STATUS_STEPS[i + 1] : null;
+    return i >= 0 && i < steps.length - 1 ? steps[i + 1] : null;
   });
 
   // A guest can't board or leave a property before they've arrived — the API already
@@ -433,12 +447,17 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   private async doChangeStatus(target: StatusStep, isRevert = false) {
     this.statusUpdating.set(true);
     this.statusUpdateError.set(null);
-    const targetIndex = STATUS_STEPS.findIndex(s => s.key === target.key);
-    if (isRevert) this.revertingIndex.set(targetIndex);
+    // Two different indices on purpose: revertingIndex must match the row index `i` the
+    // template is actually iterating over (statusSteps(), possibly narrowed), while
+    // blankTimestampsAfter blanks timestamps on the full canonical STATUS_STEPS flow
+    // regardless of which steps this property's account shows.
+    const displayIndex = this.statusSteps().findIndex(s => s.key === target.key);
+    if (isRevert) this.revertingIndex.set(displayIndex);
     try {
       let updated = await this.res.changeStatus(this.reservationCode, target.key);
       if (isRevert) {
-        updated = blankTimestampsAfter(updated, targetIndex);
+        const fullIndex = STATUS_STEPS.findIndex(s => s.key === target.key);
+        updated = blankTimestampsAfter(updated, fullIndex);
       }
       this.reservation.set(updated);
     } catch (e: any) {

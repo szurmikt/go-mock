@@ -15,6 +15,7 @@ interface PropertySettingsApiResponse {
   data: {
     property_time_zone?: string | null;
     scan_fields?: ScanFieldConfig[];
+    reservation_statuses?: string[];
   };
 }
 
@@ -43,16 +44,29 @@ export class PropertySettingsService {
    */
   readonly scanFields = signal<ScanFieldConfig[]>([]);
 
+  /**
+   * Which of the 4 STATUS_STEPS keys (reservation.ts) this property's account actually uses,
+   * straight from the API. Two shapes seen in practice: the full
+   * `[confirmed, checkedin, onboard, checkedout]`, or `[confirmed, onboard, checkedout]` with
+   * `checkedin` dropped — the latter for an account that doesn't use online check-in, where a
+   * guest goes straight from Confirmed to Onboard with no separate check-in step. `null` means
+   * the API hasn't sent the field (older backend) — treated as "no restriction, show all 4
+   * steps" so this fails open rather than hiding a step nobody asked to hide.
+   */
+  readonly reservationStatuses = signal<string[] | null>(null);
+
   constructor(private api: ApiService) {}
 
   async load(): Promise<void> {
     const r = await firstValueFrom(this.api.get<PropertySettingsApiResponse>('properties/settings'));
     this.timeZone.set(r.data.property_time_zone ?? null);
     this.scanFields.set(r.data.scan_fields ?? []);
+    this.reservationStatuses.set(r.data.reservation_statuses ?? null);
   }
 
   clear(): void {
     this.timeZone.set(null);
     this.scanFields.set([]);
+    this.reservationStatuses.set(null);
   }
 }

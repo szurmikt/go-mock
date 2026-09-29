@@ -701,6 +701,68 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ## 20. Changelog
 
+### 2026-09-29 — Status stepper on Reservation Detail narrows to the account's actual reservation statuses
+
+> Branch `rc/0926-3`. No build/version bump; ships OTA (pure web-layer change).
+
+The 4-step status stepper on Reservation Detail ([reservation-detail.page.ts](src/app/pages/reservation-detail/reservation-detail.page.ts)) was hardcoded to the full `STATUS_STEPS` (`confirmed → checkedin → onboard → checkedout`) regardless of account. Some accounts don't use online check-in and go straight from Confirmed to Onboard — for those, the API's `properties/settings` response now exposes a new `reservation_statuses` field listing which of the 4 keys actually apply (e.g. `[confirmed, onboard, checkedout]`, `checkedin` omitted).
+
+- `PropertySettingsService` ([services/property-settings.service.ts](src/app/services/property-settings.service.ts)): new `reservationStatuses` signal, populated from `r.data.reservation_statuses`. `null` (older backend, field absent) fails open — treated as "no restriction, show all 4 steps."
+- `ReservationDetailPage.statusSteps` is now a `computed()` that filters `STATUS_STEPS` down to the allowed keys (falling back to the full list if the filter would leave zero steps). Every index-based calculation downstream — `statusIndex`, `nextStep`, hold/revert timing, the template's `@for` loop — reads from this narrowed list, not the raw constant, so a row's template index always matches the row it's rendering.
+- `doChangeStatus()`'s revert path deliberately keeps **two** separate indices: `displayIndex` (into the narrowed `statusSteps()`, for `revertingIndex` which drives the template) vs. `fullIndex` (into the canonical `STATUS_STEPS`, for `blankTimestampsAfter()` — timestamp blanking must stay keyed to the real flow regardless of which steps this account shows).
+
+**Verification:** `npx ng build` clean (only the three pre-existing known warnings, none new). **Not yet device-verified** — needs an account with a narrowed `reservation_statuses` list to confirm the stepper actually skips the missing step end-to-end.
+
+### 2026-09-29 — Fix: a multi-date room note only showed one of its rows until a refresh
+
+> Branch `rc/0926-3`. No build/version bump; ships OTA (pure web-layer change).
+
+Reported live: posting a room note across 2 selected dates (e.g. 30 Sept + 1 Oct) showed only **one** entry in the Notes list immediately after sending; reopening the sheet (a real re-fetch) then correctly showed **two** separate rows, each tagged with its own date ("Room note for 30 Sept" / "Room note for 1 Oct").
+
+**Root cause:** confirmed via the same test that the API splits a multi-date room note into **one row per date** server-side — this is exactly why `PUT /reservations/comment`'s `data.comment_id` is an array (one id per date, in payload order), not a single value. `ReservationService.postNote()` ([services/reservation.ts](src/app/services/reservation.ts)) was still building exactly **one** local note object regardless of how many dates were selected (a leftover from before `comment_id` carried real per-row ids), using only `comment_id[0]` and stuffing every selected date into the note's `comment_dates` array field — a shape the real per-row API data never actually produces (each fetched row carries a singular `comment_date`, not a `comment_dates` array; confirmed by the room-note-tag work earlier this session). So the optimistic local append under-represented the write until the next fetch replaced it with the real, correctly-split rows.
+
+- `postNote()` now builds **one local note per selected date** for a room-type post (falling back to the old single-note shape only if the date list is ever empty), each with its own real `comment_id` from the response array (`commentIds[i]`) and its own singular `comment_date` — matching the real post-refetch shape exactly, so the optimistic append and the re-fetched data agree.
+- A reservation-type note is unaffected — still exactly one row, one id.
+
+**Verification:** `npx ng build` clean (only the three pre-existing known warnings, none new). **Not yet re-verified on device** — needs a real multi-date room note post to confirm both rows appear immediately (matching what a refresh already showed correctly), and that a same-session delete on either row (before any re-fetch) targets the right one via its real id.
+
+### 2026-09-29 — The "New Notes" fact-grid row now stays visible for any notes, not just unread ones
+
+> Branch `rc/0926-3`. No build/version bump; ships OTA (pure web-layer change).
+
+The detail-block's notes summary row ([reservation-detail.page.html](src/app/pages/reservation-detail/reservation-detail.page.html)) previously only rendered while `newNoteCount() > 0` — once every note on a reservation had been read, the row (and the only non-FAB entry point into the Notes sheet from this section) disappeared entirely, even though the reservation still had notes.
+
+- New `totalNoteCount` computed ([reservation-detail.page.ts](src/app/pages/reservation-detail/reservation-detail.page.ts)): `reservation()?.notes.length ?? 0`. The row's `@if` now gates on `totalNoteCount() > 0` instead of `newNoteCount() > 0` — visible whenever the reservation has any notes at all, read or not.
+- **Copy now reflects both counts, unread vs. all-read:**
+  - Unread notes present: `"{{n}} New Notes ({{total}} total)"` (`reservationDetail.newNotes`, widened with a new `total` param) + the existing blue new-dot indicator.
+  - Everything already read: `"{{total}} total notes"` (new `reservationDetail.notesTotalCount` key), no dot.
+- Added in lockstep to `translations.ts`/`.en.json`/`.hu.json`; key parity confirmed programmatically (349 = 349 = 349).
+
+**Verification:** `npx ng build` clean (only the three pre-existing known warnings, none new). **Not yet device-verified** — needs a reservation with notes, both with and without an unread one, to confirm the row stays visible and the copy switches correctly.
+
+### 2026-09-29 — Room notes: the "Room" tag now shows its date (`comment_date`)
+
+> Branch `rc/0926-3`. No build/version bump; ships OTA (pure web-layer change).
+
+A room-type note's tag in the Notes list ([reservation-detail.page.html](src/app/pages/reservation-detail/reservation-detail.page.html), `.note-tag--room`) previously always read a bare "Room" — with no indication of which stay-date it applies to, even though the API's `comment_date` field (a plain `"YYYY-MM-DD"` calendar date, distinct from the composer's own `comment_dates` multi-select) already carries it on every fetched note.
+
+- When `comment_date` is present, the tag now reads e.g. "Room: 30 Sep" via a new `reservationDetail.roomNoteTagWithDate` key (`'Room: {{date}}'`), with the date formatted through the existing `localizedDate:'dayMonth'` pipe (no `timeZone` arg — `comment_date` is a calendar date like `arrival_date`/`departure_date`, not a UTC instant, matching how those two are already piped elsewhere on this same page). Falls back to the plain `roomNoteTag` ("Room") when `comment_date` is null — e.g. a note not yet round-tripped through a fetch.
+- Added in lockstep to `translations.ts`/`.en.json`/`.hu.json` ("Room: {{date}}" / "Szoba: {{date}}"); key parity confirmed programmatically (348 = 348 = 348).
+
+**Verification:** `npx ng build` clean (only the three pre-existing known warnings, none new) — confirms a pipe nested inside a `| tr:{...}` param object compiles fine in this Ivy template. **Not yet device-verified** — needs a real room note with a `comment_date` to confirm the formatted date renders correctly.
+
+### 2026-09-29 — Fix: `postNote()` now uses the API's real `comment_id` instead of a placeholder
+
+> Branch `rc/0926-3`. No build/version bump; ships OTA (pure web-layer change).
+
+The `PUT /reservations/comment` response has changed: it now echoes back `data.comment_id` as an array (e.g. `[523255, 523256]`) — previously the response body carried no created-row id at all (`data: []`), which is why `ReservationService.postNote()` ([services/reservation.ts](src/app/services/reservation.ts)) synthesized a negative-timestamp placeholder (`comment_id: -Date.now()`) for the optimistically-appended local note.
+
+- `postNote()`'s response is now typed `ApiResponse<{ comment_id: number[] }>`; the locally-appended note's `comment_id` is set from `resp.data.comment_id[0]` (a single `postNote()` call always creates exactly one row, so the first — and only meaningful — element is that row's real id), falling back to the old negative-placeholder behavior only if the API ever omits the field.
+- **Closes a latent bug, not previously reported:** with the placeholder id, calling `deleteNote()` on a just-posted note *before* any re-fetch would have sent a bogus negative id to `DELETE /reservations/comment`, since nothing ever reconciled the placeholder against a real id. Using the real id from the create response fixes this for the common case (a single comment created per post).
+- Left uninvestigated: whether the array can ever contain more than one id for a single `postNote()` call (e.g. a multi-date room note the API splits into separate rows server-side) — `ReservationNoteInterface.comment_dates: string[] | null` models one note row carrying several dates, so this wasn't assumed to apply here; only `comment_id[0]` is read.
+
+**Verification:** `npx ng build` clean (only the three pre-existing known warnings — two IDScanly SCSS budget overages + the `jscanify` CommonJS bailout, none new). **Not yet device/API-verified** — needs a real note post against the updated API to confirm the returned id round-trips correctly through an immediate delete.
+
 ### 2026-09-28 — Turkish ID identity number split into its own field, gated by `property_settings.scan_fields`
 
 > Branch `rc/0926-3`. No build/version bump; published to the `dev` OTA channel only (pure web-layer change, no native code touched).
