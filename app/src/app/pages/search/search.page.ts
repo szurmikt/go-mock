@@ -7,6 +7,7 @@ import { debounceTime } from 'rxjs/operators';
 import { ReservationService, pillStatus, pillLabel } from '../../services/reservation';
 import { StorageService } from '../../services/storage';
 import { MixpanelService } from '../../services/mixpanel';
+import { PropertySettingsService } from '../../services/property-settings.service';
 import { Config } from '../../config/config';
 import { ReservationInterface } from '../../models/reservation.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
@@ -59,11 +60,15 @@ export class SearchPage implements OnInit, AfterViewInit, OnDestroy {
   pillStatus = pillStatus;
   pillLabel = pillLabel;
 
+  // See PropertySettingsService.onlineCheckIn's doc comment.
+  readonly onlineCheckIn = computed(() => this.propertySettings.onlineCheckIn());
+
   constructor(
     private res: ReservationService,
     private storage: StorageService,
     private router: Router,
     private mixpanel: MixpanelService,
+    private propertySettings: PropertySettingsService,
   ) {
     this.debouncedQuery = toSignal(
       toObservable(this.query).pipe(debounceTime(200)),

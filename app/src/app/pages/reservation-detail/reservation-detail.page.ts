@@ -42,17 +42,25 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   pillStatus = pillStatus;
   pillLabel = pillLabel;
 
-  // The 4 STATUS_STEPS, narrowed to whichever ones this property's account actually uses
-  // (property-settings.service.ts `reservationStatuses` — e.g. an account with no online
-  // check-in gets [confirmed, onboard, checkedout], skipping the separate check-in step).
-  // Every index-based calculation below (statusIndex, nextStep, hold/revert/connector math)
-  // is deliberately computed against THIS list, not the raw STATUS_STEPS constant, so a row's
-  // template index `i` always lines up with the row it's actually rendering.
+  // Whether this account uses online check-in (property-settings.service.ts). Drives both
+  // the pill text below and statusSteps' filtering/relabeling.
+  readonly onlineCheckIn = computed(() => this.propertySettings.onlineCheckIn());
+
+  // The status-change options actually offered. With online check-in: all 4 STATUS_STEPS,
+  // as-is. Without it: the real `checkedin` stage is dropped (Reserved/Onboard/Checked-out
+  // only), and the remaining "Onboard" row is relabeled to "Check-in"
+  // (reservationDetail.statusCheckedIn, the same key the real check-in step uses when it's
+  // present) — that account never had a separate check-in stage, so arriving and being
+  // onboarded IS what "checking in" means to its staff. Every index-based calculation below
+  // (statusIndex, nextStep, hold/revert/connector math) is deliberately computed against
+  // THIS list, not the raw STATUS_STEPS constant, so a row's template index `i` always lines
+  // up with the row it's actually rendering. The raw `key`/`tsField` driving every
+  // lookup/API call are untouched either way; only the displayed labelKey changes.
   readonly statusSteps = computed<StatusStep[]>(() => {
-    const allowed = this.propertySettings.reservationStatuses();
-    if (!allowed || allowed.length === 0) return STATUS_STEPS;
-    const filtered = STATUS_STEPS.filter(s => allowed.includes(s.key));
-    return filtered.length > 0 ? filtered : STATUS_STEPS;
+    if (this.onlineCheckIn()) return STATUS_STEPS;
+    return STATUS_STEPS
+      .filter(s => s.key !== 'checkedin')
+      .map(s => (s.key === 'onboard' ? { ...s, labelKey: 'reservationDetail.statusCheckedIn' } : s));
   });
 
   // FAB action-sheet

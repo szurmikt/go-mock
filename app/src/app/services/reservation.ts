@@ -27,13 +27,25 @@ function parseCalendarDate(s: string): { y: number; m: number; d: number } {
   return { y, m, d };
 }
 
-export function pillStatus(apiStatus: string): string {
+// `onlineCheckIn` (property-settings.service.ts PropertySettingsService.onlineCheckIn) is
+// false for an account without online check-in — there, `checked-in` and `onboard` are NOT
+// two separate stages a guest passes through: arriving and checking in in person IS
+// onboarding, so the raw `onboard` status is that account's "checked in" moment, and showing
+// the literal word "Onboard" for it would be showing internal plumbing nobody outside the app
+// calls by that name (the PMS desktop already collapses this the same way). Defaults to
+// `false` here too, matching the service's own "false or absent both mean no online
+// check-in" contract — a caller must opt in to the friendlier 2-stage labeling, not get it
+// by omission.
+export function pillStatus(apiStatus: string, onlineCheckIn = false): string {
   switch (apiStatus) {
     case 'checkin':    return 'check-in';
     case 'checkedin':  return 'checked-in';
     case 'checkout':   return 'check-out';
     case 'checkedout': return 'checked-out';
-    case 'onboard':    return 'onboard';
+    // Same pill color as 'checked-in' already (see sabeeapp-design.scss) — collapsing
+    // the data-status too, not just the label, keeps that true even if the two are
+    // ever given distinct colors later.
+    case 'onboard':    return onlineCheckIn ? 'onboard' : 'checked-in';
     case 'confirmed':  return 'confirmed';
     case 'cancelled':  return 'cancelled';
     case 'noshow':     return 'noshow';
@@ -41,13 +53,13 @@ export function pillStatus(apiStatus: string): string {
   }
 }
 
-export function pillLabel(apiStatus: string): string {
+export function pillLabel(apiStatus: string, onlineCheckIn = false): string {
   switch (apiStatus) {
     case 'checkin':    return 'Check in';
     case 'checkedin':  return 'Checked in';
     case 'checkout':   return 'Check out';
     case 'checkedout': return 'Checked out';
-    case 'onboard':    return 'Onboard';
+    case 'onboard':    return onlineCheckIn ? 'Onboard' : 'Checked in';
     case 'confirmed':  return 'Confirmed';
     case 'cancelled':  return 'Cancelled';
     case 'noshow':     return 'No show';

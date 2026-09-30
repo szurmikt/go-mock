@@ -701,6 +701,21 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ## 20. Changelog
 
+### 2026-09-30 — Status stepper/pills: switched to a plain `online_checkin` boolean; Onboard relabeled to Check-in for accounts without it
+
+> Branch `rc/0926-3`. No build/version bump; ships OTA (pure web-layer change). Follow-up/supersedes the 2026-09-29 entry directly below — the API contract changed mid-session from a `reservation_statuses` array to a plain boolean, and the scope grew from "narrow the status-change sheet" to "also relabel the pill everywhere the raw status is shown."
+
+Context from the PMS side: accounts without online check-in never had a separate check-in stage — arriving and checking in in person **is** onboarding. Online check-in later split that into two real stages (`checkedin` then `onboard`) in the data model, but the desktop PMS still displays `onboard` as "Checked in" for those accounts, never the literal word "Onboard". The mobile app was showing the raw `onboard` status verbatim, which read as a foreign/confusing status to staff used to the PMS's 3-stage vocabulary (Reserved → Checked in → Checked out).
+
+- **API contract**: `GET /properties/settings` now returns `online_checkin: boolean` instead of the `reservation_statuses` array from the previous entry. Per spec, `false` and "field not present" mean the same thing — there is no separate "not yet known" state.
+- `PropertySettingsService` ([services/property-settings.service.ts](src/app/services/property-settings.service.ts)): `reservationStatuses` signal replaced with `onlineCheckIn` (`signal<boolean>`, defaults to `false` — matching "absent = false", not "assume the friendlier 4-step behavior" like the previous array-based version did).
+- `pillStatus()`/`pillLabel()` ([services/reservation.ts](src/app/services/reservation.ts)) gained an `onlineCheckIn` param (default `false`): when `false`, the raw `onboard` status renders with the same `data-status`/label as `checkedin` already uses (pill: "Checked in" — same color, since `onboard` and `checked-in` already share one). Wired into `HomePage`, `SearchPage`, and `ReservationDetailPage` (each exposes its own `onlineCheckIn` computed reading the service signal, passed into every `pillStatus(r.status, onlineCheckIn())`/`pillLabel(...)` call site on reservation cards and the detail-block header pill.
+- `ReservationDetailPage.statusSteps` ([reservation-detail.page.ts](src/app/pages/reservation-detail/reservation-detail.page.ts)) simplified: with online check-in, all 4 `STATUS_STEPS` as before; without it, the real `checkedin` step is dropped entirely (Reserved / Onboard / Checked-out only — 3 selectable options) and the remaining `onboard` row's `labelKey` is swapped to `reservationDetail.statusCheckedIn` (the same key the real check-in step already uses, "Check-in" — hyphenated, matches the timeline sheet's imperative step-name convention, distinct from the pill's "Checked in").
+- In every case only the **displayed label** changes — `r.status`, `STATUS_STEPS[].key`, `POST /reservations/status`, and every internal lookup (who's onboard, etc.) keep reading/sending the real raw status untouched.
+- **Two different English strings by design, not an inconsistency**: the pill says "Checked in" (past-tense result state, `pillLabel`'s existing convention for `checkedin`); the status-change sheet's step name says "Check-in" (hyphenated, imperative step-name convention, `reservationDetail.statusCheckedIn`). Both already existed pre-change for the real `checkedin` status — `onboard`'s relabeling just follows whichever convention each screen already used rather than inventing a third string.
+
+**Verification:** `npx ng build` clean (only the three pre-existing known warnings, none new). **Not yet device-verified** — needs a real account with `online_checkin: false` (or the field absent) to confirm: reservation cards + the detail-block pill show "Checked in" instead of "Onboard", and the status-change sheet offers only Reserved/Check-in/Checked-out with no way to reach the real `checkedin` stage.
+
 ### 2026-09-29 — Status stepper on Reservation Detail narrows to the account's actual reservation statuses
 
 > Branch `rc/0926-3`. No build/version bump; ships OTA (pure web-layer change).

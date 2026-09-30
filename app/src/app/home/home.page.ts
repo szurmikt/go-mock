@@ -8,6 +8,7 @@ import { ApiEnvironmentService } from '../services/api-environment';
 import { AuthService } from '../services/auth';
 import { ReservationService, pillStatus, pillLabel } from '../services/reservation';
 import { OptionsService } from '../services/options.service';
+import { PropertySettingsService } from '../services/property-settings.service';
 import { MixpanelService } from '../services/mixpanel';
 import { TipsService } from '../services/tips.service';
 import { PropertyInterface } from '../models/property.interface';
@@ -172,8 +173,13 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
   constructor(
     public auth: AuthService,
     public res: ReservationService,
+    public propertySettings: PropertySettingsService,
     private router: Router,
   ) {}
+
+  // See PropertySettingsService.onlineCheckIn's doc comment — drives whether the
+  // "Onboard" pill reads "Onboard" or "Checked in" for this account.
+  readonly onlineCheckIn = computed(() => this.propertySettings.onlineCheckIn());
 
   // Load on every view entry (not ngOnInit) so re-entering a cached home view —
   // e.g. after logout → login → Select Property — always refreshes. The 60s

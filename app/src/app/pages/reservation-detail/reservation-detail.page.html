@@ -35,13 +35,13 @@
             </span>
             @if (inStatusFlow()) {
               <button (click)="openStatusSheet()" style="background: transparent; border: 0; padding: 0; cursor: pointer">
-                <span class="pill" [attr.data-status]="pillStatus(r.status)">
-                  {{ pillLabel(r.status) }}
+                <span class="pill" [attr.data-status]="pillStatus(r.status, onlineCheckIn())">
+                  {{ pillLabel(r.status, onlineCheckIn()) }}
                 </span>
               </button>
             } @else {
-              <span class="pill" [attr.data-status]="pillStatus(r.status)">
-                {{ pillLabel(r.status) }}
+              <span class="pill" [attr.data-status]="pillStatus(r.status, onlineCheckIn())">
+                {{ pillLabel(r.status, onlineCheckIn()) }}
               </span>
             }
           </div>

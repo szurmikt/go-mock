@@ -15,7 +15,7 @@ interface PropertySettingsApiResponse {
   data: {
     property_time_zone?: string | null;
     scan_fields?: ScanFieldConfig[];
-    reservation_statuses?: string[];
+    online_checkin?: boolean;
   };
 }
 
@@ -45,15 +45,18 @@ export class PropertySettingsService {
   readonly scanFields = signal<ScanFieldConfig[]>([]);
 
   /**
-   * Which of the 4 STATUS_STEPS keys (reservation.ts) this property's account actually uses,
-   * straight from the API. Two shapes seen in practice: the full
-   * `[confirmed, checkedin, onboard, checkedout]`, or `[confirmed, onboard, checkedout]` with
-   * `checkedin` dropped — the latter for an account that doesn't use online check-in, where a
-   * guest goes straight from Confirmed to Onboard with no separate check-in step. `null` means
-   * the API hasn't sent the field (older backend) — treated as "no restriction, show all 4
-   * steps" so this fails open rather than hiding a step nobody asked to hide.
+   * Whether this property's account uses online check-in — an account without it never has
+   * a separate check-in stage: arriving and being onboarded IS "checking in" as far as its
+   * staff are concerned. Drives, in reservation.ts and its consumers: which STATUS_STEPS are
+   * offered for a status change (all 4 when true; Reserved/Onboard/Checked-out only when
+   * false — the real `checkedin` stage is hidden), and whether the raw `onboard` status is
+   * displayed as "Onboard" or relabeled to "Checked-in".
+   *
+   * Per the API contract, `false` and "field not present" mean the same thing — there is no
+   * separate "not yet known" state, so this defaults to `false` (not `true`) until `load()`
+   * resolves, matching what an absent field means once it does resolve.
    */
-  readonly reservationStatuses = signal<string[] | null>(null);
+  readonly onlineCheckIn = signal<boolean>(false);
 
   constructor(private api: ApiService) {}
 
@@ -61,12 +64,12 @@ export class PropertySettingsService {
     const r = await firstValueFrom(this.api.get<PropertySettingsApiResponse>('properties/settings'));
     this.timeZone.set(r.data.property_time_zone ?? null);
     this.scanFields.set(r.data.scan_fields ?? []);
-    this.reservationStatuses.set(r.data.reservation_statuses ?? null);
+    this.onlineCheckIn.set(r.data.online_checkin === true);
   }
 
   clear(): void {
     this.timeZone.set(null);
     this.scanFields.set([]);
-    this.reservationStatuses.set(null);
+    this.onlineCheckIn.set(false);
   }
 }

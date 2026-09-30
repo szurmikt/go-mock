@@ -65,8 +65,8 @@
             <div class="card res-card tap-anim tappable" (click)="goReservation(r)">
               <div class="top">
                 <span class="res-code">{{ r.reservation_code }}</span>
-                <span class="pill" [attr.data-status]="pillStatus(r.status)">
-                  {{ pillLabel(r.status) }}
+                <span class="pill" [attr.data-status]="pillStatus(r.status, onlineCheckIn())">
+                  {{ pillLabel(r.status, onlineCheckIn()) }}
                 </span>
               </div>
               <div class="res-name">{{ bookerName(r) }}</div>
