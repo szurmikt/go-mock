@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject, signal, computed, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnDestroy, inject, signal, computed, effect, ElementRef, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { ViewWillEnter, ViewDidEnter, ViewWillLeave } from '@ionic/angular';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
@@ -43,6 +43,7 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
   @ViewChild('ionContentEl') ionContentEl?: IonContent;
   @ViewChild('stickySentinel') stickySentinel?: ElementRef<HTMLElement>;
   @ViewChild('chipStripWrap') chipStripWrap?: ElementRef<HTMLElement>;
+  @ViewChild('chipStripEl') chipStripEl?: ElementRef<HTMLElement>;
 
   private hostEl = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -105,6 +106,39 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
 
   goManageFilters(): void {
     this.router.navigate(['/manage-filters']);
+  }
+
+  /**
+   * Keeps the selected chip scrolled into view within the strip — most importantly right
+   * after a cold start restores a saved selection that isn't one of the first couple of
+   * chips (e.g. the 3rd/4th), which would otherwise sit off-screen with no indication it's
+   * even selected. Re-runs on every chipList()/selectedFilterId() change (incl. a real user
+   * tap), which is a harmless no-op when the tapped/restored chip is already fully visible.
+   * Angular runs effects after change detection has applied the @for loop's updates to the
+   * DOM, so the query below always sees the current render.
+   */
+  private chipScrollEffect = effect(() => {
+    this.chipList();
+    this.selectedFilterId();
+    this.scrollSelectedChipIntoView();
+  });
+
+  private scrollSelectedChipIntoView(): void {
+    const strip = this.chipStripEl?.nativeElement;
+    if (!strip) return;
+    const activeBtn = strip.querySelector<HTMLElement>('.filter-chip.active');
+    if (!activeBtn) return;
+    const stripRect = strip.getBoundingClientRect();
+    const btnRect = activeBtn.getBoundingClientRect();
+    // Manual scrollLeft math only — deliberately not Element.scrollIntoView(), which also
+    // scrolls vertical ancestors as needed and could jump the whole page just to reveal a
+    // horizontally-clipped chip.
+    const margin = 8;
+    if (btnRect.left < stripRect.left) {
+      strip.scrollLeft -= stripRect.left - btnRect.left + margin;
+    } else if (btnRect.right > stripRect.right) {
+      strip.scrollLeft += btnRect.right - stripRect.right + margin;
+    }
   }
 
   // Sticky chip strip: an IntersectionObserver on a 1px sentinel placed immediately above

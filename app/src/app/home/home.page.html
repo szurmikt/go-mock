@@ -137,7 +137,7 @@
       <!-- Filter chip strip -->
       <div #stickySentinel style="height: 1px"></div>
       <div #chipStripWrap class="filter-chip-strip-wrap" [class.stuck]="chipsStuck()">
-        <div class="filter-chip-strip">
+        <div #chipStripEl class="filter-chip-strip">
           @for (f of chipList(); track f.id) {
             <button type="button" class="filter-chip" [class.active]="f.id === selectedFilterId()" (click)="selectChip(f)">
               <b>{{ f.name }}</b>
