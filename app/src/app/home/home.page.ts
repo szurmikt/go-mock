@@ -114,8 +114,17 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
    * chips (e.g. the 3rd/4th), which would otherwise sit off-screen with no indication it's
    * even selected. Re-runs on every chipList()/selectedFilterId() change (incl. a real user
    * tap), which is a harmless no-op when the tapped/restored chip is already fully visible.
-   * Angular runs effects after change detection has applied the @for loop's updates to the
-   * DOM, so the query below always sees the current render.
+   *
+   * This alone is NOT reliable for the cold-start case: on a normal relaunch the filter
+   * data (chipList()/selectedFilterId()) is already resolved by the time HomePage
+   * constructs (FilterService.init() runs during boot, before routing), so this effect's
+   * first run fires essentially immediately — often before Ionic has finished activating/
+   * transitioning the page in. The other DOM-measuring setup in this file
+   * (setupChipsStickyObserver/setupChipStripHeightObserver) avoids exactly this by running
+   * from ionViewDidEnter() instead of a signal effect; scrollSelectedChipIntoView() is
+   * called from there too (see below) as the reliable trigger for the cold-start case. This
+   * effect's job is just live updates while already on a stable page (a real tap, or the
+   * chip list changing via Manage Filters).
    */
   private chipScrollEffect = effect(() => {
     this.chipList();
@@ -322,6 +331,11 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
     });
     this.setupChipsStickyObserver();
     this.setupChipStripHeightObserver();
+    // The reliable cold-start trigger for scrolling the restored selection into view — see
+    // chipScrollEffect's doc comment above for why the effect alone isn't enough. By
+    // ionViewDidEnter the page is guaranteed fully entered/laid out (same reasoning as the
+    // two observer setups above), so the measurement here is never taken mid-transition.
+    this.scrollSelectedChipIntoView();
   }
 
   ionViewWillLeave() {
