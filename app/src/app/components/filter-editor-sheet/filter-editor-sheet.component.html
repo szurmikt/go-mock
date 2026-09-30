@@ -1,0 +1,62 @@
+@if (visible()) {
+  <div class="sheet-backdrop" (click)="close()">
+    <div class="sheet" (click)="$event.stopPropagation()">
+      <div class="head">
+        <h3>{{ title() | tr }}</h3>
+        <button class="icon-btn" (click)="close()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="field" style="margin-top: 16px">
+        <div class="l">{{ 'filterEditor.guestsLabel' | tr }}</div>
+        <div class="filter-seg-row" style="margin-top: 6px">
+          @for (g of guestsOptions; track g) {
+            <button type="button" class="filter-seg-btn" [class.active]="guests() === g" (click)="setGuests(g)">
+              {{ guestsLabelKey(g) | tr }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="field" style="margin-top: 16px">
+        <div class="l">{{ 'filterEditor.dayLabel' | tr }}</div>
+        <div class="filter-seg-row" style="margin-top: 6px">
+          @for (d of dayOptions; track d) {
+            <button type="button" class="filter-seg-btn" [class.active]="day() === d"
+              [disabled]="dayLocked() && d !== 'today'" (click)="setDay(d)">
+              {{ dayLabelKey(d) | tr }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="field" style="margin-top: 16px">
+        <div class="l">{{ 'filterEditor.sortLabel' | tr }}</div>
+        <div class="filter-seg-row" style="margin-top: 6px">
+          @for (s of sortOptions; track s) {
+            <button type="button" class="filter-seg-btn" [class.active]="sort() === s" (click)="setSort(s)">
+              {{ sortLabelKey(s) | tr }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="field" style="margin-top: 16px">
+        <div class="l">{{ 'filterEditor.nameLabel' | tr }}</div>
+        <input
+          type="text"
+          [ngModel]="displayName()"
+          (ngModelChange)="onNameInput($event)"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          style="width: 100%; margin-top: 6px; padding: 12px 14px; background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: var(--radius-sm); font-family: inherit; font-size: 16px; font-weight: 700; color: var(--ink); outline: none" />
+      </div>
+
+      <button class="btn" style="margin-top: 20px" (click)="save()">{{ 'common.save' | tr }}</button>
+    </div>
+  </div>
+}

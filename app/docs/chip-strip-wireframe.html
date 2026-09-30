@@ -1,0 +1,152 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chip strip wireframe</title>
+<style>
+  body{margin:0;background:#eee;font:14px/1.3 -apple-system,system-ui,sans-serif;color:#222;display:flex;gap:32px;justify-content:center;padding:24px 16px;flex-wrap:wrap}
+  .phone{width:340px;background:#fff;border:2px solid #222;border-radius:28px;padding:18px 0 24px;overflow:hidden}
+  .cap{font-size:12px;color:#666;text-align:center;margin-bottom:8px}
+  .pad{padding:0 16px}
+  .top{display:flex;align-items:center;justify-content:space-between}
+  .hotel{font-weight:700;font-size:18px}
+  .icons span{display:inline-block;width:22px;height:22px;border:1.5px solid #222;border-radius:50%;margin-left:10px}
+  .search{margin-top:12px;border:1.5px solid #222;border-radius:10px;padding:9px 12px;color:#999}
+  .strip{display:flex;align-items:center;margin-top:14px}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 8px 2px 16px;scrollbar-width:none;flex:1}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;border:1.5px solid #222;border-radius:999px;padding:7px 12px;white-space:nowrap;cursor:pointer;background:#fff}
+  .chip b{font-weight:600}
+  .chip .n{margin-left:6px;color:#666;font-variant-numeric:tabular-nums}
+  .chip.on{background:#222;color:#fff}
+  .chip.on .n{color:#ccc}
+  .filter{flex:none;width:36px;height:36px;border-left:1.5px dashed #bbb;display:flex;align-items:center;justify-content:center;margin-right:10px;cursor:pointer}
+  .filter svg{width:20px;height:20px}
+  .note{font-size:11px;color:#888;padding:6px 16px 0}
+  .row{display:flex;align-items:center;gap:12px;border-bottom:1px solid #ddd;padding:12px 16px}
+  .room{width:44px;font-weight:700;font-size:16px}
+  .lines{flex:1}
+  .l1{height:10px;background:#ccc;border-radius:3px;width:70%}
+  .l2{height:8px;background:#e2e2e2;border-radius:3px;width:45%;margin-top:6px}
+  .st{font-size:11px;border:1px solid #999;border-radius:999px;padding:2px 8px;color:#555}
+  .done{padding:12px 16px;color:#666;font-size:13px}
+  .sheet{border-top:2px solid #222;border-radius:18px 18px 0 0;margin-top:14px;padding:14px 16px}
+  .sheet h4{margin:0 0 12px}
+  .lbl{font-size:11px;color:#888;margin:10px 0 5px;text-transform:uppercase;letter-spacing:.04em}
+  .seg{display:flex;border:1.5px solid #222;border-radius:8px;overflow:hidden}
+  .seg div{flex:1;text-align:center;padding:6px 0;font-size:12px;border-left:1.5px solid #222}
+  .seg div:first-child{border-left:0}
+  .seg .on{background:#222;color:#fff}
+  .btn{margin-top:16px;background:#222;color:#fff;text-align:center;border-radius:10px;padding:10px}
+</style></head><body>
+
+<div>
+  <div class="cap">1 · Home: preset chips replace day tabs + counter tiles</div>
+  <div class="phone">
+    <div class="pad">
+      <div class="top"><div class="hotel">Demo Boutique Hotel ⌄</div><div class="icons"><span></span><span></span></div></div>
+      <div class="search">🔍 Search name, room, code</div>
+    </div>
+    <div class="strip">
+      <div class="chips" id="chips">
+        <div class="chip on"><b>Today's arrivals</b><span class="n">2/3</span></div>
+        <div class="chip"><b>Today's departures</b><span class="n">5</span></div>
+        <div class="chip"><b>In-house</b><span class="n">14</span></div>
+        <div class="chip"><b>Tomorrow's arrivals</b><span class="n">8</span></div>
+      </div>
+      <div class="filter" title="Manage filters"><svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg></div>
+    </div>
+    <div class="note">swipe → · 2/3 = still to check in / total · filter icon = manage filters</div>
+    <div style="margin-top:10px">
+      <div class="row"><div class="room">106</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div>
+      <div class="row"><div class="room">214</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div>
+    </div>
+    <div class="done">▸ Checked in (1)</div>
+    <div class="note">checked-in guests fold to the bottom, collapsed</div>
+  </div>
+</div>
+
+<div>
+  <div class="cap">2 · Filter icon: manage filters</div>
+  <div class="phone">
+    <div class="pad" style="display:flex;justify-content:space-between;align-items:center">
+      <span>‹ Back</span><b>My filters</b><span style="font-weight:600">+ New</span>
+    </div>
+    <div style="margin-top:14px">
+      <div class="row"><span style="color:#999">☰</span><div class="lines"><b>Today's arrivals</b><div style="font-size:12px;color:#888">by room</div></div><span style="color:#888">✎</span><span style="color:#888">🗑</span></div>
+      <div class="row"><span style="color:#999">☰</span><div class="lines"><b>Today's departures</b><div style="font-size:12px;color:#888">by room</div></div><span style="color:#888">✎</span><span style="color:#888">🗑</span></div>
+      <div class="row"><span style="color:#999">☰</span><div class="lines"><b>In-house</b><div style="font-size:12px;color:#888">by room</div></div><span style="color:#888">✎</span><span style="color:#888">🗑</span></div>
+      <div class="row"><span style="color:#999">☰</span><div class="lines"><b>Tomorrow's arrivals</b><div style="font-size:12px;color:#888">by room</div></div><span style="color:#888">✎</span><span style="color:#888">🗑</span></div>
+    </div>
+    <div class="note" style="padding-top:12px">☰ drag to reorder = chip order on Home · ✎ opens the builder</div>
+  </div>
+</div>
+
+<div>
+  <div class="cap">3 · "+ New" or ✎: filter editor</div>
+  <div class="phone" style="padding-bottom:0">
+    <div class="pad" style="opacity:.35">
+      <div class="top"><div class="hotel">Demo Boutique Hotel ⌄</div></div>
+      <div class="search">🔍 Search</div>
+    </div>
+    <div class="sheet">
+      <h4>New filter</h4>
+      <div class="lbl">Guests</div>
+      <div class="seg"><div class="on">Arrivals</div><div>Departures</div><div>In-house</div></div>
+      <div class="lbl">Day</div>
+      <div class="seg" style="font-size:11px"><div style="font-size:11px">Yesterday</div><div class="on" style="font-size:11px">Today</div><div style="font-size:11px">Tomorrow</div><div style="font-size:11px">Next 7 days</div><div style="font-size:11px">Next 14 days</div></div>
+      <div style="font-size:11px;color:#888;margin-top:4px">In-house → Today only</div>
+      <div class="lbl">Sort by</div>
+      <div class="seg"><div class="on">Room</div><div>Name</div><div>Created</div></div>
+      <div class="lbl">Name</div>
+      <div class="search" style="margin-top:0;color:#222">Today's arrivals · by room</div>
+      <div class="btn">Save filter</div>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="cap">4 · Multi-day filter: one header per day</div>
+  <div class="phone">
+    <div class="strip" style="margin-top:0">
+      <div class="chips">
+        <div class="chip"><b>Today's arrivals</b><span class="n">2/3</span></div>
+        <div class="chip on"><b>Arrivals · next 7 days</b><span class="n">31</span></div>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="done" style="background:#f3f3f3;font-weight:600;color:#222">Today · Wed 30 Sep</div>
+      <div class="row"><div class="room">106</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div>
+      <div class="done">▸ Checked in (1)</div>
+      <div class="done" style="background:#f3f3f3;font-weight:600;color:#222">Tomorrow · Thu 1 Oct</div>
+      <div class="row"><div class="room">102</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div>
+      <div class="row"><div class="room">310</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div>
+      <div class="done" style="background:#f3f3f3;font-weight:600;color:#222">Fri 2 Oct</div>
+      <div class="row"><div class="room">City Panorama</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div>
+    </div>
+    <div class="note">sort applies within each day</div>
+  </div>
+</div>
+
+<div>
+  <div class="cap">5 · Scrolled: chip strip + day header stick</div>
+  <div class="phone" style="padding-top:0;position:relative">
+    <div style="height:22px;font-size:10px;color:#999;text-align:center;padding-top:6px">status bar (iOS: tap = scroll to top)</div>
+    <div style="border-bottom:1.5px solid #222;padding:6px 0;background:#fff">
+      <div class="chips">
+        <div class="chip"><b>Today's arrivals</b><span class="n">2/3</span></div>
+        <div class="chip on"><b>Arrivals · next 7 days</b><span class="n">31</span></div>
+        <div class="chip"><b>In-house</b><span class="n">14</span></div>
+      </div>
+    </div>
+    <div class="done" style="background:#f3f3f3;font-weight:600;color:#222;border-bottom:1.5px solid #222">Sat 3 Oct <span style="float:right;font-weight:400;color:#888;font-size:11px">sticky</span></div>
+    <div class="row"><div class="room">204</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div><div class="row"><div class="room">211</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div><div class="row"><div class="room">305</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div><div class="row"><div class="room">412</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div>
+    <div class="done" style="background:#f3f3f3;font-weight:600;color:#222;">Sun 4 Oct</div>
+    <div class="row"><div class="room">101</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div><div class="row"><div class="room">118</div><div class="lines"><div class="l1"></div><div class="l2"></div></div><span class="st">Confirmed</span></div>
+    <div class="note" style="padding-top:10px">search, hotel header and filter icon have scrolled away · next day header pushes the current one up</div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('#chips .chip').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('#chips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');});
+</script>
+</body></html>

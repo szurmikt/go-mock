@@ -43,6 +43,13 @@ export const Config = {
   // again on their next login on this device (same precedent as
   // STORAGE_SCAN_ONBOARDING_SEEN_KEY above, just namespaced per user instead of global).
   STORAGE_TIP_STATE_KEY: 'tipCardState',
+  // Per-user Home filter-chip state (saved filters + selected chip) — see
+  // home-filter.service.ts. Same reasoning and shape as STORAGE_TIP_STATE_KEY directly
+  // above: one blob keyed by auth.userId(), not the device, and deliberately NOT cleared
+  // by AuthService.clearSessionData() (logout/property-switch) — a user's saved filters
+  // must survive their next login on this shared device. Also NOT property-scoped: the
+  // same chips appear after switching hotels (only the counts they compute change).
+  STORAGE_HOME_FILTERS_KEY: 'homeFilters',
   // One JSON record (LiveUpdateState, see utils/live-update-state.ts) rather than split keys:
   // it is read once at boot and mutated as a unit, and a reload mid-write across several keys
   // would leave torn state. Deliberately NOT cleared by AuthService.clearSessionData() — most of

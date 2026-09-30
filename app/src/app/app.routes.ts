@@ -56,6 +56,12 @@ export const routes: Routes = [
       import('./pages/help-tips/help-tips.page').then(m => m.HelpTipsPage),
   },
   {
+    path: 'manage-filters',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/manage-filters/manage-filters.page').then(m => m.ManageFiltersPage),
+  },
+  {
     path: 'idscanly/scan',
     canActivate: [authGuard],
     loadComponent: () => import('./idscanly/pages/scan/scan.page').then(m => m.IdscanScanPage),

@@ -67,9 +67,17 @@ address, or raw search text.
 
 | Event | When | Properties |
 |---|---|---|
-| `home_segment_changed` | taps Yesterday/Today/Tomorrow on home | `segment` = `yesterday` \| `today` \| `tomorrow` |
+| `filter_chip_selected` | taps a filter chip on home (real user tap only — never on launch-restore or a delete-triggered fallback) | `filter_id`, `is_preset` (bool), `guests`, `day`, `sort` |
+| `filter_created` / `filter_edited` | saves a new/edited filter in the Filter Editor | `filter_id`, `guests`, `day`, `sort` |
+| `filter_deleted` | deletes a filter in Manage Filters | `filter_id`, `is_preset` (bool) |
+| `filter_reordered` | drag-reorders filters in Manage Filters | `filter_id_order` (string[], the new order) |
 | `property_switched` | switches property via the home switcher | `property_id`, `property_name`, `from_property_id` |
 | `search_performed` | commits a search (Enter) or opens a result | `query_length` (int), `results_count` (int), `from_recent` (bool) |
+
+- **`home_filters_customized`** is a **People profile property** (`people.set`), not an
+  event — set to `true` only on a user's first create/edit/delete/reorder of a filter (never
+  on load/seeding). Its mere presence on a profile is the "customized this feature" signal,
+  same convention as `auto_lock_interval` below.
 
 - **"Are they using recent search terms"** → ratio of `search_performed` where
   `from_recent = true`. (`from_recent` = the committed term matches a previously saved
@@ -189,8 +197,10 @@ meaningless.
 2. **Scan reliability:** `scan_succeeded` vs `scan_failed` (segment by `reason`, `platform`);
    average `attempts`.
 3. **Engagement:** DAU/WAU from `session_started`; median `session_ended.duration_seconds`.
-4. **Feature usage:** `home_segment_changed`, `property_switched`, `search_performed`
-   (`from_recent` ratio), `guest_updated` (`from_scan` ratio, `fields_changed` distribution).
+4. **Feature usage:** `filter_chip_selected` (chip popularity, preset vs. custom via
+   `is_preset`), `home_filters_customized` profile-property adoption rate, `property_switched`,
+   `search_performed` (`from_recent` ratio), `guest_updated` (`from_scan` ratio,
+   `fields_changed` distribution).
 5. **How scanning is actually used:** auto-capture adoption (`scan_succeeded.auto_capture_used`
    ratio); average `scan_duration_seconds`, overall and split by `document_form`; how often the
    2nd page is skipped (`2nd_page_skipped` ratio, id-only); flash/torch usage rate — a proxy for

@@ -279,8 +279,43 @@ export class MixpanelService {
     this.track('scan_failed', { ...p });
   }
 
-  trackHomeSegmentChanged(segment: string): void {
-    this.track('home_segment_changed', { segment });
+  // ---- home filter chips ----
+
+  /** Fires only on a genuine chip tap — never when the saved selection is restored at
+   *  launch, and never when the service silently falls back to another filter because the
+   *  previously-selected one was deleted (see FilterService.selectFilter vs. its private
+   *  silent setSelection()). */
+  trackFilterChipSelected(p: {
+    filter_id: string;
+    is_preset: boolean;
+    guests: string;
+    day: string;
+    sort: string;
+  }): void {
+    this.track('filter_chip_selected', { ...p });
+  }
+
+  trackFilterCreated(p: { filter_id: string; guests: string; day: string; sort: string }): void {
+    this.track('filter_created', { ...p });
+  }
+
+  trackFilterEdited(p: { filter_id: string; guests: string; day: string; sort: string }): void {
+    this.track('filter_edited', { ...p });
+  }
+
+  trackFilterDeleted(p: { filter_id: string; is_preset: boolean }): void {
+    this.track('filter_deleted', { ...p });
+  }
+
+  trackFilterReordered(p: { filter_id_order: string[] }): void {
+    this.track('filter_reordered', { ...p });
+  }
+
+  /** Fired only on the FIRST create/edit/delete/reorder a user ever performs — never on
+   *  load/seeding/default. Same convention as setAutoLockInterval: the property's mere
+   *  presence on the profile is the "customized this feature" signal. */
+  setHomeFiltersCustomized(): void {
+    this.safe(() => mixpanel.people.set({ home_filters_customized: true }));
   }
 
   // ---- help & tips ----

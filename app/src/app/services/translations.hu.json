@@ -44,21 +44,12 @@
   "home": {
     "switchProperty": "Szálláshely váltása",
     "searchPlaceholder": "Foglalások keresése…",
-    "yesterday": "Tegnap",
-    "today": "Ma",
-    "tomorrow": "Holnap",
-    "guests": "Vendégek",
-    "reservations": "Foglalások",
-    "arrivalsTitle": "Érkezések",
-    "arrivalsHeadingYesterday": "Tegnapi érkezők",
-    "arrivalsHeadingToday": "Mai érkezők",
-    "arrivalsHeadingTomorrow": "Holnapi érkezők",
-    "noArrivals": "Nincs érkezés",
-    "noArrivalsYesterday": "Nincs érkező tegnapra",
-    "noArrivalsToday": "Nincs érkező mára",
-    "noArrivalsTomorrow": "Nincs érkező holnapra",
+    "noResultsForFilter": "Nincs a szűrőnek megfelelő foglalás",
+    "checkedInCount": "Bejelentkezve ({{n}})",
+    "checkedOutCount": "Kijelentkezve ({{n}})",
     "ariaFeedback": "Visszajelzés küldése",
-    "ariaSettings": "Beállítások"
+    "ariaSettings": "Beállítások",
+    "ariaManageFilters": "Szűrők kezelése"
   },
   "reservationDetail": {
     "title": "Foglalás részletei",
@@ -315,6 +306,35 @@
     "cardOpenInPmsTitle": "Nézd meg, mi van nyitva a PMS-ben",
     "cardOpenInPmsSummary": "A kollégád által az asztali PMS-ben megnyitott foglalások megjelennek a Kezdőlapon.",
     "cardOpenInPmsBody": "Ha egy foglalás éppen nyitva van az asztali PMS-ben, megjelenik egy külön \"Nyitva a PMS-ben\" szekcióban az érkezési lista tetején — így tudod, min dolgozik éppen egy kollégád, mielőtt hozzányúlnál."
+  },
+  "manageFilters": {
+    "title": "Szűrőim",
+    "newFilter": "Új",
+    "summaryPrefix": "rendezés:",
+    "ariaBack": "Vissza",
+    "ariaDrag": "Átrendezés",
+    "ariaEdit": "Szűrő szerkesztése",
+    "ariaDelete": "Szűrő törlése",
+    "ariaDeleteDisabled": "Legalább egy szűrő szükséges"
+  },
+  "filterEditor": {
+    "titleNew": "Új szűrő",
+    "titleEdit": "Szűrő szerkesztése",
+    "guestsLabel": "Vendégek",
+    "dayLabel": "Nap",
+    "sortLabel": "Rendezés",
+    "nameLabel": "Név",
+    "guestsArrivals": "Érkezők",
+    "guestsDepartures": "Távozók",
+    "guestsInHouse": "A szállodában",
+    "dayYesterday": "Tegnap",
+    "dayToday": "Ma",
+    "dayTomorrow": "Holnap",
+    "dayNext7": "Következő 7 nap",
+    "dayNext14": "Következő 14 nap",
+    "sortRoom": "Szoba",
+    "sortName": "Név",
+    "sortCreated": "Létrehozva"
   },
   "feedback": {
     "featureRequestSeg": "Funkciókérés",

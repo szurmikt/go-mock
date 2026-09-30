@@ -13,6 +13,7 @@ import { AuthService, GO_SUBSCRIPTION_MODULE } from './services/auth';
 import { BiometricService } from './services/biometric';
 import { CapturePreferenceService } from './idscanly/services/capture-preference.service';
 import { ScanOnboardingService } from './idscanly/services/scan-onboarding.service';
+import { FilterService } from './services/home-filter.service';
 import { LanguageService } from './services/language.service';
 import { LiveUpdateService } from './services/live-update';
 import { MixpanelService } from './services/mixpanel';
@@ -98,6 +99,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private scanOnboarding = inject(ScanOnboardingService);
   private remoteTips = inject(RemoteTipsService);
   private tips = inject(TipsService);
+  private homeFilters = inject(FilterService);
 
   constructor(
     readonly auth: AuthService,
@@ -153,6 +155,9 @@ export class AppComponent implements OnInit, OnDestroy {
     // Purely local read (per-user Help & tips seen/dismissed state) — no network dependency,
     // must resolve before Home's first ionViewWillEnter can compute its tip carousel.
     await this.tips.init();
+    // Purely local read (per-user saved Home filter chips + selection) — no network
+    // dependency, must resolve before Home's first ionViewWillEnter can seed/read filters.
+    await this.homeFilters.init();
     await this.apiEnv.init();
     // Which OTA bundle is running — a purely local read, deliberately not gated on any backend
     // call, so bundle_version is correct on the very first event even on a flaky network.

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject, signal, computed, ElementRef, QueryList, ViewChildren, AfterViewInit } from '@angular/core';
+import { Component, OnDestroy, inject, signal, computed, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ViewWillEnter, ViewDidEnter, ViewWillLeave } from '@ionic/angular';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
@@ -11,25 +11,17 @@ import { OptionsService } from '../services/options.service';
 import { PropertySettingsService } from '../services/property-settings.service';
 import { MixpanelService } from '../services/mixpanel';
 import { TipsService } from '../services/tips.service';
+import { FilterService, GroupedResult } from '../services/home-filter.service';
+import { HomeFilter } from '../models/home-filter.interface';
 import { PropertyInterface } from '../models/property.interface';
 import { ReservationInterface } from '../models/reservation.interface';
 import { TipCard } from '../models/tip-card.interface';
+import { FilterDayGroup } from '../utils/home-filter-grouping';
 import { LocalizedDatePipe } from '../pipes/localized-date.pipe';
 import { TranslatePipe } from '../pipes/translate.pipe';
 import { FeedbackSheetComponent } from '../components/feedback-sheet/feedback-sheet.component';
 import { TipDetailSheetComponent } from '../components/tip-detail-sheet/tip-detail-sheet.component';
 import { TipCardComponent } from '../components/tip-card/tip-card.component';
-
-type Tab = 'Yesterday' | 'Today' | 'Tomorrow';
-
-function localDateStr(offset: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
 
 @Component({
   selector: 'app-home',
@@ -48,13 +40,12 @@ function localDateStr(offset: number): string {
   ],
 })
 export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, AfterViewInit, OnDestroy {
-  @ViewChildren('segBtn') segBtns!: QueryList<ElementRef<HTMLButtonElement>>;
+  @ViewChild('stickySentinel') stickySentinel?: ElementRef<HTMLElement>;
+  @ViewChild('scrollRoot') scrollRoot?: ElementRef<HTMLElement>;
 
   private timeouts: ReturnType<typeof setTimeout>[] = [];
   private t(fn: () => void, ms: number) { this.timeouts.push(setTimeout(fn, ms)); }
 
-  readonly tabs: Tab[] = ['Yesterday', 'Today', 'Tomorrow'];
-  tab = signal<Tab>('Today');
   switchOpen = signal(false);
   propertyQuery = signal('');
 
@@ -84,25 +75,82 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
     this.propertyQuery.set('');
   }
 
-  thumb = signal({ left: 3, width: 0 });
+  // ---- Filter chips ----
 
-  readonly dateMap: Record<Tab, string> = {
-    Yesterday: localDateStr(-1),
-    Today: localDateStr(0),
-    Tomorrow: localDateStr(1),
-  };
+  private filterSvc = inject(FilterService);
 
-  readonly arrivals = computed(() => {
-    const date = this.dateMap[this.tab()];
-    return this.res.reservations().filter(r => r.arrival_date === date);
-  });
+  readonly chipList = computed(() => this.filterSvc.filters(this.auth.userId()));
+  readonly selectedFilterId = computed(() => this.filterSvc.selectedFilterId(this.auth.userId()));
 
-  readonly guestCount = computed(() =>
-    this.arrivals().reduce((s, r) => s + r.number_of_guests, 0),
+  readonly grouped = computed<GroupedResult>(() =>
+    this.filterSvc.buildGroupedList(this.auth.userId(), this.res.reservations()),
   );
 
-  // Independent of the Yesterday/Today/Tomorrow tab — a reservation open in PMS
-  // may not even arrive today, and the point is to surface it regardless of tab.
+  readonly isEmpty = computed(() =>
+    this.grouped().days.every(g => g.rows.length === 0 && g.completed.length === 0),
+  );
+
+  chipCountLabel(f: HomeFilter): string {
+    const counts = this.filterSvc.countsFor(f, this.res.reservations());
+    return counts.pending !== undefined ? `${counts.pending}/${counts.total}` : `${counts.total}`;
+  }
+
+  async selectChip(f: HomeFilter): Promise<void> {
+    if (f.id === this.selectedFilterId()) return;
+    await this.filterSvc.selectFilter(this.auth.userId(), f.id);
+  }
+
+  goManageFilters(): void {
+    this.router.navigate(['/manage-filters']);
+  }
+
+  // Sticky chip strip: an IntersectionObserver on a 1px sentinel placed immediately above
+  // the strip — when the sentinel scrolls out of the .app-scroll viewport, the strip has
+  // reached the top and is "stuck". Standard sticky-detection technique; position: sticky
+  // alone gives no boolean for "is this currently stuck".
+  chipsStuck = signal(false);
+  private chipsObserver?: IntersectionObserver;
+
+  private setupChipsStickyObserver(): void {
+    const sentinel = this.stickySentinel?.nativeElement;
+    const root = this.scrollRoot?.nativeElement;
+    if (!sentinel || !root) return;
+    this.chipsObserver?.disconnect();
+    this.chipsObserver = new IntersectionObserver(
+      ([entry]) => this.chipsStuck.set(!entry.isIntersecting),
+      { root, threshold: 0 },
+    );
+    this.chipsObserver.observe(sentinel);
+  }
+
+  // Completed-section expand state — per day-group, session-only (not persisted), default
+  // collapsed. Keyed by the group's day (or a 'single' sentinel for a single-day filter).
+  private expandedGroups = signal<Set<string>>(new Set());
+
+  groupKey(g: FilterDayGroup): string {
+    return g.day ?? 'single';
+  }
+
+  isGroupExpanded(g: FilterDayGroup): boolean {
+    return this.expandedGroups().has(this.groupKey(g));
+  }
+
+  toggleGroup(g: FilterDayGroup): void {
+    const key = this.groupKey(g);
+    this.expandedGroups.update(set => {
+      const next = new Set(set);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  completedLabelKey(): string {
+    return this.grouped().filter?.guests === 'departures' ? 'home.checkedOutCount' : 'home.checkedInCount';
+  }
+
+  // Independent of the selected filter — a reservation open in PMS may not even arrive
+  // today, and the point is to surface it regardless of which chip is active.
   readonly openInPms = computed(() => this.res.reservations().filter(r => r.open_in_pms));
 
   // Help & tips carousel. Deliberately a plain signal, NOT a computed() off TipsService's
@@ -187,6 +235,7 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
   ionViewWillEnter() {
     this.res.fetchReservations();
     this.refreshTipCards();
+    this.filterSvc.ensureSeeded(this.auth.userId());
   }
 
   ionViewDidEnter() {
@@ -216,27 +265,14 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
   }
 
   ngAfterViewInit() {
-    this.t(() => this.updateThumb(), 50);
+    this.t(() => this.setupChipsStickyObserver(), 50);
   }
 
   ngOnDestroy() {
     this.timeouts.forEach(clearTimeout);
     this.stopPolling();
     this.appStateHandle?.then(h => h.remove());
-  }
-
-  setTab(t: Tab) {
-    this.tab.set(t);
-    this.mixpanel.trackHomeSegmentChanged(t.toLowerCase());
-    this.t(() => this.updateThumb(), 0);
-  }
-
-  private updateThumb() {
-    const btns = this.segBtns?.toArray();
-    if (!btns?.length) return;
-    const idx = this.tabs.indexOf(this.tab());
-    const el = btns[idx]?.nativeElement;
-    if (el) this.thumb.set({ left: el.offsetLeft, width: el.offsetWidth });
+    this.chipsObserver?.disconnect();
   }
 
   async selectProperty(p: PropertyInterface) {
@@ -288,11 +324,5 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
 
   bookerName(r: ReservationInterface): string {
     return `${r.booker.first_name} ${r.booker.last_name}`.trim();
-  }
-
-  isDimmed(r: ReservationInterface): boolean {
-    const status = pillStatus(r.status);
-    if (status === 'cancelled' || status === 'noshow') return true;
-    return this.tab() !== 'Today' && status === 'option';
   }
 }

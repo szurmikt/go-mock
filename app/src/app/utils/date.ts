@@ -1,4 +1,20 @@
 /**
+ * Today ± `offsetDays` as a `YYYY-MM-DD` calendar-date string, in the DEVICE's own local
+ * timezone (not property-aware — matches how Home's arrival/departure filtering has always
+ * worked; see `todayInTimeZone` below for the property-timezone-aware equivalent used
+ * elsewhere). Extracted from Home's original private `localDateStr` so both `HomePage` and
+ * `FilterService` share one implementation.
+ */
+export function dateOffsetStr(offsetDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
  * Coerces a scanned/stored date string into the strict `YYYY-MM-DD` form that
  * `<input type="date">` requires. Accepts:
  *   - already-ISO `YYYY-MM-DD` (and ISO with a time component, e.g. `1985-06-22T00:00:00`)
