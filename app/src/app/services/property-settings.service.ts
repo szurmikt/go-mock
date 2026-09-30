@@ -52,11 +52,12 @@ export class PropertySettingsService {
    * false — the real `checkedin` stage is hidden), and whether the raw `onboard` status is
    * displayed as "Onboard" or relabeled to "Checked-in".
    *
-   * Per the API contract, `false` and "field not present" mean the same thing — there is no
-   * separate "not yet known" state, so this defaults to `false` (not `true`) until `load()`
-   * resolves, matching what an absent field means once it does resolve.
+   * Only an EXPLICIT `false` restricts to 3 steps — that's the deliberate, opted-in
+   * "no online check-in" case. Everything else (field missing, older backend, not yet
+   * loaded) is treated as `true`, the default/full-functionality behavior — so this
+   * defaults to `true`, and `load()` only flips it when the API explicitly says `false`.
    */
-  readonly onlineCheckIn = signal<boolean>(false);
+  readonly onlineCheckIn = signal<boolean>(true);
 
   constructor(private api: ApiService) {}
 
@@ -64,12 +65,12 @@ export class PropertySettingsService {
     const r = await firstValueFrom(this.api.get<PropertySettingsApiResponse>('properties/settings'));
     this.timeZone.set(r.data.property_time_zone ?? null);
     this.scanFields.set(r.data.scan_fields ?? []);
-    this.onlineCheckIn.set(r.data.online_checkin === true);
+    this.onlineCheckIn.set(r.data.online_checkin !== false);
   }
 
   clear(): void {
     this.timeZone.set(null);
     this.scanFields.set([]);
-    this.onlineCheckIn.set(false);
+    this.onlineCheckIn.set(true);
   }
 }

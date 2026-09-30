@@ -33,10 +33,9 @@ function parseCalendarDate(s: string): { y: number; m: number; d: number } {
 // onboarding, so the raw `onboard` status is that account's "checked in" moment, and showing
 // the literal word "Onboard" for it would be showing internal plumbing nobody outside the app
 // calls by that name (the PMS desktop already collapses this the same way). Defaults to
-// `false` here too, matching the service's own "false or absent both mean no online
-// check-in" contract — a caller must opt in to the friendlier 2-stage labeling, not get it
-// by omission.
-export function pillStatus(apiStatus: string, onlineCheckIn = false): string {
+// `true` here too, matching the service's own "only an explicit false restricts; anything
+// else (including omission) is the full, default behavior" contract.
+export function pillStatus(apiStatus: string, onlineCheckIn = true): string {
   switch (apiStatus) {
     case 'checkin':    return 'check-in';
     case 'checkedin':  return 'checked-in';
@@ -53,7 +52,7 @@ export function pillStatus(apiStatus: string, onlineCheckIn = false): string {
   }
 }
 
-export function pillLabel(apiStatus: string, onlineCheckIn = false): string {
+export function pillLabel(apiStatus: string, onlineCheckIn = true): string {
   switch (apiStatus) {
     case 'checkin':    return 'Check in';
     case 'checkedin':  return 'Checked in';
