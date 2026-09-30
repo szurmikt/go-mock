@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject, signal, computed, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnDestroy, inject, signal, computed, ElementRef, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { ViewWillEnter, ViewDidEnter, ViewWillLeave } from '@ionic/angular';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
@@ -39,9 +39,12 @@ import { TipCardComponent } from '../components/tip-card/tip-card.component';
     TipCardComponent,
   ],
 })
-export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, AfterViewInit, OnDestroy {
+export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnDestroy {
+  @ViewChild('ionContentEl') ionContentEl?: IonContent;
   @ViewChild('stickySentinel') stickySentinel?: ElementRef<HTMLElement>;
-  @ViewChild('scrollRoot') scrollRoot?: ElementRef<HTMLElement>;
+  @ViewChild('chipStripWrap') chipStripWrap?: ElementRef<HTMLElement>;
+
+  private hostEl = inject<ElementRef<HTMLElement>>(ElementRef);
 
   private timeouts: ReturnType<typeof setTimeout>[] = [];
   private t(fn: () => void, ms: number) { this.timeouts.push(setTimeout(fn, ms)); }
@@ -105,22 +108,61 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
   }
 
   // Sticky chip strip: an IntersectionObserver on a 1px sentinel placed immediately above
-  // the strip — when the sentinel scrolls out of the .app-scroll viewport, the strip has
+  // the strip — when the sentinel scrolls out of the real scroll viewport, the strip has
   // reached the top and is "stuck". Standard sticky-detection technique; position: sticky
   // alone gives no boolean for "is this currently stuck".
   chipsStuck = signal(false);
   private chipsObserver?: IntersectionObserver;
+  private chipStripResizeObserver?: ResizeObserver;
 
-  private setupChipsStickyObserver(): void {
+  /**
+   * Root must be the REAL scroll element, not .app-scroll (which is deliberately not the
+   * scroll container on this page — see home.page.scss) and not the viewport (the app can
+   * run inside a desktop-constrained, clipped ion-app box). IonContent.getScrollElement()
+   * is Ionic's own public accessor for this, so it stays correct regardless of Ionic's
+   * internal shadow-DOM implementation.
+   */
+  private async setupChipsStickyObserver(): Promise<void> {
     const sentinel = this.stickySentinel?.nativeElement;
-    const root = this.scrollRoot?.nativeElement;
-    if (!sentinel || !root) return;
+    if (!sentinel || !this.ionContentEl) return;
+    const root = await this.ionContentEl.getScrollElement();
+
+    // The strip sticks at `env(safe-area-inset-top)`, not at the root's literal top edge —
+    // without correcting for that, the sentinel leaving the root at scroll offset 0 would
+    // toggle `stuck` ~insetPx too late (the strip would visibly stick before the signal
+    // flips). Measured via a throwaway probe rather than reading env() from a real element's
+    // computed style elsewhere, since nothing else in this template already carries it.
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position: fixed; top: 0; padding-top: env(safe-area-inset-top, 0px); visibility: hidden; pointer-events: none;';
+    document.body.appendChild(probe);
+    const inset = parseFloat(getComputedStyle(probe).paddingTop) || 0;
+    probe.remove();
+
     this.chipsObserver?.disconnect();
     this.chipsObserver = new IntersectionObserver(
       ([entry]) => this.chipsStuck.set(!entry.isIntersecting),
-      { root, threshold: 0 },
+      { root, threshold: 0, rootMargin: `-${inset}px 0px 0px 0px` },
     );
     this.chipsObserver.observe(sentinel);
+  }
+
+  /** Measures the chip strip's real rendered height (varies with locale/font-size/content)
+   *  and writes it to --chip-strip-h on the host element, so .day-group-header's `top`
+   *  (which reads that custom property) always sticks exactly below the strip rather than
+   *  under it, regardless of the strip's actual size. */
+  private setupChipStripHeightObserver(): void {
+    const el = this.chipStripWrap?.nativeElement;
+    if (!el) return;
+    this.chipStripResizeObserver?.disconnect();
+    // Deliberately reads el.offsetHeight (border-box — includes the wrap's own top/bottom
+    // padding) rather than the ResizeObserver entry's contentRect (content-box only, which
+    // would under-report by the padding and stick the day header slightly under the strip's
+    // visible padding, not directly below it). offsetHeight is simpler and has none of
+    // borderBoxSize's cross-browser shape inconsistencies (notably on older Safari/WKWebView).
+    this.chipStripResizeObserver = new ResizeObserver(() => {
+      this.hostEl.nativeElement.style.setProperty('--chip-strip-h', `${el.offsetHeight}px`);
+    });
+    this.chipStripResizeObserver.observe(el);
   }
 
   // Completed-section expand state — per day-group, session-only (not persisted), default
@@ -244,12 +286,16 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
       if (isActive) this.startPolling();
       else this.stopPolling();
     });
+    this.setupChipsStickyObserver();
+    this.setupChipStripHeightObserver();
   }
 
   ionViewWillLeave() {
     this.stopPolling();
     this.appStateHandle?.then(h => h.remove());
     this.appStateHandle = null;
+    this.chipsObserver?.disconnect();
+    this.chipStripResizeObserver?.disconnect();
   }
 
   private startPolling() {
@@ -264,15 +310,12 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, Aft
     }
   }
 
-  ngAfterViewInit() {
-    this.t(() => this.setupChipsStickyObserver(), 50);
-  }
-
   ngOnDestroy() {
     this.timeouts.forEach(clearTimeout);
     this.stopPolling();
     this.appStateHandle?.then(h => h.remove());
     this.chipsObserver?.disconnect();
+    this.chipStripResizeObserver?.disconnect();
   }
 
   async selectProperty(p: PropertyInterface) {

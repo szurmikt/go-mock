@@ -901,14 +901,33 @@ ion-refresher {
 
 .filter-chip-strip-wrap {
   position: sticky;
-  top: 0;
+  // Not a bare 0: ion-content's area extends under the status bar (black-translucent +
+  // viewport-fit=cover, app-wide), so sticking at 0 would park the strip behind the notch.
+  top: env(safe-area-inset-top, 0px);
   z-index: 5;
   display: flex; align-items: center;
   background: var(--bg);
-  padding: 8px 0 8px var(--pad);
+  // Both sides unconditionally — the right inset must NOT depend on the filter icon being
+  // present, since it's hidden while stuck and the chip row then expands to full width.
+  padding: 8px var(--pad);
   transition: box-shadow 0.15s;
 
-  &.stuck { box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+  &.stuck {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+
+    // Fills the band between the notch and the stuck strip — only needed once actually
+    // stuck at the top; in normal flow this same absolutely-positioned box would otherwise
+    // permanently overlay whatever content sits directly above the strip (e.g. the last
+    // "Open in PMS" card), since position:absolute takes it out of flow without being
+    // gated to the moment there's a real gap above the strip to cover.
+    &::before {
+      content: '';
+      position: absolute;
+      bottom: 100%; left: 0; right: 0;
+      height: env(safe-area-inset-top, 0px);
+      background: var(--bg);
+    }
+  }
 }
 
 .filter-chip-strip {
@@ -950,7 +969,9 @@ ion-refresher {
   display: flex; align-items: center; justify-content: center;
   border: 0; background: transparent;
   color: var(--ink-2);
-  margin: 0 var(--pad) 0 4px;
+  // Right inset now lives on .filter-chip-strip-wrap's own padding (unconditional, present
+  // whether or not this button is shown) — only a small gap from the chip row is needed here.
+  margin-left: 4px;
   cursor: pointer;
   border-radius: var(--radius-sm);
 
@@ -959,10 +980,10 @@ ion-refresher {
 
 .day-group-header {
   position: sticky;
-  // Approximates .filter-chip-strip-wrap's rendered height (8px+8px padding + the chip
-  // button's own ~36px height) so it stacks directly below the chip strip rather than
-  // under it. Keep in sync if the chip strip's padding/font-size changes.
-  top: 52px;
+  // The chip strip's REAL rendered height, measured via ResizeObserver and written to this
+  // custom property on the host element (home.page.ts) — the 52px is only a first-paint
+  // fallback before that first measurement lands.
+  top: var(--chip-strip-h, 52px);
   z-index: 4;
   background: var(--bg);
   padding: 10px var(--pad) 8px;

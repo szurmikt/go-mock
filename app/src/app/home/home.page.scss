@@ -1,1 +1,31 @@
 // Component styles — layout handled globally in sabeeapp-design.scss
+
+// Home deliberately does NOT make .page a flex column the way guest-edit/review do for a
+// sticky FOOTER — the chip-strip spec wants the opposite: the hotel header, search field and
+// carousel must scroll away normally, with only the filter chip strip (and, in multi-day
+// views, the day headers) sticking once the page has scrolled that far. That means the whole
+// page needs to share ONE real scroll context — ion-content's own native scroll — not a
+// separately-bounded .app-scroll sub-region.
+//
+// The bug this fixes: .app-scroll's shared global rule sets `overflow-y: auto` (plus
+// `overflow-x: hidden`), which on every OTHER page is harmless because those pages' `.page`
+// is a flex column giving `.app-scroll` a real bounded height, so it genuinely IS the
+// scrolling element. Here `.page` is a plain block, so `.app-scroll`'s `flex: 1` never takes
+// hold and it never actually scrolls internally — real scrolling happens one level up, in
+// ion-content's own shadow-DOM scroll container. But `overflow-y: auto` still makes
+// `.app-scroll` claim the CSS "scroll container" role for ANY `position: sticky` descendant
+// (the filter chip strip), regardless of whether it's the ancestor that's actually moving —
+// so the sticky element was binding to a box that never scrolls, and silently never stuck.
+//
+// `clip`, not `hidden`, on the horizontal axis: horizontal clipping still has to happen
+// (anything wider than the viewport — e.g. the tip carousel's deliberately peeking card —
+// would otherwise allow horizontal page scroll/bounce), but `hidden` would re-establish a
+// scroll container and reintroduce the exact bug. `clip` clips without creating one.
+// The `visible`/`clip` pair is also explicitly exempt from the CSS rule that coerces a
+// `visible` axis to `auto` when paired with a non-`visible` one (which `visible`/`hidden`
+// would trigger — the same trap this codebase's own `.notes-list` comment documents).
+// Supported on iOS 16+ / modern Chrome, both well below this app's floor.
+.app-scroll {
+  overflow-x: clip;
+  overflow-y: visible;
+}
