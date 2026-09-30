@@ -1106,6 +1106,13 @@ ion-refresher {
     -webkit-appearance: none; appearance: none;
   }
 
+  /* input[type=date] needs the native appearance kept — WebKit disables the
+     date-picker wheel entirely (no tap response, no keyboard fallback) once
+     -webkit-appearance is set to none on iOS. */
+  input[type="date"] {
+    -webkit-appearance: auto; appearance: auto;
+  }
+
   select { cursor: pointer; padding-right: 24px; }
 
   .form-icon {

@@ -701,6 +701,16 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ## 20. Changelog
 
+### 2026-09-30 — Fix: Birth Date field unresponsive on iOS device (date picker never opened)
+
+> Branch `rc/0926-3`. No build/version bump; ships OTA. Published to the `dev` channel (bundle `fb9edbfc-be8e-45d0-b50d-4d11b7d960d5`, git `22b136a` at publish time — the working-tree diff below was uncommitted at that point).
+
+Reported live: on a real iOS device, tapping the guest-edit Birth Date field did nothing — no date picker, no keyboard fallback. Worked fine in a browser test, which is what made this easy to miss: desktop Chrome/Safari still render a working native date input even with `-webkit-appearance: none`, but WKWebView on iOS does not — that CSS reset disables the date-picker wheel entirely, not just its little calendar glyph, and since iOS date inputs have no typed-entry fallback, the field becomes fully inert. The calendar icon visible next to the field is a decorative `.form-icon` SVG, unrelated to the real (disabled) picker control.
+
+- **[sabeeapp-design.scss](src/theme/sabeeapp-design.scss)**: `.form-group input, select { -webkit-appearance: none; appearance: none; }` resets every form input for the custom floating-label look. Added a follow-up override, `input[type="date"] { -webkit-appearance: auto; appearance: auto; }`, restoring native appearance for date inputs only — every other input keeps the custom-styled look. Expected side effect on device: the date field now renders iOS's own native date-segment chrome instead of the custom "dd.mm.yyyy" placeholder styling, which is what makes it tappable/scrollable again.
+
+**Verification:** `npx ng build` clean (only the three pre-existing known warnings, none new). **Not yet re-confirmed on device** — next real-device pass should confirm tapping Birth Date now opens the iOS picker wheel and a selected date populates the field correctly.
+
 ### 2026-09-30 — Status stepper/pills: switched to a plain `online_checkin` boolean; Onboard relabeled to Check-in for accounts without it
 
 > Branch `rc/0926-3`. No build/version bump; ships OTA (pure web-layer change). Follow-up/supersedes the 2026-09-29 entry directly below — the API contract changed mid-session from a `reservation_statuses` array to a plain boolean, and the scope grew from "narrow the status-change sheet" to "also relabel the pill everywhere the raw status is shown."
