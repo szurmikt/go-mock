@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject, signal, computed, effect, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnDestroy, inject, signal, computed, ElementRef, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { ViewWillEnter, ViewDidEnter, ViewWillLeave } from '@ionic/angular';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
@@ -109,29 +109,16 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
   }
 
   /**
-   * Keeps the selected chip scrolled into view within the strip — most importantly right
-   * after a cold start restores a saved selection that isn't one of the first couple of
-   * chips (e.g. the 3rd/4th), which would otherwise sit off-screen with no indication it's
-   * even selected. Re-runs on every chipList()/selectedFilterId() change (incl. a real user
-   * tap), which is a harmless no-op when the tapped/restored chip is already fully visible.
-   *
-   * This alone is NOT reliable for the cold-start case: on a normal relaunch the filter
-   * data (chipList()/selectedFilterId()) is already resolved by the time HomePage
-   * constructs (FilterService.init() runs during boot, before routing), so this effect's
-   * first run fires essentially immediately — often before Ionic has finished activating/
-   * transitioning the page in. The other DOM-measuring setup in this file
-   * (setupChipsStickyObserver/setupChipStripHeightObserver) avoids exactly this by running
-   * from ionViewDidEnter() instead of a signal effect; scrollSelectedChipIntoView() is
-   * called from there too (see below) as the reliable trigger for the cold-start case. This
-   * effect's job is just live updates while already on a stable page (a real tap, or the
-   * chip list changing via Manage Filters).
+   * Scrolls the selected chip into view within the strip — but ONLY from ionViewDidEnter()
+   * (page load / cold-start restore), never in reaction to a chip tap. An earlier version
+   * of this used a signal effect reacting to chipList()/selectedFilterId() changes, which
+   * also fired on every real tap — moving the strip the instant the user touched it, which
+   * read as the control itself misbehaving (a tapped chip must never relocate). The two
+   * cases have opposite correct behavior: a restored selection that's off-screen after a
+   * restart SHOULD be scrolled into view (even if that only reveals it partially); a chip
+   * the user just tapped should NEVER cause the strip to move, whether or not it was fully
+   * visible already. So this is a plain method, called once per page entry, not reactive.
    */
-  private chipScrollEffect = effect(() => {
-    this.chipList();
-    this.selectedFilterId();
-    this.scrollSelectedChipIntoView();
-  });
-
   private scrollSelectedChipIntoView(): void {
     const strip = this.chipStripEl?.nativeElement;
     if (!strip) return;
@@ -331,10 +318,10 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
     });
     this.setupChipsStickyObserver();
     this.setupChipStripHeightObserver();
-    // The reliable cold-start trigger for scrolling the restored selection into view — see
-    // chipScrollEffect's doc comment above for why the effect alone isn't enough. By
-    // ionViewDidEnter the page is guaranteed fully entered/laid out (same reasoning as the
-    // two observer setups above), so the measurement here is never taken mid-transition.
+    // Load-only trigger for scrolling a restored-but-off-screen selection into view — see
+    // scrollSelectedChipIntoView()'s doc comment for why this must never also run on a chip
+    // tap. By ionViewDidEnter the page is guaranteed fully entered/laid out (same reasoning
+    // as the two observer setups above), so the measurement here is never taken mid-transition.
     this.scrollSelectedChipIntoView();
   }
 
