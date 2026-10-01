@@ -315,7 +315,10 @@
     "ariaDrag": "Átrendezés",
     "ariaEdit": "Szűrő szerkesztése",
     "ariaDelete": "Szűrő törlése",
-    "ariaDeleteDisabled": "Legalább egy szűrő szükséges"
+    "ariaDeleteDisabled": "Legalább egy szűrő szükséges",
+    "deleteConfirmTitle": "Törlöd a szűrőt?",
+    "deleteConfirmMessage": "Ez véglegesen törli a „{{name}}” szűrőt. Ez nem vonható vissza.",
+    "deleteConfirmButton": "Törlés"
   },
   "filterEditor": {
     "titleNew": "Új szűrő",

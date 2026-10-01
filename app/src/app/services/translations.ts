@@ -354,6 +354,9 @@ export const TRANSLATIONS: TranslationMap = {
     ariaEdit: 'Edit filter',
     ariaDelete: 'Delete filter',
     ariaDeleteDisabled: 'At least one filter is required',
+    deleteConfirmTitle: 'Delete filter?',
+    deleteConfirmMessage: 'This permanently deletes "{{name}}". This cannot be undone.',
+    deleteConfirmButton: 'Delete',
   },
   filterEditor: {
     titleNew: 'New filter',

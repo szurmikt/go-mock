@@ -701,6 +701,19 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ## 20. Changelog
 
+### 2026-10-01 — Manage Filters: confirm before deleting a filter
+
+> Branch `add-home-filter-chips`. No build/version bump; ships OTA to `dev`.
+
+Deletion was previously one tap with no confirmation — the delete icon sits directly next to the row's own tap target (`openEdit`) and the drag handle, so a mis-tap destroyed a filter outright with no undo anywhere in this flow.
+
+- **[manage-filters.page.ts](src/app/pages/manage-filters/manage-filters.page.ts)**: `delete()` replaced with `requestDelete()` (opens a confirm sheet, holding the pending filter in a new `pendingDelete` signal), `cancelDelete()`, and `confirmDelete()` (the only path that actually calls `FilterService.deleteFilter()`).
+- **[manage-filters.page.html](src/app/pages/manage-filters/manage-filters.page.html)**: new confirm sheet reusing the exact `.sheet-backdrop`/`.sheet`/`.head`/`.actions` shell already established by Reservation Detail's checkout/revert guards and Settings' logout confirm — Cancel (`.btn.secondary`, left) / Delete (`.btn.danger`, right), matching every other confirm dialog in the app rather than inverting button order for this one case (considered and declined — see below).
+- **Button order discussed, not changed**: considered putting Delete on the left (the harder-to-reach side) specifically to make an accidental tap less likely, since the bottom-right is both the easiest corner to reach and the easiest to mis-tap. Decided against it — every other confirm sheet in the app (checkout, revert, logout) already puts the destructive/confirming action on the right, and breaking that consistency for just this one dialog would work against the muscle memory those other dialogs build, which is its own mistap risk. `.btn.danger`'s soft warn-tinted background (not a solid fill, unlike the checkout/revert confirm's primary button) already reads as less "default-feeling" than a plain `.btn`, which was judged a lower-risk way to guard against reflexive taps than repositioning.
+- **Translations**: new `manageFilters.deleteConfirmTitle`/`deleteConfirmMessage` (takes the filter's `name` as a param)/`deleteConfirmButton`, added in lockstep to `translations.ts`/`.en.json`/`.hu.json`. Key parity confirmed programmatically (351 = 351 = 351).
+
+**Verification:** `npx ng build` clean (same three pre-existing warnings, none new). **Not yet device-verified** — needs a real tap-through to confirm Cancel/backdrop/X all dismiss with no change, and Delete only removes the filter after the explicit confirm tap.
+
 ### 2026-09-30 — New: Home filter chips (replaces the day segment + stat tiles)
 
 > Branch `add-home-filter-chips`, off `main`. No build/version bump, no TestFlight/OTA publish this pass — local verification only (`npx ng build` clean, full suite 163/170 — same 7 pre-existing `should be created` HttpClient-provider failures as baseline, none new). Implements `app/docs/home-filter-chips-handoff.md` against `app/docs/chip-strip-wireframe.html`.

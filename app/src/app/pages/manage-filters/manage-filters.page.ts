@@ -1,4 +1,4 @@
-import { Component, ViewChild, inject, OnInit } from '@angular/core';
+import { Component, ViewChild, inject, signal, OnInit } from '@angular/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AuthService } from '../../services/auth';
@@ -47,8 +47,24 @@ export class ManageFiltersPage implements OnInit {
     return this.filterSvc.filters(this.auth.userId()).length > 1;
   }
 
-  async delete(filter: HomeFilter): Promise<void> {
+  // Deletion is irreversible (no undo anywhere in this flow) and the delete icon sits right
+  // next to the row's own tap target (openEdit) and the drag handle — a confirm step guards
+  // against a mis-tap destroying a filter the user meant to keep.
+  pendingDelete = signal<HomeFilter | null>(null);
+
+  requestDelete(filter: HomeFilter): void {
     if (!this.canDelete()) return;
+    this.pendingDelete.set(filter);
+  }
+
+  cancelDelete(): void {
+    this.pendingDelete.set(null);
+  }
+
+  async confirmDelete(): Promise<void> {
+    const filter = this.pendingDelete();
+    if (!filter) return;
+    this.pendingDelete.set(null);
     await this.filterSvc.deleteFilter(this.auth.userId(), filter.id);
   }
 
