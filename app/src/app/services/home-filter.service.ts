@@ -75,6 +75,7 @@ export class FilterService {
       [userId]: { filters, selectedFilterId: filters[0].id, customized: false },
     }));
     await this.persist();
+    this.mixpanel.setHomeFilterCount(filters.length);
   }
 
   filters(userId: string): HomeFilter[] {
@@ -106,8 +107,10 @@ export class FilterService {
 
   /** Public, user-initiated only — the ONE path that fires trackFilterChipSelected. */
   async selectFilter(userId: string, filterId: string): Promise<void> {
-    const filter = this.filters(userId).find(f => f.id === filterId);
-    if (!filter) return;
+    const filters = this.filters(userId);
+    const position = filters.findIndex(f => f.id === filterId);
+    if (position < 0) return;
+    const filter = filters[position];
     await this.setSelection(userId, filterId);
     this.mixpanel.trackFilterChipSelected({
       filter_id: filter.id,
@@ -115,6 +118,7 @@ export class FilterService {
       guests: filter.guests,
       day: filter.day,
       sort: filter.sort,
+      position,
     });
   }
 
@@ -132,6 +136,7 @@ export class FilterService {
       day: filter.day,
       sort: filter.sort,
     });
+    this.mixpanel.setHomeFilterCount(this.filters(userId).length);
     return filter;
   }
 
@@ -150,6 +155,7 @@ export class FilterService {
       guests: filter.guests,
       day: filter.day,
       sort: filter.sort,
+      is_preset: filter.isPreset,
     });
   }
 
@@ -174,6 +180,7 @@ export class FilterService {
     await this.persist();
     await this.markCustomizedOnce(userId);
     this.mixpanel.trackFilterDeleted({ filter_id: filterId, is_preset: deleted.isPreset });
+    this.mixpanel.setHomeFilterCount(remaining.length);
     return true;
   }
 

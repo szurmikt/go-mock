@@ -105,6 +105,7 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
   }
 
   goManageFilters(): void {
+    this.mixpanel.trackManageFiltersOpened({ filter_count: this.chipList().length });
     this.router.navigate(['/manage-filters']);
   }
 
@@ -324,10 +325,33 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
   // Load on every view entry (not ngOnInit) so re-entering a cached home view —
   // e.g. after logout → login → Select Property — always refreshes. The 60s
   // staleness gate in fetchReservations dedupes redundant calls.
-  ionViewWillEnter() {
+  async ionViewWillEnter() {
     this.res.fetchReservations();
     this.refreshTipCards();
-    this.filterSvc.ensureSeeded(this.auth.userId());
+    // Awaited (unlike the other two calls above) so a true first-ever launch's seeding has
+    // actually landed in the store before trackFilterStripBaseline() reads it below —
+    // otherwise the very first session's baseline would report an empty filter list.
+    await this.filterSvc.ensureSeeded(this.auth.userId());
+    this.trackFilterStripBaseline();
+  }
+
+  /** See MixpanelService.trackFilterStripSessionBaseline's doc comment — this is just the
+   *  "read the currently-selected filter's position" half; the dedup-per-session logic lives
+   *  on the service side. */
+  private trackFilterStripBaseline(): void {
+    const filters = this.chipList();
+    const position = filters.findIndex(f => f.id === this.selectedFilterId());
+    if (position < 0) return;
+    const filter = filters[position];
+    this.mixpanel.trackFilterStripSessionBaseline({
+      active_filter_id: filter.id,
+      active_filter_position: position,
+      active_filter_is_preset: filter.isPreset,
+      guests: filter.guests,
+      day: filter.day,
+      sort: filter.sort,
+      filter_count: filters.length,
+    });
   }
 
   ionViewDidEnter() {

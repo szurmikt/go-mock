@@ -29,6 +29,7 @@ describe('FilterService', () => {
       'trackFilterDeleted',
       'trackFilterReordered',
       'setHomeFiltersCustomized',
+      'setHomeFilterCount',
     ]);
     TestBed.configureTestingModule({
       providers: [

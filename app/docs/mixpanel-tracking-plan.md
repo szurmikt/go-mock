@@ -67,10 +67,13 @@ address, or raw search text.
 
 | Event | When | Properties |
 |---|---|---|
-| `filter_chip_selected` | taps a filter chip on home (real user tap only — never on launch-restore or a delete-triggered fallback) | `filter_id`, `is_preset` (bool), `guests`, `day`, `sort` |
-| `filter_created` / `filter_edited` | saves a new/edited filter in the Filter Editor | `filter_id`, `guests`, `day`, `sort` |
+| `filter_chip_selected` | taps a filter chip on home (real user tap only — never on launch-restore or a delete-triggered fallback) | `filter_id`, `is_preset` (bool), `guests`, `day`, `sort`, `position` (int, 0-based index in the strip at tap time) |
+| `filter_created` | saves a new filter in the Filter Editor | `filter_id`, `guests`, `day`, `sort` |
+| `filter_edited` | saves an edit to an existing filter in the Filter Editor | `filter_id`, `guests`, `day`, `sort`, `is_preset` (bool — was the edited filter one of the 4 seeded presets, vs. one the user made) |
 | `filter_deleted` | deletes a filter in Manage Filters | `filter_id`, `is_preset` (bool) |
 | `filter_reordered` | drag-reorders filters in Manage Filters | `filter_id_order` (string[], the new order) |
+| `manage_filters_opened` | taps the filter icon at the end of the chip strip | `filter_count` (int) |
+| `filter_strip_session_baseline` | once per analytics session, the first time Home resolves its filter data — see "Filter engagement reporting" below | `active_filter_id`, `active_filter_position` (int), `active_filter_is_preset` (bool), `guests`, `day`, `sort`, `filter_count` (int) |
 | `property_switched` | switches property via the home switcher | `property_id`, `property_name`, `from_property_id` |
 | `search_performed` | commits a search (Enter) or opens a result | `query_length` (int), `results_count` (int), `from_recent` (bool) |
 
@@ -78,6 +81,12 @@ address, or raw search text.
   event — set to `true` only on a user's first create/edit/delete/reorder of a filter (never
   on load/seeding). Its mere presence on a profile is the "customized this feature" signal,
   same convention as `auto_lock_interval` below.
+- **`home_filter_count`** is a **People profile property** (`people.set`) — the number of
+  filters the user currently has, kept in sync on every seed/create/delete. Lets Mixpanel
+  report the average/distribution straight off user profiles, no event aggregation needed.
+- **Filter engagement reporting** (adoption/engagement with the chip strip itself — average
+  filter count, preset vs. custom usage, popular configs/positions, and per-session
+  engagement intensity) has its own logic writeup: [filter-engagement-reporting.md](filter-engagement-reporting.md).
 
 - **"Are they using recent search terms"** → ratio of `search_performed` where
   `from_recent = true`. (`from_recent` = the committed term matches a previously saved
@@ -200,7 +209,8 @@ meaningless.
 4. **Feature usage:** `filter_chip_selected` (chip popularity, preset vs. custom via
    `is_preset`), `home_filters_customized` profile-property adoption rate, `property_switched`,
    `search_performed` (`from_recent` ratio), `guest_updated` (`from_scan` ratio,
-   `fields_changed` distribution).
+   `fields_changed` distribution). For a deeper engagement/adoption breakdown of the filter
+   strip specifically, see [filter-engagement-reporting.md](filter-engagement-reporting.md).
 5. **How scanning is actually used:** auto-capture adoption (`scan_succeeded.auto_capture_used`
    ratio); average `scan_duration_seconds`, overall and split by `document_form`; how often the
    2nd page is skipped (`2nd_page_skipped` ratio, id-only); flash/torch usage rate — a proxy for

@@ -31,6 +31,9 @@ export class MixpanelService {
   private lastBackgroundAt = 0;
   private started = false;
   private foreground = false;
+  /** The sessionId trackFilterStripSessionBaseline() last fired for — dedup guard so
+   *  revisiting Home many times in one session only reports the baseline once. */
+  private lastFilterBaselineSessionId = '';
 
   /**
    * Super properties attached to every event. Call once after apiEnv.init().
@@ -284,13 +287,15 @@ export class MixpanelService {
   /** Fires only on a genuine chip tap — never when the saved selection is restored at
    *  launch, and never when the service silently falls back to another filter because the
    *  previously-selected one was deleted (see FilterService.selectFilter vs. its private
-   *  silent setSelection()). */
+   *  silent setSelection()). `position` is the tapped chip's 0-based index in the strip at
+   *  tap time — answers "do people only ever use what's visible without scrolling." */
   trackFilterChipSelected(p: {
     filter_id: string;
     is_preset: boolean;
     guests: string;
     day: string;
     sort: string;
+    position: number;
   }): void {
     this.track('filter_chip_selected', { ...p });
   }
@@ -299,7 +304,10 @@ export class MixpanelService {
     this.track('filter_created', { ...p });
   }
 
-  trackFilterEdited(p: { filter_id: string; guests: string; day: string; sort: string }): void {
+  /** `is_preset` distinguishes "edited one of the 4 seeded presets" from "edited a filter I
+   *  already made myself" — the former is the specific "changed anything in the presets"
+   *  signal; a plain edit count conflates the two. */
+  trackFilterEdited(p: { filter_id: string; guests: string; day: string; sort: string; is_preset: boolean }): void {
     this.track('filter_edited', { ...p });
   }
 
@@ -311,11 +319,49 @@ export class MixpanelService {
     this.track('filter_reordered', { ...p });
   }
 
+  /** Tapping the filter icon that opens Manage Filters — previously untracked, so there was
+   *  no way to tell how many users ever discover that screen at all, as opposed to just
+   *  tapping between the chips already on the strip. */
+  trackManageFiltersOpened(p: { filter_count: number }): void {
+    this.track('manage_filters_opened', { ...p });
+  }
+
+  /**
+   * Fired once per analytics session (deduped against `handleAppActive()`'s own `sessionId`,
+   * not a separate timer) — the first time Home resolves its filter data within that session.
+   * This is the missing "baseline" half of the per-session engagement picture:
+   * `filter_chip_selected` only ever fires on a real tap, so a session with zero of those
+   * events is ambiguous on its own — stuck on the default because they never looked, or
+   * deliberately sat on a filter they already like? Recording what was ALREADY selected when
+   * the session began, once, makes that distinction answerable: pair this event's
+   * `active_filter_position`/`active_filter_is_preset` with the count of
+   * `filter_chip_selected` events sharing the same `session_id` super property.
+   */
+  trackFilterStripSessionBaseline(p: {
+    active_filter_id: string;
+    active_filter_position: number;
+    active_filter_is_preset: boolean;
+    guests: string;
+    day: string;
+    sort: string;
+    filter_count: number;
+  }): void {
+    if (this.lastFilterBaselineSessionId === this.sessionId) return;
+    this.lastFilterBaselineSessionId = this.sessionId;
+    this.track('filter_strip_session_baseline', { ...p });
+  }
+
   /** Fired only on the FIRST create/edit/delete/reorder a user ever performs — never on
    *  load/seeding/default. Same convention as setAutoLockInterval: the property's mere
    *  presence on the profile is the "customized this feature" signal. */
   setHomeFiltersCustomized(): void {
     this.safe(() => mixpanel.people.set({ home_filters_customized: true }));
+  }
+
+  /** Kept in sync on every seed/create/delete so Mixpanel can report the average/distribution
+   *  of how many filters a user keeps, straight off the People profile — no event math. */
+  setHomeFilterCount(count: number): void {
+    this.safe(() => mixpanel.people.set({ home_filter_count: count }));
   }
 
   // ---- help & tips ----
