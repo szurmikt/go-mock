@@ -216,10 +216,17 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
    *    falls out of "only label a split that actually exists."
    *  - in_house, which has no completed concept at all — `g.completed` is always empty, so
    *    this is already covered by the rule above without a separate guests==='in_house' check.
+   *  - `yesterday` — an explicit decision, not something that falls out of the rules above:
+   *    a past day gets no split at all, regardless of whether both sides happen to be
+   *    non-empty (e.g. one straggler still "confirmed" among a mostly-arrived yesterday).
    */
   sectionLabels(g: FilterDayGroup): { pending: string; completed: string } | null {
     if (g.day !== null || g.pendingCount === 0 || g.completed.length === 0) return null;
     const filter = this.grouped().filter;
+    // A past day never gets a split, by explicit decision — unlike today/tomorrow, nothing
+    // useful is communicated by separating "arrived"/"departed" from the rest once the day
+    // itself is already over; just list everyone together.
+    if (filter?.day === 'yesterday') return null;
     if (filter?.guests === 'arrivals') {
       // "Arrived"/"Not yet arrived" only make sense once the day has actually happened
       // (today or a past day) — nobody physically arrives before tomorrow, so a non-empty

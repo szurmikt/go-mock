@@ -730,6 +730,15 @@ Three related follow-ups to the filter-chip-strip work, iterated live against re
 
 **Verification:** `npx ng build` clean (same three pre-existing warnings, none new). Full suite 163/170 (same 7 pre-existing HttpClient-provider failures as baseline, none new); `home-filter-grouping.spec.ts` 26/26. Key parity 355/355/355. Iterated against real screenshots through all three points before landing here — not independently re-verified beyond that in this session.
 
+**Follow-up same day — fix: a checked-out guest was showing up under "Not yet arrived".** Caught live from a real "Yesterday's arrivals" list: a one-night stay that had already checked out rendered its card under the new "Not yet arrived" header, directly contradicting its own "Checked out" pill.
+
+- **Root cause, pre-dating point 1 above** — `splitIntoGroup()`'s arrivals branch only treated `checkedin`/`onboard` as "arrived"; `checkedout` fell through to "pending" by omission. The bug existed since the feature's original 2026-09-30 commit but stayed invisible while completed/pending had no visible label of their own (a flat list + an unlabeled "Checked in (n)" toggle doesn't contradict itself the way a plain-text "Not yet arrived" header does).
+- **[home-filter-grouping.ts](src/app/utils/home-filter-grouping.ts)**: new `hasArrived(r)` helper — `checkedin`, `onboard`, **or** `checkedout` (checking out proves you arrived first; deliberately distinct from the existing `isInHouse()`, which excludes `checkedout` since that guest is gone). The arrivals branch of `splitIntoGroup()` now uses it for both `completed`/`pending`.
+- **Separately, by explicit decision — `yesterday` never shows the split at all, regardless of whether both sides happen to be non-empty.** `sectionLabels()` (`home.page.ts`) now returns `null` outright for `filter.day === 'yesterday'`, on top of (not instead of) the `hasArrived` fix above — a past day communicates nothing useful by separating "arrived" from "the rest," even if the data could technically support a split (e.g. one straggler still sitting at `confirmed`).
+- **[home-filter-grouping.spec.ts](src/app/utils/home-filter-grouping.spec.ts)**: the existing completed-split arrivals test extended to include a `checkedout` reservation (now asserted into `completed`, previously would have landed in `pending`); new dedicated regression case reproducing the exact reported scenario — a `checkedout` reservation on `day: 'yesterday'` must have `pendingCount: 0`.
+
+**Verification:** `npx ng build` clean (same three pre-existing warnings, none new). `home-filter-grouping.spec.ts` 27/27 (26 existing + 1 new, one extended). Confirmed against the exact real data that surfaced the bug (a Three Corners Downtown property, "Yesterday's arrivals" chip).
+
 ### 2026-10-01 — Manage Filters: confirm before deleting a filter
 
 > Branch `add-home-filter-chips`. No build/version bump; ships OTA to `dev`.

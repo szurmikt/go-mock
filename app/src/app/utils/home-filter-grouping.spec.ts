@@ -192,18 +192,30 @@ describe('computeFilterGroups — multi-day window boundaries', () => {
 });
 
 describe('computeFilterGroups — completed split', () => {
-  it('arrivals: checkedin/onboard fold into completed, everything else countable stays pending', () => {
+  it('arrivals: checkedin/onboard/checkedout all fold into completed, only confirmed stays pending', () => {
     const pending = makeReservation({ arrival_date: TODAY, status: 'confirmed' });
     const checkedIn = makeReservation({ arrival_date: TODAY, status: 'checkedin' });
     const onboard = makeReservation({ arrival_date: TODAY, status: 'onboard' });
+    const checkedOut = makeReservation({ arrival_date: TODAY, status: 'checkedout' });
     const groups = computeFilterGroups(
       makeFilter({ guests: 'arrivals', day: 'today' }),
-      [pending, checkedIn, onboard],
+      [pending, checkedIn, onboard, checkedOut],
       TODAY,
     );
     expect(groups[0].pendingCount).toBe(1);
-    expect(groups[0].completed.length).toBe(2);
-    expect(groups[0].completed).toEqual(jasmine.arrayContaining([checkedIn, onboard]));
+    expect(groups[0].completed.length).toBe(3);
+    expect(groups[0].completed).toEqual(jasmine.arrayContaining([checkedIn, onboard, checkedOut]));
+  });
+
+  it('arrivals: a reservation that already checked out counts as "arrived", not "not yet arrived" — regression for a real bug (a one-night Yesterday\'s-arrivals stay, already checked out, was showing up under the "Not yet arrived" header)', () => {
+    const alreadyGone = makeReservation({ arrival_date: YESTERDAY, status: 'checkedout' });
+    const groups = computeFilterGroups(
+      makeFilter({ guests: 'arrivals', day: 'yesterday' }),
+      [alreadyGone],
+      TODAY,
+    );
+    expect(groups[0].pendingCount).toBe(0);
+    expect(groups[0].completed).toEqual([alreadyGone]);
   });
 
   it('departures: checkedout folds into completed, everything else countable stays pending', () => {
