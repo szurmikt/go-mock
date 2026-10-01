@@ -701,6 +701,35 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ## 20. Changelog
 
+### 2026-10-01 — Home: always-visible arrived/departed section headers, a plain divider instead of a chip-strip gradient, and next 7/14 days starting after tomorrow
+
+> Branch `add-home-filter-chips`. No build/version bump; ships OTA to `dev`.
+
+Three related follow-ups to the filter-chip-strip work, iterated live against real screenshots rather than guessed blind.
+
+**1. The collapsible "Checked in (n)" toggle is gone — pending/completed now get their own always-visible section headers, same style as the day headers.** Previously a single-day arrivals/departures list showed all pending reservations with no header at all, then a tappable "Checked in (n)"/"Checked out (n)" button that had to be tapped to reveal anyone already arrived/departed.
+
+- **[home.page.ts](src/app/home/home.page.ts)** new `sectionLabels(g)` replaces `expandedGroups`/`isGroupExpanded`/`toggleGroup`/`completedLabelKey()` entirely. Returns `null` (render one flat list, no headers) whenever there's no real split to communicate — a multi-day filter (`g.day !== null`, see point 3), or **either side is currently empty**. That emptiness check does real work: a property without online check-in can never have anyone in tomorrow's "Checked-in" group (nobody physically arrives before tomorrow), so it's always empty — meaning the simpler, more general "only label a split that actually has two sides" rule makes the online-check-in-specific header disappear on its own, with no explicit flag check anywhere. The same rule also quietly covers the first arrival of the day (nobody's checked in yet) and the last (everyone already has) without extra code.
+- Labels vary by `filter.guests` and, for arrivals, by whether the day has actually happened yet: `Not yet arrived`/`Arrived` for today-or-earlier, `No check-in yet`/`Checked-in` for tomorrow (a non-empty "Checked-in" group there can only mean an online check-in ahead of arrival); `Still onboard`/`Departed` for departures, regardless of day.
+- **No count in the header** (e.g. just "Arrived", not "Arrived (3)") — the selected chip itself already shows the pending/total count, so repeating it on every section header would be redundant. Matches the plain-text day-header style exactly, per the original ask.
+- **[home.page.html](src/app/home/home.page.html)**: the collapsible button + conditionally-rendered completed block is replaced by two header `@if` blocks (pending, then completed) sandwiching the now-always-rendered `g.rows`/`g.completed` `@for` loops — no duplication, since the card markup itself never differed between the collapsed/expanded states.
+- **[sabeeapp-design.scss](src/theme/sabeeapp-design.scss)**: `.completed-toggle` deleted — no longer referenced anywhere.
+- **Translations**: `home.checkedInCount`/`checkedOutCount` replaced with `home.sectionNotYetArrived`/`sectionArrived`/`sectionNoCheckInYet`/`sectionCheckedIn`/`sectionStillOnboard`/`sectionDeparted`, added in lockstep to `translations.ts`/`.en.json`/`.hu.json`. Key parity confirmed programmatically (355 = 355 = 355).
+
+**2. Chip-strip-under-the-manage-icon visual treatment: two gradient attempts tried and dropped, landed on a plain divider line.** The filter icon button at the right end of the chip strip made the scrollable row's edge look like an abrupt hard cut.
+
+- First attempt: a 95%→100%-opacity gradient directly on the 36px icon's own background. Looked like a flat white square pasted on top of the pill underneath on a real device — against a solid-colored chip like an active "Arrivals" pill, only 5% of its color could ever show through, which reads as no change at all.
+- Second attempt: moved the gradient to a wider (56px) absolutely-positioned wrapper ramping the full 0%→100% opacity range, with the chip strip now spanning the full width underneath it (`position: absolute`, no longer a flex sibling) so chips could visibly slide beneath the fade before disappearing. Technically worked, but judged unnecessary complexity for what the user wanted after seeing it — a simple marker of where the row ends, not a smooth fade.
+- **Landed on**: the icon reverted to being a plain flex sibling again (no absolute positioning, no overlap — chips stop just short of it exactly as before any of this started), with a new 1px `.filter-chip-divider` line between the strip and the icon. First pass had a visible 3-4px gap between the line and the actual clipped content — traced to `.filter-chip-strip`'s own trailing `padding-right: 8px` plus the divider's own `margin: 0 8px` on both sides stacking together. Fixed by dropping the strip's trailing padding entirely and giving the divider a right-only margin, so the line sits flush against the exact point the scrollable content is clipped.
+
+**3. Next 7/14 days now start at today+2 (the day after tomorrow), not today — avoids double-listing with Today's/Tomorrow's arrivals.** Spotted live: a reservation arriving tomorrow showed up both under the "Tomorrow's arrivals" chip and under "Arrivals · next 7 days", since the old window ran `today‥today+6`/`today‥today+13`.
+
+- **[home-filter-grouping.ts](src/app/utils/home-filter-grouping.ts)** `resolveDayWindow()`: `next_7_days` → `today+2‥today+8`, `next_14_days` → `today+2‥today+15`. Per explicit decision, the per-day split from point 1 does **not** apply inside a multi-day filter — each day still gets just its plain grey date header, all reservations listed together underneath, no Arrived/Not-arrived sub-split (`sectionLabels()` returns `null` whenever `g.day !== null`).
+- **[reservation.ts](src/app/services/reservation.ts)** `fetchReservations()`: the forward fetch window widened `now+14d` → `now+16d` — without this, `next_14_days`' new last day (`today+15`) would sit one day past what the server was ever asked for, silently always empty regardless of real data. The one-day-inside-the-fetch-boundary margin convention from the original window is preserved at the new boundary.
+- **[home-filter-grouping.spec.ts](src/app/utils/home-filter-grouping.spec.ts)**: every `next_7_days`/`next_14_days` boundary test updated to the shifted window; two boundary tests widened to also assert `today`/`tomorrow` are now excluded (not just the old upper boundary), since excluding them was the entire point of the change.
+
+**Verification:** `npx ng build` clean (same three pre-existing warnings, none new). Full suite 163/170 (same 7 pre-existing HttpClient-provider failures as baseline, none new); `home-filter-grouping.spec.ts` 26/26. Key parity 355/355/355. Iterated against real screenshots through all three points before landing here — not independently re-verified beyond that in this session.
+
 ### 2026-10-01 — Manage Filters: confirm before deleting a filter
 
 > Branch `add-home-filter-chips`. No build/version bump; ships OTA to `dev`.

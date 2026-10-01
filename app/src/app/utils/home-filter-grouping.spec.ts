@@ -5,10 +5,12 @@ import { ReservationInterface } from '../models/reservation.interface';
 const TODAY = '2026-06-15'; // Monday
 const YESTERDAY = '2026-06-14';
 const TOMORROW = '2026-06-16';
+const TODAY_PLUS_2 = '2026-06-17'; // first day of next_7_days/next_14_days' window
 const TODAY_PLUS_6 = '2026-06-21';
-const TODAY_PLUS_7 = '2026-06-22';
-const TODAY_PLUS_13 = '2026-06-28';
-const TODAY_PLUS_14 = '2026-06-29';
+const TODAY_PLUS_8 = '2026-06-23'; // last day of next_7_days' window
+const TODAY_PLUS_9 = '2026-06-24';
+const TODAY_PLUS_15 = '2026-06-30'; // last day of next_14_days' window
+const TODAY_PLUS_16 = '2026-07-01';
 
 let nextId = 1;
 
@@ -88,7 +90,7 @@ describe('computeFilterGroups — guests × day combinations', () => {
   });
 
   it('arrivals/departures: next_7_days and next_14_days group by day', () => {
-    const r1 = makeReservation({ arrival_date: TODAY });
+    const r1 = makeReservation({ arrival_date: TODAY_PLUS_2 });
     const r2 = makeReservation({ arrival_date: TODAY_PLUS_6 });
     const groups7 = computeFilterGroups(
       makeFilter({ guests: 'arrivals', day: 'next_7_days' }),
@@ -96,7 +98,7 @@ describe('computeFilterGroups — guests × day combinations', () => {
       TODAY,
     );
     expect(groups7.length).toBe(2);
-    expect(groups7.map(g => g.day)).toEqual([TODAY, TODAY_PLUS_6]);
+    expect(groups7.map(g => g.day)).toEqual([TODAY_PLUS_2, TODAY_PLUS_6]);
   });
 });
 
@@ -142,38 +144,50 @@ describe('computeFilterGroups — in_house', () => {
 });
 
 describe('computeFilterGroups — multi-day window boundaries', () => {
-  it('next_7_days includes today and today+6, excludes today+7', () => {
+  it('next_7_days starts at today+2 (excludes today and tomorrow) and runs through today+8, excludes today+9', () => {
     const inWindow = [
-      makeReservation({ arrival_date: TODAY }),
-      makeReservation({ arrival_date: TODAY_PLUS_6 }),
+      makeReservation({ arrival_date: TODAY_PLUS_2 }),
+      makeReservation({ arrival_date: TODAY_PLUS_8 }),
     ];
-    const outside = makeReservation({ arrival_date: TODAY_PLUS_7 });
+    const outside = [
+      makeReservation({ arrival_date: TODAY }),
+      makeReservation({ arrival_date: TOMORROW }),
+      makeReservation({ arrival_date: TODAY_PLUS_9 }),
+    ];
     const groups = computeFilterGroups(
       makeFilter({ guests: 'arrivals', day: 'next_7_days' }),
-      [...inWindow, outside],
+      [...inWindow, ...outside],
       TODAY,
     );
     const days = groups.map(g => g.day);
-    expect(days).toContain(TODAY);
-    expect(days).toContain(TODAY_PLUS_6);
-    expect(days).not.toContain(TODAY_PLUS_7);
+    expect(days).toContain(TODAY_PLUS_2);
+    expect(days).toContain(TODAY_PLUS_8);
+    expect(days).not.toContain(TODAY);
+    expect(days).not.toContain(TOMORROW);
+    expect(days).not.toContain(TODAY_PLUS_9);
   });
 
-  it('next_14_days includes today and today+13, excludes today+14', () => {
+  it('next_14_days starts at today+2 (excludes today and tomorrow) and runs through today+15, excludes today+16', () => {
     const inWindow = [
-      makeReservation({ arrival_date: TODAY }),
-      makeReservation({ arrival_date: TODAY_PLUS_13 }),
+      makeReservation({ arrival_date: TODAY_PLUS_2 }),
+      makeReservation({ arrival_date: TODAY_PLUS_15 }),
     ];
-    const outside = makeReservation({ arrival_date: TODAY_PLUS_14 });
+    const outside = [
+      makeReservation({ arrival_date: TODAY }),
+      makeReservation({ arrival_date: TOMORROW }),
+      makeReservation({ arrival_date: TODAY_PLUS_16 }),
+    ];
     const groups = computeFilterGroups(
       makeFilter({ guests: 'arrivals', day: 'next_14_days' }),
-      [...inWindow, outside],
+      [...inWindow, ...outside],
       TODAY,
     );
     const days = groups.map(g => g.day);
-    expect(days).toContain(TODAY);
-    expect(days).toContain(TODAY_PLUS_13);
-    expect(days).not.toContain(TODAY_PLUS_14);
+    expect(days).toContain(TODAY_PLUS_2);
+    expect(days).toContain(TODAY_PLUS_15);
+    expect(days).not.toContain(TODAY);
+    expect(days).not.toContain(TOMORROW);
+    expect(days).not.toContain(TODAY_PLUS_16);
   });
 });
 
@@ -250,14 +264,14 @@ describe('computeFilterGroups — cancelled / no-show', () => {
 
 describe('computeFilterGroups — multi-day grouping edge cases', () => {
   it('skips a day with zero matches', () => {
-    const r = makeReservation({ arrival_date: TODAY });
+    const r = makeReservation({ arrival_date: TODAY_PLUS_2 });
     const groups = computeFilterGroups(
       makeFilter({ guests: 'arrivals', day: 'next_7_days' }),
       [r],
       TODAY,
     );
     expect(groups.length).toBe(1);
-    expect(groups[0].day).toBe(TODAY);
+    expect(groups[0].day).toBe(TODAY_PLUS_2);
   });
 
   it('still renders a day whose only reservation is already completed', () => {
@@ -331,7 +345,7 @@ describe('computeFilterCounts', () => {
   });
 
   it('multi-day arrivals: total only (no pending field), even though the single-day case has one', () => {
-    const r = makeReservation({ arrival_date: TODAY, status: 'confirmed' });
+    const r = makeReservation({ arrival_date: TODAY_PLUS_2, status: 'confirmed' });
     const counts = computeFilterCounts(
       makeFilter({ guests: 'arrivals', day: 'next_7_days' }),
       [r],

@@ -195,30 +195,43 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
     this.chipStripResizeObserver.observe(el);
   }
 
-  // Completed-section expand state — per day-group, session-only (not persisted), default
-  // collapsed. Keyed by the group's day (or a 'single' sentinel for a single-day filter).
-  private expandedGroups = signal<Set<string>>(new Set());
-
   groupKey(g: FilterDayGroup): string {
     return g.day ?? 'single';
   }
 
-  isGroupExpanded(g: FilterDayGroup): boolean {
-    return this.expandedGroups().has(this.groupKey(g));
-  }
-
-  toggleGroup(g: FilterDayGroup): void {
-    const key = this.groupKey(g);
-    this.expandedGroups.update(set => {
-      const next = new Set(set);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
-  completedLabelKey(): string {
-    return this.grouped().filter?.guests === 'departures' ? 'home.checkedOutCount' : 'home.checkedInCount';
+  /**
+   * Section header labels for a single-day filter's pending/completed split — always
+   * visible, no collapse (an earlier collapsible "Checked in (n)" toggle was replaced by
+   * this). Returns null — render one flat list, no headers at all — whenever there's no
+   * real split to communicate:
+   *  - a multi-day filter (g.day !== null) — per explicit decision, Next 7/14 Days always
+   *    stays a plain per-day list with no arrived/not-arrived sub-split, just the day
+   *    headers.
+   *  - either side is currently empty. This is deliberate, not just a shortcut: a split only
+   *    means something once BOTH sides are non-empty. A property with no online check-in can
+   *    never have anyone in tomorrow's "Checked-in" group — it's always empty — so showing a
+   *    "No check-in yet" header above what's really just "everyone" would be pure noise. The
+   *    same one rule also covers the first arrival of the day (nobody's checked in yet) and
+   *    the last (everyone already has), with no separate online-check-in check needed — it
+   *    falls out of "only label a split that actually exists."
+   *  - in_house, which has no completed concept at all — `g.completed` is always empty, so
+   *    this is already covered by the rule above without a separate guests==='in_house' check.
+   */
+  sectionLabels(g: FilterDayGroup): { pending: string; completed: string } | null {
+    if (g.day !== null || g.pendingCount === 0 || g.completed.length === 0) return null;
+    const filter = this.grouped().filter;
+    if (filter?.guests === 'arrivals') {
+      // "Arrived"/"Not yet arrived" only make sense once the day has actually happened
+      // (today or a past day) — nobody physically arrives before tomorrow, so a non-empty
+      // completed group there can only mean an online check-in ahead of arrival.
+      return filter.day === 'tomorrow'
+        ? { pending: 'home.sectionNoCheckInYet', completed: 'home.sectionCheckedIn' }
+        : { pending: 'home.sectionNotYetArrived', completed: 'home.sectionArrived' };
+    }
+    if (filter?.guests === 'departures') {
+      return { pending: 'home.sectionStillOnboard', completed: 'home.sectionDeparted' };
+    }
+    return null;
   }
 
   // Independent of the selected filter — a reservation open in PMS may not even arrive

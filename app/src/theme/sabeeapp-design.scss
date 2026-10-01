@@ -934,7 +934,9 @@ ion-refresher {
   display: flex; align-items: center; gap: 8px;
   overflow-x: auto; overflow-y: hidden;
   flex: 1; min-width: 0;
-  padding: 2px 8px 2px 0;
+  // No trailing right padding — the divider line right after this element must sit flush
+  // against the exact point the scrollable row is clipped, not float a few px past it.
+  padding: 2px 0;
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; width: 0; height: 0; }
 }
@@ -963,15 +965,29 @@ ion-refresher {
   }
 }
 
+// Two gradient attempts (95%→100% opacity directly on the icon, then a wider 0%→100% fade
+// zone) were both tried and dropped — the first was imperceptible against a colored chip,
+// the second looked fine in principle but read as unnecessary complexity for what's really
+// just "mark where the row ends," per direct feedback. Landed on the simplest version: the
+// icon is back to being a plain flex sibling (no absolute positioning, no overlap — chips
+// stop just short of it exactly as before any of this started), with a thin divider line
+// between the two marking the boundary explicitly instead of a hard, unmarked stop.
+.filter-chip-divider {
+  flex: none;
+  align-self: stretch;
+  width: 1px;
+  // No left margin — this must sit flush against .filter-chip-strip's exact clip edge, not
+  // float a gap past it. The right margin alone gives the icon its breathing room.
+  margin: 0 8px 0 0;
+  background: var(--line);
+}
+
 .filter-chip-icon-btn {
   flex: none;
   width: 36px; height: 36px;
   display: flex; align-items: center; justify-content: center;
   border: 0; background: transparent;
   color: var(--ink-2);
-  // Right inset now lives on .filter-chip-strip-wrap's own padding (unconditional, present
-  // whether or not this button is shown) — only a small gap from the chip row is needed here.
-  margin-left: 4px;
   cursor: pointer;
   border-radius: var(--radius-sm);
 
@@ -994,29 +1010,6 @@ ion-refresher {
 // different subsection rather than another list row that's easy to scroll past unnoticed
 // (flagged directly from a real screenshot: the previous small-grey-text version was too
 // easy to miss).
-.completed-toggle {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  width: calc(100% - var(--pad) * 2);
-  margin: 24px var(--pad) 16px;
-  padding: 14px 16px;
-  border: 1.5px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: rgb(246,247,251);
-  font: inherit; font-size: var(--font-lg); font-weight: 800;
-  color: var(--ink);
-  cursor: pointer;
-  transition: background-color 0.15s;
-
-  &:active { background: rgb(238,240,244); }
-
-  svg {
-    width: 20px; height: 20px; flex-shrink: 0;
-    color: var(--ink-3);
-    transition: transform 0.2s;
-  }
-  &.expanded svg { transform: rotate(180deg); }
-}
-
 /* ─── Reservation card ────────────────────────────────────── */
 
 .res-card {

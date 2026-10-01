@@ -85,10 +85,14 @@ function addDays(dateStr: string, days: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
-/** The day(s) an arrivals/departures filter matches against, starting at (and including)
- *  `today` for the two multi-day options. `today+13` (the last day of next_14_days) sits
- *  one full day inside the app's existing ±14-day reservation fetch window — a deliberate
- *  day of margin, not a boundary match. */
+/** The day(s) an arrivals/departures filter matches against. `yesterday`/`today`/`tomorrow`
+ *  are exactly those single days. The two multi-day options deliberately start at
+ *  `today+2` (the day after tomorrow), NOT `today` — `today`/`tomorrow` are already fully
+ *  covered by the dedicated Today's/Tomorrow's arrivals presets, so including them here too
+ *  would list the same reservations under two different chips. `today+15` (the last day of
+ *  next_14_days) sits one full day inside the app's reservation fetch window (`now+16d`,
+ *  widened from `now+14d` in ReservationService.fetchReservations specifically to keep this
+ *  same margin once the window moved) — a deliberate day of margin, not a boundary match. */
 function resolveDayWindow(day: FilterDay, today: string): string[] {
   switch (day) {
     case 'yesterday':
@@ -98,9 +102,9 @@ function resolveDayWindow(day: FilterDay, today: string): string[] {
     case 'tomorrow':
       return [addDays(today, 1)];
     case 'next_7_days':
-      return Array.from({ length: 7 }, (_, i) => addDays(today, i));
+      return Array.from({ length: 7 }, (_, i) => addDays(today, i + 2));
     case 'next_14_days':
-      return Array.from({ length: 14 }, (_, i) => addDays(today, i));
+      return Array.from({ length: 14 }, (_, i) => addDays(today, i + 2));
   }
 }
 

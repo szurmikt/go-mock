@@ -146,6 +146,7 @@
           }
         </div>
         @if (!chipsStuck()) {
+          <span class="filter-chip-divider" aria-hidden="true"></span>
           <button type="button" class="filter-chip-icon-btn" (click)="goManageFilters()" [attr.aria-label]="'home.ariaManageFilters' | tr">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 5h18l-7 8v6l-4-2v-4z"/>
@@ -173,6 +174,9 @@
             @if (g.label) {
               <div class="day-group-header">{{ g.label }}</div>
             }
+            @if (sectionLabels(g); as labels) {
+              <div class="day-group-header">{{ labels.pending | tr }}</div>
+            }
             @for (r of g.rows; track r.reservation_code; let idx = $index) {
               <div class="card res-card tap-anim tappable"
                 [style.opacity]="idx >= g.pendingCount ? 0.5 : 1"
@@ -194,34 +198,27 @@
                 </div>
               </div>
             }
-            @if (g.completed.length > 0) {
-              <button type="button" class="completed-toggle" [class.expanded]="isGroupExpanded(g)" (click)="toggleGroup(g)">
-                <span>{{ completedLabelKey() | tr: { n: g.completed.length } }}</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M6 9l6 6 6-6"/>
-                </svg>
-              </button>
-              @if (isGroupExpanded(g)) {
-                @for (r of g.completed; track r.reservation_code) {
-                  <div class="card res-card tap-anim tappable" (click)="goReservation(r)">
-                    <div class="top">
-                      <span class="res-code">{{ r.reservation_code }}</span>
-                      <span class="pill" [attr.data-status]="pillStatus(r.status, onlineCheckIn())">
-                        {{ pillLabel(r.status, onlineCheckIn()) }}
-                      </span>
-                    </div>
-                    <div class="res-name">{{ bookerName(r) }}</div>
-                    <div class="res-email">{{ r.booker.email }}</div>
-                    <div class="res-meta">
-                      <span class="res-when">
-                        <span class="v">{{ r.arrival_date | localizedDate:'dayMonth' }}</span>
-                        <span>{{ r.number_of_guests }} guests / {{ r.nights }} nights</span>
-                      </span>
-                      <span class="v">{{ r.room_name }}</span>
-                    </div>
-                  </div>
-                }
-              }
+            @if (sectionLabels(g); as labels) {
+              <div class="day-group-header">{{ labels.completed | tr }}</div>
+            }
+            @for (r of g.completed; track r.reservation_code) {
+              <div class="card res-card tap-anim tappable" (click)="goReservation(r)">
+                <div class="top">
+                  <span class="res-code">{{ r.reservation_code }}</span>
+                  <span class="pill" [attr.data-status]="pillStatus(r.status, onlineCheckIn())">
+                    {{ pillLabel(r.status, onlineCheckIn()) }}
+                  </span>
+                </div>
+                <div class="res-name">{{ bookerName(r) }}</div>
+                <div class="res-email">{{ r.booker.email }}</div>
+                <div class="res-meta">
+                  <span class="res-when">
+                    <span class="v">{{ r.arrival_date | localizedDate:'dayMonth' }}</span>
+                    <span>{{ r.number_of_guests }} guests / {{ r.nights }} nights</span>
+                  </span>
+                  <span class="v">{{ r.room_name }}</span>
+                </div>
+              </div>
             }
           }
         </div>
