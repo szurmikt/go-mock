@@ -1,4 +1,4 @@
-import { Component, ViewChild, inject, signal, OnInit } from '@angular/core';
+import { Component, ElementRef, ViewChild, inject, signal, OnInit } from '@angular/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AuthService } from '../../services/auth';
@@ -6,6 +6,8 @@ import { FilterService } from '../../services/home-filter.service';
 import { HomeFilter, FilterSort } from '../../models/home-filter.interface';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { FilterEditorSheetComponent } from '../../components/filter-editor-sheet/filter-editor-sheet.component';
+import { GuidedTourComponent, GuidedTourStep } from '../../components/guided-tour/guided-tour.component';
+import { FilterTourService } from '../../services/filter-tour.service';
 
 const SORT_SUMMARY_KEY: Record<FilterSort, string> = {
   room: 'filterEditor.sortRoom',
@@ -17,18 +19,48 @@ const SORT_SUMMARY_KEY: Record<FilterSort, string> = {
   selector: 'app-manage-filters',
   templateUrl: './manage-filters.page.html',
   standalone: true,
-  imports: [IonContent, DragDropModule, TranslatePipe, FilterEditorSheetComponent],
+  imports: [IonContent, DragDropModule, TranslatePipe, FilterEditorSheetComponent, GuidedTourComponent],
 })
 export class ManageFiltersPage implements OnInit {
   @ViewChild('editor') editor!: FilterEditorSheetComponent;
 
   auth = inject(AuthService);
   filterSvc = inject(FilterService);
+  private filterTour = inject(FilterTourService);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  tourActive = signal(false);
+
+  /** Anchors are the New button and the first row's handle / edit / delete icons, tagged
+   *  with data-tour in the template — resolved lazily by the shared GuidedTourComponent. */
+  private tourAnchor(name: string): () => HTMLElement | null {
+    return () => this.host.nativeElement.querySelector<HTMLElement>(`[data-tour="${name}"]`);
+  }
+
+  readonly tourSteps: GuidedTourStep[] = [
+    { id: 'new', titleKey: 'manageFilters.tourNewTitle', bodyKey: 'manageFilters.tourNewBody', anchor: this.tourAnchor('new'), placement: 'below' },
+    { id: 'reorder', titleKey: 'manageFilters.tourReorderTitle', bodyKey: 'manageFilters.tourReorderBody', anchor: this.tourAnchor('reorder'), placement: 'below' },
+    { id: 'edit', titleKey: 'manageFilters.tourEditTitle', bodyKey: 'manageFilters.tourEditBody', anchor: this.tourAnchor('edit'), placement: 'below' },
+    { id: 'delete', titleKey: 'manageFilters.tourDeleteTitle', bodyKey: 'manageFilters.tourDeleteBody', anchor: this.tourAnchor('delete'), placement: 'below' },
+  ];
 
   async ngOnInit(): Promise<void> {
     // Defensive — Home already seeds on entry, but Manage Filters can in principle be
     // reached (e.g. a deep link) before Home ever ran. ensureSeeded is idempotent.
     await this.filterSvc.ensureSeeded(this.auth.userId());
+  }
+
+  /** Start the first-run walkthrough only once the page transition has finished (anchor rects
+   *  measured mid-slide would be wrong) and the seeded rows exist to point at. */
+  async ionViewDidEnter(): Promise<void> {
+    if (this.filterTour.seen()) return;
+    await this.filterSvc.ensureSeeded(this.auth.userId());
+    if (this.filterSvc.filters(this.auth.userId()).length) this.tourActive.set(true);
+  }
+
+  closeTour(): void {
+    this.tourActive.set(false);
+    void this.filterTour.markSeen();
   }
 
   back(): void {

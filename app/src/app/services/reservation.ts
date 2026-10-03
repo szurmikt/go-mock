@@ -150,12 +150,9 @@ export class ReservationService {
         const start = new Date(now);
         start.setDate(start.getDate() - 14);
         const end = new Date(now);
-        // +16, not +14: the "next_14_days" filter window now starts at today+2 (day after
-        // tomorrow, to avoid double-listing with the Today's/Tomorrow's arrivals presets —
-        // see home-filter-grouping.ts's resolveDayWindow), so its last day is today+15. This
-        // keeps that same one-day margin inside the real fetch boundary the old +14 gave
-        // next_14_days when it ran today..today+13.
-        end.setDate(end.getDate() + 16);
+        // +14: the "+14 days" filter window runs today..today+13 (see home-filter-grouping.ts's
+        // resolveDayWindow), so this leaves a one-day margin inside the real fetch boundary.
+        end.setDate(end.getDate() + 14);
 
         const resp = await firstValueFrom(
           this.api.get<ApiResponse<{ reservations: any[] }>>('reservations', {

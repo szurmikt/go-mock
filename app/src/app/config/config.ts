@@ -35,6 +35,11 @@ export const Config = {
   // scan-onboarding.service.ts. A "seen once ever" flag, not a preference — never reset except
   // by clearing app storage.
   STORAGE_SCAN_ONBOARDING_SEEN_KEY: 'scanOnboardingSeen',
+  // Has this device ever dismissed the first-run My filters walkthrough — see
+  // filter-tour.service.ts. Same "seen once ever" semantics as the key above.
+  STORAGE_FILTER_TOUR_SEEN_KEY: 'filterTourSeen',
+  // Same, for the short Home chip-strip tour started from the pulsing dot on the filter icon.
+  STORAGE_HOME_FILTER_TOUR_SEEN_KEY: 'homeFilterTourSeen',
   // Per-user Help & tips card seen/dismissed state — see tips.service.ts. One blob keyed by
   // auth.userId() so GO's shared front-desk devices don't hide a card from one staff member
   // just because a colleague already saw it. Deliberately NOT cleared by

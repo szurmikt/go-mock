@@ -147,7 +147,10 @@
         </div>
         @if (!chipsStuck()) {
           <span class="filter-chip-divider" aria-hidden="true"></span>
-          <button type="button" class="filter-chip-icon-btn" (click)="goManageFilters()" [attr.aria-label]="'home.ariaManageFilters' | tr">
+          @if (!filterTour.homeSeen()) {
+            <span class="filter-icon-dot" aria-hidden="true" (click)="onFilterIconTap()"></span>
+          }
+          <button #filterIconBtn type="button" class="filter-chip-icon-btn" (click)="onFilterIconTap()" [attr.aria-label]="'home.ariaManageFilters' | tr">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 5h18l-7 8v6l-4-2v-4z"/>
             </svg>
@@ -297,6 +300,16 @@
       </div>
     </div>
   </div>
+}
+
+@if (homeTourActive()) {
+  <app-guided-tour
+    [steps]="homeTourSteps"
+    finishLabelKey="home.tourOpenFilters"
+    closePosition="bottom"
+    (finished)="onHomeTourFinished()"
+    (closed)="closeHomeTour()"
+  />
 }
 
 <app-feedback-sheet #fb />

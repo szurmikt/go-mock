@@ -53,7 +53,12 @@
     "sectionDeparted": "Elutazott",
     "ariaFeedback": "Visszajelzés küldése",
     "ariaSettings": "Beállítások",
-    "ariaManageFilters": "Szűrők kezelése"
+    "ariaManageFilters": "Szűrők kezelése",
+    "tourChipsTitle": "A szűrőid",
+    "tourChipsBody": "Koppints egy chipre, hogy váltsd, mit mutat a főoldal — érkezők, távozók, bent lévők és más.",
+    "tourIconTitle": "Alakítsd a magadévá",
+    "tourIconBody": "Itt adhatsz hozzá, rendezhetsz át, szerkeszthetsz vagy törölhetsz szűrőket.",
+    "tourOpenFilters": "Szűrőim megnyitása"
   },
   "reservationDetail": {
     "title": "Foglalás részletei",
@@ -322,7 +327,15 @@
     "ariaDeleteDisabled": "Legalább egy szűrő szükséges",
     "deleteConfirmTitle": "Törlöd a szűrőt?",
     "deleteConfirmMessage": "Ez véglegesen törli a „{{name}}” szűrőt. Ez nem vonható vissza.",
-    "deleteConfirmButton": "Törlés"
+    "deleteConfirmButton": "Törlés",
+    "tourNewTitle": "Szűrő hozzáadása",
+    "tourNewBody": "Válaszd ki, mely vendégeket, melyik napot és milyen rendezést szeretnél, majd nevezd el a szűrőt. Chipként jelenik meg a főoldalon.",
+    "tourReorderTitle": "Átrendezés",
+    "tourReorderBody": "Nyomd meg és húzd ezt a fogantyút a chipek sorrendjének módosításához a főoldalon.",
+    "tourEditTitle": "Szerkesztés",
+    "tourEditBody": "Koppints a szűrőre vagy erre a ceruzára, hogy módosítsd, mit mutat.",
+    "tourDeleteTitle": "Törlés",
+    "tourDeleteBody": "Töröld a már nem szükséges szűrőt. Legalább egy szűrő mindig megmarad."
   },
   "filterEditor": {
     "titleNew": "Új szűrő",
@@ -337,8 +350,8 @@
     "dayYesterday": "Tegnap",
     "dayToday": "Ma",
     "dayTomorrow": "Holnap",
-    "dayNext7": "Következő 7 nap",
-    "dayNext14": "Következő 14 nap",
+    "dayNext7": "+7 nap",
+    "dayNext14": "+14 nap",
     "sortRoom": "Szoba",
     "sortName": "Név",
     "sortCreated": "Létrehozva"

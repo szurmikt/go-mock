@@ -1,5 +1,7 @@
 import { Component, OnDestroy, inject, signal, computed, ElementRef, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
+import { GuidedTourComponent, GuidedTourStep } from '../components/guided-tour/guided-tour.component';
+import { FilterTourService } from '../services/filter-tour.service';
 import { ViewWillEnter, ViewDidEnter, ViewWillLeave } from '@ionic/angular';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
 import { App } from '@capacitor/app';
@@ -37,6 +39,7 @@ import { TipCardComponent } from '../components/tip-card/tip-card.component';
     FeedbackSheetComponent,
     TipDetailSheetComponent,
     TipCardComponent,
+    GuidedTourComponent,
   ],
 })
 export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnDestroy {
@@ -44,6 +47,7 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
   @ViewChild('stickySentinel') stickySentinel?: ElementRef<HTMLElement>;
   @ViewChild('chipStripWrap') chipStripWrap?: ElementRef<HTMLElement>;
   @ViewChild('chipStripEl') chipStripEl?: ElementRef<HTMLElement>;
+  @ViewChild('filterIconBtn') filterIconBtn?: ElementRef<HTMLElement>;
 
   private hostEl = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -102,6 +106,45 @@ export class HomePage implements ViewWillEnter, ViewDidEnter, ViewWillLeave, OnD
   async selectChip(f: HomeFilter): Promise<void> {
     if (f.id === this.selectedFilterId()) return;
     await this.filterSvc.selectFilter(this.auth.userId(), f.id);
+  }
+
+  filterTour = inject(FilterTourService);
+  homeTourActive = signal(false);
+
+  readonly homeTourSteps: GuidedTourStep[] = [
+    {
+      id: 'chips',
+      titleKey: 'home.tourChipsTitle',
+      bodyKey: 'home.tourChipsBody',
+      anchor: () => this.chipStripEl?.nativeElement,
+      placement: 'below',
+    },
+    {
+      id: 'icon',
+      titleKey: 'home.tourIconTitle',
+      bodyKey: 'home.tourIconBody',
+      anchor: () => this.filterIconBtn?.nativeElement,
+      placement: 'below',
+    },
+  ];
+
+  /** While the pulsing dot is showing, the filter icon starts the short tour instead of
+   *  navigating; the tour's last button then opens My filters (see onHomeTourFinished). */
+  onFilterIconTap(): void {
+    if (this.filterTour.homeSeen()) {
+      this.goManageFilters();
+      return;
+    }
+    this.homeTourActive.set(true);
+  }
+
+  closeHomeTour(): void {
+    this.homeTourActive.set(false);
+    void this.filterTour.markHomeSeen();
+  }
+
+  onHomeTourFinished(): void {
+    this.goManageFilters();
   }
 
   goManageFilters(): void {

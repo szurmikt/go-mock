@@ -13,6 +13,7 @@ import { AuthService, GO_SUBSCRIPTION_MODULE } from './services/auth';
 import { BiometricService } from './services/biometric';
 import { CapturePreferenceService } from './idscanly/services/capture-preference.service';
 import { ScanOnboardingService } from './idscanly/services/scan-onboarding.service';
+import { FilterTourService } from './services/filter-tour.service';
 import { FilterService } from './services/home-filter.service';
 import { LanguageService } from './services/language.service';
 import { LiveUpdateService } from './services/live-update';
@@ -97,6 +98,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private liveUpdate = inject(LiveUpdateService);
   private capturePreference = inject(CapturePreferenceService);
   private scanOnboarding = inject(ScanOnboardingService);
+  private filterTour = inject(FilterTourService);
   private remoteTips = inject(RemoteTipsService);
   private tips = inject(TipsService);
   private homeFilters = inject(FilterService);
@@ -148,6 +150,8 @@ export class AppComponent implements OnInit, OnDestroy {
     // dependency, must resolve before the Scan page's first ionViewWillEnter can decide whether
     // to show it.
     await this.scanOnboarding.init();
+    // Same idea for the My filters walkthrough's seen flag.
+    await this.filterTour.init();
     // Cache-hydrates instantly from local storage (no network await); the real fetch against
     // Supabase's tip_cards table runs in the background — see RemoteTipsService.init(). Must
     // run before tips.init() below reads getCards() for the first time.

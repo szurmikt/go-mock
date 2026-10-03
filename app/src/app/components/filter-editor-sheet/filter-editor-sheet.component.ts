@@ -23,7 +23,7 @@ export class FilterEditorSheetComponent {
    *  a cheap, explicit hook for anything that wants to react to "a save just happened". */
   @Output() saved = new EventEmitter<void>();
 
-  readonly guestsOptions: FilterGuests[] = ['arrivals', 'departures', 'in_house'];
+  readonly guestsOptions: FilterGuests[] = ['arrivals', 'in_house', 'departures'];
   readonly dayOptions: FilterDay[] = ['yesterday', 'today', 'tomorrow', 'next_7_days', 'next_14_days'];
   readonly sortOptions: FilterSort[] = ['room', 'name', 'created'];
 

@@ -1,0 +1,52 @@
+<div class="onboarding-overlay">
+  <!-- Always rendered regardless of step/anchor state — the one guaranteed way out of the
+       tour if a step's callout ever fails to render (e.g. its anchor disappeared mid-tour). -->
+  <button
+    class="onboarding-close"
+    [class.onboarding-close--bottom]="closePosition() === 'bottom'"
+    type="button"
+    (click)="close()"
+    [attr.aria-label]="'common.close' | tr"
+  >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+
+  @if (step(); as s) {
+    @if (anchorRect(); as anchor) {
+      @if (s.placement === 'below') {
+        <div
+          class="onboarding-callout onboarding-callout--anchored"
+          [style.top.px]="anchor.top + anchor.height + 9"
+          [style.left.px]="cardLeft(anchor)"
+        >
+          <div class="onboarding-callout__card onboarding-callout__card--arrow-up" [style.--arrow-x]="arrowLeft(anchor)">
+            <ng-container [ngTemplateOutlet]="content" [ngTemplateOutletContext]="{ $implicit: s }"></ng-container>
+          </div>
+        </div>
+      } @else {
+        <div
+          class="onboarding-callout onboarding-callout--anchored"
+          [style.bottom.px]="viewportHeight() - anchor.top + 9"
+          [style.left.px]="cardLeft(anchor)"
+        >
+          <div class="onboarding-callout__card onboarding-callout__card--arrow-down" [style.--arrow-x]="arrowLeft(anchor)">
+            <ng-container [ngTemplateOutlet]="content" [ngTemplateOutletContext]="{ $implicit: s }"></ng-container>
+          </div>
+        </div>
+      }
+    }
+  }
+</div>
+
+<ng-template #content let-s>
+  <p class="onboarding-callout__title">{{ s.titleKey | tr }}</p>
+  <p class="onboarding-callout__body">{{ s.bodyKey | tr }}</p>
+  <div class="onboarding-callout__actions">
+    <button class="onboarding-callout__btn onboarding-callout__btn--primary" type="button" (click)="next()">
+      {{ (isLast() ? finishLabelKey() : 'common.next') | tr }}
+    </button>
+  </div>
+</ng-template>

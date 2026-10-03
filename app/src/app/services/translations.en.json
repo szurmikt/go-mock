@@ -53,7 +53,12 @@
     "sectionDeparted": "Departed",
     "ariaFeedback": "Send feedback",
     "ariaSettings": "Settings",
-    "ariaManageFilters": "Manage filters"
+    "ariaManageFilters": "Manage filters",
+    "tourChipsTitle": "Your filters",
+    "tourChipsBody": "Tap a chip to switch what Home shows — arrivals, departures, in-house and more.",
+    "tourIconTitle": "Make them yours",
+    "tourIconBody": "Add, reorder, edit or delete your filters here.",
+    "tourOpenFilters": "Open My filters"
   },
   "reservationDetail": {
     "title": "Reservation Details",
@@ -322,7 +327,15 @@
     "ariaDeleteDisabled": "At least one filter is required",
     "deleteConfirmTitle": "Delete filter?",
     "deleteConfirmMessage": "This permanently deletes \"{{name}}\". This cannot be undone.",
-    "deleteConfirmButton": "Delete"
+    "deleteConfirmButton": "Delete",
+    "tourNewTitle": "Add a filter",
+    "tourNewBody": "Pick which guests, which day and how to sort them, then give the filter a name. It shows up as a chip on Home.",
+    "tourReorderTitle": "Reorder",
+    "tourReorderBody": "Press and drag this handle to change the order of your chips on Home.",
+    "tourEditTitle": "Edit",
+    "tourEditBody": "Tap a filter, or this pencil, to change what it shows.",
+    "tourDeleteTitle": "Delete",
+    "tourDeleteBody": "Remove a filter you no longer need. You always keep at least one."
   },
   "filterEditor": {
     "titleNew": "New filter",
@@ -337,8 +350,8 @@
     "dayYesterday": "Yesterday",
     "dayToday": "Today",
     "dayTomorrow": "Tomorrow",
-    "dayNext7": "Next 7 days",
-    "dayNext14": "Next 14 days",
+    "dayNext7": "+7 days",
+    "dayNext14": "+14 days",
     "sortRoom": "Room",
     "sortName": "Name",
     "sortCreated": "Created"

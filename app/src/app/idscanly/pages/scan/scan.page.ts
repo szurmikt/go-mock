@@ -7,7 +7,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { Location, NgTemplateOutlet } from '@angular/common';
+import { Location } from '@angular/common';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { CaptureQuality } from '../../models/capture-quality';
@@ -31,6 +31,7 @@ import { MixpanelService } from '../../../services/mixpanel';
 import { PropertyConfigService } from '../../../services/property-config.service';
 import { CapturePreferenceService } from '../../services/capture-preference.service';
 import { ScanOnboardingService } from '../../services/scan-onboarding.service';
+import { GuidedTourComponent, GuidedTourStep } from '../../../components/guided-tour/guided-tour.component';
 
 const ORDINAL_KEYS = ['idscanly.ordinal1', 'idscanly.ordinal2', 'idscanly.ordinal3', 'idscanly.ordinal4'];
 const FLIP_PROMPT_MIN_MS = 3000;
@@ -39,7 +40,7 @@ const FLIP_PROMPT_MIN_MS = 3000;
   selector: 'app-idscanly-scan',
   templateUrl: 'scan.page.html',
   styleUrls: ['scan.page.scss'],
-  imports: [IonContent, TranslatePipe, NgTemplateOutlet],
+  imports: [IonContent, TranslatePipe, GuidedTourComponent],
 })
 export class IdscanScanPage implements OnDestroy {
   private readonly session = inject(CaptureSessionService);
@@ -135,51 +136,6 @@ export class IdscanScanPage implements OnDestroy {
   private readonly bucketToggleAnchor = viewChild<ElementRef<HTMLElement>>('bucketToggleAnchor');
   private readonly autoCaptureAnchor = viewChild<ElementRef<HTMLElement>>('autoCaptureAnchor');
   private readonly skipOnboardingAnchor = viewChild<ElementRef<HTMLElement>>('skipOnboardingAnchor');
-
-  /** Real on-screen position of the current onboarding step's target (the Document form track,
-   *  the auto-capture toggle, or the ghost Skip button), measured via getBoundingClientRect()
-   *  rather than guessed at from the static layout — so the callout lands right next to it
-   *  regardless of screen size. Horizontal position matters here, not just vertical: the
-   *  auto-capture toggle is one of a *centered* pair of buttons, not flush against a screen
-   *  edge, so a fixed per-step left/right offset (an earlier version of this) pointed at the
-   *  wrong place — see onboardingCardLeft(). null until the target has actually rendered and
-   *  been measured. */
-  readonly onboardingAnchorRect = signal<{ top: number; left: number; width: number; height: number } | null>(
-    null,
-  );
-  readonly onboardingViewportWidth = signal(window.innerWidth);
-  readonly onboardingViewportHeight = signal(window.innerHeight);
-
-  /** Bottom-step callout card width — see onboardingCardLeft(). */
-  private static readonly ONBOARDING_CARD_WIDTH = 240;
-
-  /** Where to place a bottom-anchored callout card so it's horizontally centered on the real
-   *  anchor (the toggle/button it's explaining), clamped so it never runs off either edge of
-   *  the viewport. When the anchor sits close enough to an edge that the clamp actually kicks in
-   *  (e.g. the Skip button, near the right edge), the card can no longer fully follow it — see
-   *  onboardingArrowLeft() for how the arrow stays correct anyway. */
-  onboardingCardLeft(anchor: { left: number; width: number }): number {
-    const vw = this.onboardingViewportWidth();
-    const width = IdscanScanPage.ONBOARDING_CARD_WIDTH;
-    const center = anchor.left + anchor.width / 2;
-    return Math.min(Math.max(16, center - width / 2), vw - 16 - width);
-  }
-
-  /** Horizontal position of the arrow *within* the card (not the viewport) — px from the card's
-   *  own left edge. Deliberately NOT always centered: when onboardingCardLeft()'s clamp prevents
-   *  the card from fully following the anchor to an edge (the Skip button case — a 240px card
-   *  centered on a button 56px from the right edge would run off-screen), the card stops moving
-   *  but the arrow keeps tracking the anchor's true center, sliding toward whichever edge of the
-   *  card is closest to it. Clamped within the card's own bounds (24px margin) so it never pokes
-   *  out past the rounded corners. */
-  onboardingArrowLeft(anchor: { left: number; width: number }): string {
-    const cardWidth = IdscanScanPage.ONBOARDING_CARD_WIDTH;
-    const cardLeft = this.onboardingCardLeft(anchor);
-    const trueCenter = anchor.left + anchor.width / 2;
-    const margin = 24;
-    const x = Math.min(Math.max(trueCenter - cardLeft, margin), cardWidth - margin);
-    return `${x}px`;
-  }
 
   readonly currentSide = computed<Side | null>(() => {
     const type = this.selectedType();
@@ -283,8 +239,39 @@ export class IdscanScanPage implements OnDestroy {
   }
 
   /** Steps this run of the walkthrough will actually show, in order — fixed once at trigger
-   *  time so nextOnboardingStep()/onboardingIsLastStep() don't re-derive it mid-tour. */
-  private onboardingSteps: Array<'docForm' | 'autoCapture' | 'skip'> = [];
+   *  time so the shared GuidedTourComponent doesn't re-derive it mid-tour. */
+  onboardingTourSteps: GuidedTourStep[] = [];
+  /** Whether the shared tour component is rendered. */
+  readonly onboardingActive = signal(false);
+
+  private onboardingStepDef(id: 'docForm' | 'autoCapture' | 'skip'): GuidedTourStep {
+    switch (id) {
+      case 'docForm':
+        return {
+          id,
+          titleKey: 'idscanly.onboardingDocFormTitle',
+          bodyKey: 'idscanly.onboardingDocFormBody',
+          anchor: () => this.bucketToggleAnchor()?.nativeElement,
+          placement: 'below',
+        };
+      case 'autoCapture':
+        return {
+          id,
+          titleKey: 'idscanly.onboardingAutoCaptureTitle',
+          bodyKey: 'idscanly.onboardingAutoCaptureBody',
+          anchor: () => this.autoCaptureAnchor()?.nativeElement,
+          placement: 'above',
+        };
+      case 'skip':
+        return {
+          id,
+          titleKey: 'idscanly.onboardingSkipTitle',
+          bodyKey: 'idscanly.onboardingSkipBody',
+          anchor: () => this.skipOnboardingAnchor()?.nativeElement,
+          placement: 'above',
+        };
+    }
+  }
 
   /** Returns true when the tour was actually started — ionViewWillEnter uses this to decide
    *  whether to defer the camera start (see beginDetection()). */
@@ -297,64 +284,19 @@ export class IdscanScanPage implements OnDestroy {
       void this.scanOnboarding.markSeen();
       return false;
     }
-    this.onboardingSteps = steps;
+    this.onboardingTourSteps = steps.map(id => this.onboardingStepDef(id));
     this.onboardingStep.set(steps[0]);
-    this.scheduleOnboardingAnchorMeasure();
+    this.onboardingActive.set(true);
     return true;
-  }
-
-  onboardingIsLastStep(): boolean {
-    const idx = this.onboardingSteps.indexOf(this.onboardingStep() as 'docForm' | 'autoCapture' | 'skip');
-    return idx === this.onboardingSteps.length - 1;
-  }
-
-  nextOnboardingStep(): void {
-    const idx = this.onboardingSteps.indexOf(this.onboardingStep() as 'docForm' | 'autoCapture' | 'skip');
-    const next = this.onboardingSteps[idx + 1];
-    if (next) {
-      this.onboardingStep.set(next);
-      this.scheduleOnboardingAnchorMeasure();
-    } else {
-      this.closeOnboarding();
-    }
   }
 
   closeOnboarding(): void {
     this.onboardingStep.set('none');
-    this.onboardingAnchorRect.set(null);
+    this.onboardingActive.set(false);
     void this.scanOnboarding.markSeen();
     // The camera was deliberately held off while the tour was up (see ionViewWillEnter) —
     // start it now, however the tour ended (walked through, or closed early via the X).
     this.beginDetection();
-  }
-
-  /** Defers the measurement to the next tick — the step's target element (the ghost Skip
-   *  button in particular) is only rendered once Angular flushes the DOM update for the
-   *  onboardingStep signal write above, so reading getBoundingClientRect() synchronously here
-   *  would still see the previous step's layout (or nothing at all, on the very first step). */
-  private scheduleOnboardingAnchorMeasure(): void {
-    this.onboardingAnchorRect.set(null);
-    setTimeout(() => this.measureOnboardingAnchor(), 0);
-  }
-
-  private measureOnboardingAnchor(): void {
-    const step = this.onboardingStep();
-    const el =
-      step === 'docForm'
-        ? this.bucketToggleAnchor()?.nativeElement
-        : step === 'autoCapture'
-          ? this.autoCaptureAnchor()?.nativeElement
-          : step === 'skip'
-            ? this.skipOnboardingAnchor()?.nativeElement
-            : undefined;
-    if (!el) {
-      this.onboardingAnchorRect.set(null);
-      return;
-    }
-    this.onboardingViewportWidth.set(window.innerWidth);
-    this.onboardingViewportHeight.set(window.innerHeight);
-    const rect = el.getBoundingClientRect();
-    this.onboardingAnchorRect.set({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
   }
 
   /** Tapping the toggle: switches immediately if nothing is captured yet, otherwise opens the

@@ -5,12 +5,11 @@ import { ReservationInterface } from '../models/reservation.interface';
 const TODAY = '2026-06-15'; // Monday
 const YESTERDAY = '2026-06-14';
 const TOMORROW = '2026-06-16';
-const TODAY_PLUS_2 = '2026-06-17'; // first day of next_7_days/next_14_days' window
-const TODAY_PLUS_6 = '2026-06-21';
-const TODAY_PLUS_8 = '2026-06-23'; // last day of next_7_days' window
-const TODAY_PLUS_9 = '2026-06-24';
-const TODAY_PLUS_15 = '2026-06-30'; // last day of next_14_days' window
-const TODAY_PLUS_16 = '2026-07-01';
+const TODAY_PLUS_2 = '2026-06-17';
+const TODAY_PLUS_6 = '2026-06-21'; // last day of next_7_days' window (today..today+6)
+const TODAY_PLUS_7 = '2026-06-22';
+const TODAY_PLUS_13 = '2026-06-28'; // last day of next_14_days' window (today..today+13)
+const TODAY_PLUS_14 = '2026-06-29';
 
 let nextId = 1;
 
@@ -144,15 +143,14 @@ describe('computeFilterGroups — in_house', () => {
 });
 
 describe('computeFilterGroups — multi-day window boundaries', () => {
-  it('next_7_days starts at today+2 (excludes today and tomorrow) and runs through today+8, excludes today+9', () => {
+  it('next_7_days includes today and runs through today+6, excludes yesterday and today+7', () => {
     const inWindow = [
-      makeReservation({ arrival_date: TODAY_PLUS_2 }),
-      makeReservation({ arrival_date: TODAY_PLUS_8 }),
+      makeReservation({ arrival_date: TODAY }),
+      makeReservation({ arrival_date: TODAY_PLUS_6 }),
     ];
     const outside = [
-      makeReservation({ arrival_date: TODAY }),
-      makeReservation({ arrival_date: TOMORROW }),
-      makeReservation({ arrival_date: TODAY_PLUS_9 }),
+      makeReservation({ arrival_date: YESTERDAY }),
+      makeReservation({ arrival_date: TODAY_PLUS_7 }),
     ];
     const groups = computeFilterGroups(
       makeFilter({ guests: 'arrivals', day: 'next_7_days' }),
@@ -160,22 +158,20 @@ describe('computeFilterGroups — multi-day window boundaries', () => {
       TODAY,
     );
     const days = groups.map(g => g.day);
-    expect(days).toContain(TODAY_PLUS_2);
-    expect(days).toContain(TODAY_PLUS_8);
-    expect(days).not.toContain(TODAY);
-    expect(days).not.toContain(TOMORROW);
-    expect(days).not.toContain(TODAY_PLUS_9);
+    expect(days).toContain(TODAY);
+    expect(days).toContain(TODAY_PLUS_6);
+    expect(days).not.toContain(YESTERDAY);
+    expect(days).not.toContain(TODAY_PLUS_7);
   });
 
-  it('next_14_days starts at today+2 (excludes today and tomorrow) and runs through today+15, excludes today+16', () => {
+  it('next_14_days includes today and runs through today+13, excludes yesterday and today+14', () => {
     const inWindow = [
-      makeReservation({ arrival_date: TODAY_PLUS_2 }),
-      makeReservation({ arrival_date: TODAY_PLUS_15 }),
+      makeReservation({ arrival_date: TODAY }),
+      makeReservation({ arrival_date: TODAY_PLUS_13 }),
     ];
     const outside = [
-      makeReservation({ arrival_date: TODAY }),
-      makeReservation({ arrival_date: TOMORROW }),
-      makeReservation({ arrival_date: TODAY_PLUS_16 }),
+      makeReservation({ arrival_date: YESTERDAY }),
+      makeReservation({ arrival_date: TODAY_PLUS_14 }),
     ];
     const groups = computeFilterGroups(
       makeFilter({ guests: 'arrivals', day: 'next_14_days' }),
@@ -183,11 +179,10 @@ describe('computeFilterGroups — multi-day window boundaries', () => {
       TODAY,
     );
     const days = groups.map(g => g.day);
-    expect(days).toContain(TODAY_PLUS_2);
-    expect(days).toContain(TODAY_PLUS_15);
-    expect(days).not.toContain(TODAY);
-    expect(days).not.toContain(TOMORROW);
-    expect(days).not.toContain(TODAY_PLUS_16);
+    expect(days).toContain(TODAY);
+    expect(days).toContain(TODAY_PLUS_13);
+    expect(days).not.toContain(YESTERDAY);
+    expect(days).not.toContain(TODAY_PLUS_14);
   });
 });
 

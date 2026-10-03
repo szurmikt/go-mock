@@ -990,8 +990,44 @@ ion-refresher {
   color: var(--ink-2);
   cursor: pointer;
   border-radius: var(--radius-sm);
+  position: relative;
 
   &:active { transform: scale(0.94); }
+}
+
+// Pulsing "new" dot sitting just left of the filter icon — tapping it (or the icon) while it
+// shows starts the short Home tour (home.page.ts onFilterIconTap), which then hides it for good.
+// White fill + primary ring so it reads as a light, bright beacon rather than a heavy blue blob.
+.filter-icon-dot {
+  flex: none;
+  position: relative;
+  width: 14px; height: 14px;
+  // Negative margin pulls it over the icon button's left edge (the 36px button has ~8px of
+  // padding around its 20px glyph). Only the padding is overlapped; -9px covered the funnel itself.
+  margin-right: -3px;
+  z-index: 1;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--primary);
+  cursor: pointer;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -2.5px;
+    border-radius: 50%;
+    border: 2px solid var(--primary);
+    animation: filter-dot-pulse 1.6s ease-out infinite;
+  }
+}
+
+@keyframes filter-dot-pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-icon-dot::after { animation: none; }
 }
 
 .day-group-header {

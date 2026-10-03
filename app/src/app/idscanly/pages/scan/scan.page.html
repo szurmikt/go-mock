@@ -242,80 +242,8 @@
     </div>
   }
 
-  <ng-template #onboardingActions>
-    <div class="onboarding-callout__actions">
-      @if (onboardingIsLastStep()) {
-        <button class="onboarding-callout__btn onboarding-callout__btn--primary" type="button" (click)="closeOnboarding()">
-          {{ 'common.close' | tr }}
-        </button>
-      } @else {
-        <button class="onboarding-callout__btn onboarding-callout__btn--primary" type="button" (click)="nextOnboardingStep()">
-          {{ 'common.next' | tr }}
-        </button>
-      }
-    </div>
-  </ng-template>
-
-  @if (onboardingStep() !== 'none') {
-    <div class="onboarding-overlay">
-      <!-- Always rendered regardless of step/anchor state — the one guaranteed way out of the
-           tour if a step's callout ever fails to render (e.g. its anchor disappeared mid-tour). -->
-      <button
-        class="onboarding-close"
-        type="button"
-        (click)="closeOnboarding()"
-        [attr.aria-label]="'common.close' | tr"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
-
-      @if (onboardingStep() === 'docForm' && onboardingAnchorRect(); as anchor) {
-        <div class="onboarding-callout onboarding-callout--top" [style.top.px]="anchor.top + anchor.height + 9">
-          <div class="onboarding-callout__card onboarding-callout__card--arrow-up">
-            <p class="onboarding-callout__title">{{ 'idscanly.onboardingDocFormTitle' | tr }}</p>
-            <p class="onboarding-callout__body">{{ 'idscanly.onboardingDocFormBody' | tr }}</p>
-            <ng-container [ngTemplateOutlet]="onboardingActions"></ng-container>
-          </div>
-        </div>
-      }
-
-      @if (onboardingStep() === 'autoCapture' && onboardingAnchorRect(); as anchor) {
-        <div
-          class="onboarding-callout onboarding-callout--bottom"
-          [style.bottom.px]="onboardingViewportHeight() - anchor.top + 9"
-          [style.left.px]="onboardingCardLeft(anchor)"
-        >
-          <div
-            class="onboarding-callout__card onboarding-callout__card--arrow-down"
-            [style.--arrow-x]="onboardingArrowLeft(anchor)"
-          >
-            <p class="onboarding-callout__title">{{ 'idscanly.onboardingAutoCaptureTitle' | tr }}</p>
-            <p class="onboarding-callout__body">{{ 'idscanly.onboardingAutoCaptureBody' | tr }}</p>
-            <ng-container [ngTemplateOutlet]="onboardingActions"></ng-container>
-          </div>
-        </div>
-      }
-
-      @if (onboardingStep() === 'skip' && onboardingAnchorRect(); as anchor) {
-        <div
-          class="onboarding-callout onboarding-callout--bottom"
-          [style.bottom.px]="onboardingViewportHeight() - anchor.top + 9"
-          [style.left.px]="onboardingCardLeft(anchor)"
-        >
-          <div
-            class="onboarding-callout__card onboarding-callout__card--arrow-down"
-            [style.--arrow-x]="onboardingArrowLeft(anchor)"
-          >
-            <p class="onboarding-callout__title">{{ 'idscanly.onboardingSkipTitle' | tr }}</p>
-            <p class="onboarding-callout__body">{{ 'idscanly.onboardingSkipBody' | tr }}</p>
-            <ng-container [ngTemplateOutlet]="onboardingActions"></ng-container>
-          </div>
-        </div>
-      }
-    </div>
+  @if (onboardingActive()) {
+    <app-guided-tour [steps]="onboardingTourSteps" (stepChange)="onboardingStep.set($any($event))" (closed)="closeOnboarding()" />
   }
 
   @if (bucketChangeConfirmOpen()) {

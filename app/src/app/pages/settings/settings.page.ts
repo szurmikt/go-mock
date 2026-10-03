@@ -13,6 +13,7 @@ import { LOCK_DEBUG_PROPERTY_ID } from './lock-debug.const';
 import { PropertyConfigService } from '../../services/property-config.service';
 import { TipsService } from '../../services/tips.service';
 import { ScanOnboardingService } from '../../idscanly/services/scan-onboarding.service';
+import { FilterTourService } from '../../services/filter-tour.service';
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.page.html',
@@ -32,8 +33,10 @@ export class SettingsPage implements OnInit {
   private propertyConfig = inject(PropertyConfigService);
   private tips = inject(TipsService);
   private scanOnboarding = inject(ScanOnboardingService);
+  private filterTour = inject(FilterTourService);
 
   scanTourReset = signal(false);
+  filterTourReset = signal(false);
   tipsReset = signal(false);
 
   private appVersionService = inject(AppVersionService);
@@ -132,6 +135,12 @@ export class SettingsPage implements OnInit {
     await this.scanOnboarding.reset();
     this.scanTourReset.set(true);
     setTimeout(() => this.scanTourReset.set(false), 2000);
+  }
+
+  async resetFilterTour() {
+    await this.filterTour.reset();
+    this.filterTourReset.set(true);
+    setTimeout(() => this.filterTourReset.set(false), 2000);
   }
 
   async resetTips() {
