@@ -701,6 +701,15 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ## 20. Changelog
 
+### 2026-10-05 — Mixpanel: IDScanly recognition timing (`recognition_duration_ms`, `payload_kb`)
+
+> Branch `add-home-filter-chips`. No build/version bump, not published OTA. Not verified on a device.
+
+- **Why:** the suspicion is that IDScanly response time is unstable, but only `scan_duration_seconds` existed, and that spans the whole scan (camera capture + review + request, whole seconds, retries on the review screen don't reset it), so recognition time couldn't be isolated.
+- **[review.page.ts](src/app/idscanly/pages/review/review.page.ts) `submit()`** times the `idRecognition.submit()` call alone (network retries included) and sums the captured images' base64 data-URL length into `payload_kb`. Both are added to `scan_succeeded` and `scan_failed` via [mixpanel.ts](src/app/services/mixpanel.ts). On failure `recognition_duration_ms` is time-to-failure and is `undefined` if it failed before the request started (e.g. session missing).
+- **Reading the data:** compare p50 vs p90/p99 of `recognition_duration_ms`; break down by `payload_kb` and `is_processing` (true means the edge function's 30s poll budget ran out, so those cluster near 30,000 ms). Measured client-side only — it can't separate network vs Supabase edge function vs IDScanly; if instability shows up, time inside the edge function next.
+- Typecheck passes.
+
 ### 2026-10-03 — Guided tour on My filters (shared GuidedTourComponent extracted from the Scan walkthrough)
 
 > Branch `add-home-filter-chips`. Not committed, no build/version bump; OTA to `dev`.

@@ -362,6 +362,11 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
     this.startStageTimers();
 
     const docTypeForTracking = this.session.documentType();
+    // Wall-clock time of the idrecognition call alone (incl. network retries) — separate from
+    // scan_duration_seconds, which also covers camera capture + review. Set just before the call
+    // so a failure before it (e.g. missing session) doesn't report a bogus duration.
+    let recognitionStartedAt: number | null = null;
+    let payloadKb: number | undefined;
 
     try {
       const captures = Array.from(this.session.captures().values());
@@ -372,7 +377,10 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
         throw new Error(this.lang.t('idscanly.sessionMissing'));
       }
 
+      payloadKb = Math.round(captures.reduce((n, c) => n + c.fullDataUrl.length, 0) / 1024);
+      recognitionStartedAt = Date.now();
       const response = await this.idRecognition.submit(captures);
+      const recognitionDurationMs = Date.now() - recognitionStartedAt;
       this.logIdscanlyResponse(response, ctx);
       const mapped = this.idscanlyDocuscan.mapToScanResult(response, docType);
       this.clearStageTimers();
@@ -404,6 +412,8 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
         '2nd_page_skipped': secondPageSkipped,
         flash_used: flashUsed,
         scan_duration_seconds: scanDurationSeconds,
+        recognition_duration_ms: recognitionDurationMs,
+        payload_kb: payloadKb,
       });
 
       // Pop the scan flow's single history entry (scan→review navigations use replaceUrl)
@@ -421,6 +431,8 @@ export class IdscanReviewPage implements OnInit, OnDestroy {
         document_type: docTypeForTracking?.id ?? 'unknown',
         reason: (err as { kind?: 'network_error' | 'http_error' | 'empty_response' })?.kind ?? 'error',
         attempt_number: this.submitAttempts,
+        recognition_duration_ms: recognitionStartedAt !== null ? Date.now() - recognitionStartedAt : undefined,
+        payload_kb: payloadKb,
       });
     }
   }

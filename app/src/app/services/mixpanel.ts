@@ -264,6 +264,10 @@ export class MixpanelService {
     flash_used: boolean;
     /** Wall-clock time from starting the capture session to this successful submit. */
     scan_duration_seconds?: number;
+    /** Milliseconds spent in the idrecognition request alone (incl. network retries). */
+    recognition_duration_ms?: number;
+    /** Approx. size of the submitted images (base64 data URLs) in KB — a likely driver of duration. */
+    payload_kb?: number;
   }): void {
     this.track('scan_succeeded', { ...p });
   }
@@ -278,6 +282,9 @@ export class MixpanelService {
       | 'empty_response'
       | 'camera_unavailable';
     attempt_number: number;
+    /** Time until the failure surfaced; undefined if it failed before the request started. */
+    recognition_duration_ms?: number;
+    payload_kb?: number;
   }): void {
     this.track('scan_failed', { ...p });
   }
