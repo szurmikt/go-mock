@@ -187,7 +187,7 @@ describe('computeFilterGroups — multi-day window boundaries', () => {
 });
 
 describe('computeFilterGroups — completed split', () => {
-  it('arrivals: checkedin/onboard/checkedout all fold into completed, only confirmed stays pending', () => {
+  it('arrivals (today): only onboard/checkedout count as arrived — an online check-in (checkedin) stays pending', () => {
     const pending = makeReservation({ arrival_date: TODAY, status: 'confirmed' });
     const checkedIn = makeReservation({ arrival_date: TODAY, status: 'checkedin' });
     const onboard = makeReservation({ arrival_date: TODAY, status: 'onboard' });
@@ -197,9 +197,22 @@ describe('computeFilterGroups — completed split', () => {
       [pending, checkedIn, onboard, checkedOut],
       TODAY,
     );
+    expect(groups[0].pendingCount).toBe(2);
+    expect(groups[0].rows).toEqual(jasmine.arrayContaining([pending, checkedIn]));
+    expect(groups[0].completed.length).toBe(2);
+    expect(groups[0].completed).toEqual(jasmine.arrayContaining([onboard, checkedOut]));
+  });
+
+  it('arrivals (tomorrow): checkedin (online check-in ahead of arrival) folds into completed', () => {
+    const notYet = makeReservation({ arrival_date: TOMORROW, status: 'confirmed' });
+    const online = makeReservation({ arrival_date: TOMORROW, status: 'checkedin' });
+    const groups = computeFilterGroups(
+      makeFilter({ guests: 'arrivals', day: 'tomorrow' }),
+      [notYet, online],
+      TODAY,
+    );
     expect(groups[0].pendingCount).toBe(1);
-    expect(groups[0].completed.length).toBe(3);
-    expect(groups[0].completed).toEqual(jasmine.arrayContaining([checkedIn, onboard, checkedOut]));
+    expect(groups[0].completed).toEqual([online]);
   });
 
   it('arrivals: a reservation that already checked out counts as "arrived", not "not yet arrived" — regression for a real bug (a one-night Yesterday\'s-arrivals stay, already checked out, was showing up under the "Not yet arrived" header)', () => {
@@ -282,7 +295,7 @@ describe('computeFilterGroups — multi-day grouping edge cases', () => {
   });
 
   it('still renders a day whose only reservation is already completed', () => {
-    const completed = makeReservation({ arrival_date: TODAY_PLUS_6, status: 'checkedin' });
+    const completed = makeReservation({ arrival_date: TODAY_PLUS_6, status: 'onboard' });
     const groups = computeFilterGroups(
       makeFilter({ guests: 'arrivals', day: 'next_7_days' }),
       [completed],
@@ -335,7 +348,7 @@ describe('computeFilterGroups — sort modes', () => {
 describe('computeFilterCounts', () => {
   it('single-day arrivals/departures: pending + total, excluding cancelled/no-show', () => {
     const pending = makeReservation({ arrival_date: TODAY, status: 'confirmed' });
-    const completed = makeReservation({ arrival_date: TODAY, status: 'checkedin' });
+    const completed = makeReservation({ arrival_date: TODAY, status: 'onboard' });
     const cancelled = makeReservation({ arrival_date: TODAY, status: 'cancelled' });
     const counts = computeFilterCounts(
       makeFilter({ guests: 'arrivals', day: 'today' }),

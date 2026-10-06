@@ -60,12 +60,21 @@ function isCancelledOrNoShow(r: ReservationInterface): boolean {
   return r.status === 'cancelled' || r.status === 'noshow';
 }
 
-/** Has the guest physically arrived at all — checkedin, onboard, or checkedout. Deliberately
- *  NOT the same test as isInHouse below: checkedout means they arrived AND already left,
- *  which still counts as "arrived" for an arrivals-list split, but is excluded from
- *  "in house" (they're gone). */
+/** Has the guest physically arrived — onboard or checkedout. `checkedin` is deliberately
+ *  NOT included: on properties using online check-in, `checkedin` only means the guest
+ *  completed the online form ahead of time, not that they're at the property yet (arriving
+ *  is what moves them to `onboard`). Without online check-in the `checkedin` stage doesn't
+ *  exist at all. Also NOT the same test as isInHouse below: checkedout means they arrived
+ *  AND already left, which still counts as "arrived" for an arrivals-list split. */
 function hasArrived(r: ReservationInterface): boolean {
-  return r.status === 'checkedin' || r.status === 'onboard' || r.status === 'checkedout';
+  return r.status === 'onboard' || r.status === 'checkedout';
+}
+
+/** Tomorrow's arrivals split by "has anything happened yet" rather than "arrived": nobody
+ *  physically arrives before tomorrow, so a `checkedin` (online check-in) reservation is the
+ *  useful thing to separate out there. */
+function hasCheckedInAhead(r: ReservationInterface): boolean {
+  return r.status === 'checkedin' || hasArrived(r);
 }
 
 /** In-house: has arrived and not yet checked out, AND hasn't already departed — a guest
@@ -142,14 +151,12 @@ function splitIntoGroup(
   let completed: ReservationInterface[];
 
   if (filter.guests === 'arrivals') {
-    // "Arrived" means anything past `confirmed` in the forward status flow — checkedin,
-    // onboard, OR checkedout. checkedout was missing here originally: a guest who already
-    // checked out obviously did arrive first, but was being counted as "pending"/"not yet
-    // arrived" instead, which read as flatly wrong once the always-visible section headers
-    // (rather than a silent flat list) made the mislabeling visible — confirmed live via a
-    // real "Yesterday's arrivals" list showing a "Checked out" pill under "Not yet arrived".
-    completed = countable.filter(r => hasArrived(r));
-    pending = countable.filter(r => !hasArrived(r));
+    // "Arrived" = onboard or checkedout (see hasArrived) — `checkedin` alone is just an
+    // online check-in and still counts as not yet arrived. Tomorrow is the exception: there
+    // the split is "online-checked-in vs not" (see hasCheckedInAhead).
+    const done = filter.day === 'tomorrow' ? hasCheckedInAhead : hasArrived;
+    completed = countable.filter(done);
+    pending = countable.filter(r => !done(r));
   } else if (filter.guests === 'departures') {
     completed = countable.filter(r => r.status === 'checkedout');
     pending = countable.filter(r => r.status !== 'checkedout');

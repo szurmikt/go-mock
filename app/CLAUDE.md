@@ -701,6 +701,14 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ## 20. Changelog
 
+### 2026-10-07 — Home: Today's arrivals split no longer treats an online check-in as "arrived"
+
+> Branch `fix-arrivals-split-online-checkin`. No build/version bump. Published OTA to the `dev` channel only. Spec 28/28 green; not verified on a device.
+
+- **Why:** on properties using online check-in, `checkedin` only means the guest completed the online form, not that they are at the property (arriving moves them to `onboard`). `hasArrived()` counted `checkedin`, so those guests landed under "Arrived" on Today's arrivals. Properties without online check-in never have `checkedin` (the PMS shows `onboard` as "Checked-in"), so they are unaffected.
+- **[home-filter-grouping.ts](src/app/utils/home-filter-grouping.ts):** `hasArrived()` is now `onboard` or `checkedout`. New `hasCheckedInAhead()` keeps `checkedin` in the completed group for **tomorrow's** arrivals only, where "Checked-in" (online check-in ahead of arrival) is the useful split. `isInHouse()` still counts `checkedin`; left as-is, not part of this report.
+- **[home-filter-grouping.spec.ts](src/app/utils/home-filter-grouping.spec.ts):** today split test updated, new tomorrow test, two existing tests switched from `checkedin` to `onboard`.
+
 ### 2026-10-06 — Login: distinct handling + Sentry detail for a missing `mfa_token` (PID 10758)
 
 > Branch `fix-login-missing-mfa-token`, merged to `main` locally (not pushed). No build/version bump, not published OTA. Typecheck passes; not tested yet, no tests added (none cover `login()`).
