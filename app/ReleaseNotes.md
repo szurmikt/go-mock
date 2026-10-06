@@ -13,6 +13,26 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+### 2026-10-06 — prod — f8dd23d6-031e-4597-9363-ba493a8e090d
+> git `0edd3f3`. Published to `dev`, device-tested, promoted (not rebuilt) to `early` and `prod` the same day. Same as `ff034331` below plus the timing change.
+- Mixpanel: `scan_succeeded` / `scan_failed` now carry `recognition_duration_ms` (IDScanly request time) and `payload_kb` (submitted image size) — no user-facing change
+
+### 2026-10-06 — early — f8dd23d6-031e-4597-9363-ba493a8e090d
+- Same bundle/changes as the `prod` entry above — promoted, not rebuilt.
+
+### 2026-10-06 — dev — f8dd23d6-031e-4597-9363-ba493a8e090d
+- Same bundle/changes as the `prod` entry above.
+
+### 2026-10-06 — prod — ff034331-e646-468f-8f83-707d5dbadf6a
+> Bundle built from git `2776f1a` (working tree), published to `dev` 2026-10-03, device-tested, promoted (not rebuilt) to `early` and `prod` on 2026-10-06. Does not include the IDScanly recognition-timing commit `0edd3f3`.
+- Home filter chips with Manage Filters (create, reorder, edit, delete with confirmation); +7 / +14 days filters now include today
+- First-run guided tours for Home's filter strip and the My filters screen (shared tour component; the Scan walkthrough now uses it too)
+- Arrived/departed section headers always visible; a checked-out guest is no longer miscounted as "not yet arrived"
+- Mixpanel: filter-strip engagement tracking (no user-facing change)
+
+### 2026-10-06 — early — ff034331-e646-468f-8f83-707d5dbadf6a
+- Same bundle/changes as the `prod` entry above — promoted, not rebuilt.
+
 ### 2026-09-23 — dev — 2dfa357b-1397-4799-9f9e-164fade555e8
 > git `b611b5e`. Implements `app/docs/feature-education-cards-handoff.md`.
 - New Help & tips education-card feature: Home shows up to 3 unseen bundled tip cards below arrivals (never above), tapping one opens a content-sized detail sheet (image/title/body/optional "Try it" deep link/thumbs feedback/Next tip), Settings gains a "Help & tips" entry leading to a searchable, category-filtered full list
