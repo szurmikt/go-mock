@@ -5,12 +5,16 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { IonContent } from '@ionic/angular/standalone';
 import * as Sentry from '@sentry/angular';
 import { ApiEnvironmentService } from '../../services/api-environment';
-import { AuthService } from '../../services/auth';
+import { AuthService, LoginError } from '../../services/auth';
 import { LanguageService } from '../../services/language.service';
 import { OptionsService } from '../../services/options.service';
 import { ReservationService } from '../../services/reservation';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { Config } from '../../config/config';
+
+function isLoginError(err: unknown): err is LoginError {
+  return err instanceof Error && 'reason' in err && 'responseShape' in err;
+}
 
 @Component({
   selector: 'app-login',
@@ -64,7 +68,7 @@ export class LoginPage implements OnDestroy {
         });
       }
     } catch (err: unknown) {
-      this.logLoginError(err);
+      this.logLoginError(err, this.email.trim());
       this.errorMessage = this.extractMessage(err);
       this.errorOpen = true;
     } finally {
@@ -73,7 +77,7 @@ export class LoginPage implements OnDestroy {
   }
 
   /** Detailed diagnostics for a failed /token call — console + Sentry. */
-  private logLoginError(err: unknown) {
+  private logLoginError(err: unknown, email: string) {
     const detail: Record<string, unknown> = {
       apiMode: this.apiEnv.isTest() ? 'test' : 'live',
       apiUrl: this.apiEnv.apiUrl(),
@@ -92,14 +96,29 @@ export class LoginPage implements OnDestroy {
           : 'Server responded with an HTTP error.';
     } else {
       detail['error'] = String(err);
-      if (err && typeof err === 'object' && 'apiErrors' in err) {
-        detail['apiErrors'] = (err as { apiErrors?: unknown }).apiErrors;
+      if (isLoginError(err)) {
+        detail['apiErrors'] = err.apiErrors;
+        detail['responseShape'] = err.responseShape;
       }
     }
+    // Pre-login there is no property and no /users/me yet, so PID and user id are unknown by
+    // design; the email identifies the account, and userId is filled in only when the response
+    // carried a decodable access_token (a login issued without MFA).
+    detail['email'] = email;
+    detail['deviceId'] = this.auth.deviceId();
+    const reason = isLoginError(err) ? err.reason : err instanceof HttpErrorResponse ? `http_${err.status}` : 'unknown';
+    const userId = isLoginError(err) ? err.responseShape.userId : undefined;
     console.error('Login failed', detail);
     Sentry.captureException(err, {
-      tags: { context: 'login', api_mode: detail['apiMode'] as string },
+      tags: {
+        context: 'login',
+        api_mode: detail['apiMode'] as string,
+        login_failure_reason: reason,
+        ...(userId != null ? { login_user_id: String(userId) } : {}),
+      },
       extra: detail,
+      // Own fingerprint per reason, so "no mfa_token" never merges into ordinary wrong-password noise.
+      fingerprint: ['login-failed', reason],
     });
   }
 
@@ -141,7 +160,8 @@ export class LoginPage implements OnDestroy {
   /**
    * Pick a user-facing message by failure type — don't surface raw API internals.
    *   • no HTTP response reached the app (status 0 — network / CORS / DNS / TLS) → noInternet
-   *   • credential rejection (API 200 {success:false}, thrown with apiErrors, or HTTP 401) → incorrect
+   *   • credential rejection (API 200 {success:false} → reason api_rejected, or HTTP 401) → incorrect
+   *   • password accepted but no mfa_token (reason mfa_token_missing) → errNoMfa
    *   • anything else unexpected (e.g. 5xx) → generic
    * Keys live in the `login` namespace so they resolve pre-token (see translations.ts).
    */
@@ -149,9 +169,12 @@ export class LoginPage implements OnDestroy {
     if (err instanceof HttpErrorResponse && err.status === 0) {
       return this.lang.t('login.errNoInternet');
     }
+    if (isLoginError(err) && err.reason === 'mfa_token_missing') {
+      return this.lang.t('login.errNoMfa');
+    }
     if (
       (err instanceof HttpErrorResponse && err.status === 401) ||
-      (err !== null && typeof err === 'object' && 'apiErrors' in err)
+      (isLoginError(err) && err.reason === 'api_rejected')
     ) {
       return this.lang.t('login.errIncorrect');
     }

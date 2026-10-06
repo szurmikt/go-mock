@@ -32,7 +32,8 @@
     "tryAgain": "Try again",
     "errIncorrect": "The email or password you entered is incorrect. Please check your credentials and try again.",
     "errNoInternet": "No internet connection",
-    "errGeneric": "Something went wrong. Please try again."
+    "errGeneric": "Something went wrong. Please try again.",
+    "errNoMfa": "Two-step verification is not enabled for this account, so it cannot be used in SabeeApp Go. Please enable it in SabeeApp PMS and try again."
   },
   "propertySelect": {
     "appName": "SabeeApp Go",

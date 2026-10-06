@@ -32,7 +32,8 @@
     "tryAgain": "Próbáld újra",
     "errIncorrect": "A megadott e-mail cím vagy jelszó helytelen. Ellenőrizd az adataidat, és próbáld újra.",
     "errNoInternet": "Nincs internetkapcsolat",
-    "errGeneric": "Hiba történt. Kérjük, próbáld újra."
+    "errGeneric": "Hiba történt. Kérjük, próbáld újra.",
+    "errNoMfa": "Ennél a fióknál nincs bekapcsolva a kétlépcsős azonosítás, ezért nem használható a SabeeApp Go-ban. Kapcsold be a SabeeApp PMS-ben, majd próbáld újra."
   },
   "propertySelect": {
     "appName": "SabeeApp Go",

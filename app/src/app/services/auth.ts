@@ -58,6 +58,45 @@ export interface RefreshRequestResult {
   response: { status: number; body: unknown; parseError: string | null };
 }
 
+/** Why login() rejected. `api_rejected` = success:false (ret_msg in apiErrors); `mfa_token_missing` = success:true but no mfa_token. */
+export type LoginFailureReason = 'api_rejected' | 'mfa_token_missing';
+
+export type LoginError = Error & {
+  reason: LoginFailureReason;
+  apiErrors?: unknown;
+  responseShape: LoginResponseShape;
+};
+
+/** Structure of a /token login response — key names and flags only, never token values. */
+export interface LoginResponseShape {
+  success: unknown;
+  dataKeys: string[];
+  errorCodes: (number | undefined)[];
+  /** userID claim from an access_token the response carried (a token issued without MFA), if decodable. */
+  userId?: number;
+}
+
+function describeLoginResponse(res: ApiResponse<unknown>): LoginResponseShape {
+  const data = res.data && typeof res.data === 'object' ? (res.data as Record<string, unknown>) : {};
+  const errors = Array.isArray(res.errors) ? (res.errors as { ret_code?: number }[]) : [];
+  const shape: LoginResponseShape = {
+    success: res.success,
+    dataKeys: Object.keys(data),
+    errorCodes: errors.map(e => e?.ret_code),
+  };
+  const accessToken = data['access_token'];
+  if (typeof accessToken === 'string') {
+    try {
+      const payload = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const userId = (JSON.parse(atob(payload)) as { data?: { userID?: number } }).data?.userID;
+      if (userId != null) shape.userId = userId;
+    } catch {
+      // diagnostic only — an undecodable token just leaves userId out
+    }
+  }
+  return shape;
+}
+
 function sortPropertiesByCompany(props: PropertyInterface[]): PropertyInterface[] {
   const startsWithLetter = (s: string) => /^\p{L}/u.test(s);
   return [...props].sort((a, b) => {
@@ -224,8 +263,20 @@ export class AuthService {
     // instead of an opaque "cannot read mfa_token" TypeError.
     if (!res.success || !res.data?.mfa_token) {
       const apiErrors = res.errors as { ret_code?: number; ret_msg?: string }[] | undefined;
-      const error = new Error(apiErrors?.[0]?.ret_msg ?? 'Login failed') as Error & { apiErrors?: unknown };
-      error.apiErrors = res.errors;
+      // success:true without an mfa_token means the password was accepted but the API did not
+      // start an MFA step (e.g. an account with MFA off). Go never allows that — keep it distinct
+      // from a credential rejection so the user and Sentry both see the real reason.
+      const mfaTokenMissing = res.success === true;
+      const error: LoginError = Object.assign(
+        new Error(
+          mfaTokenMissing ? 'Login blocked: API returned no mfa_token' : apiErrors?.[0]?.ret_msg ?? 'Login failed',
+        ),
+        {
+          reason: mfaTokenMissing ? ('mfa_token_missing' as const) : ('api_rejected' as const),
+          apiErrors: res.errors,
+          responseShape: describeLoginResponse(res),
+        },
+      );
       throw error;
     }
     return { mfaToken: res.data.mfa_token };

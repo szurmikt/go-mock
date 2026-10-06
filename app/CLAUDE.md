@@ -701,6 +701,15 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ## 20. Changelog
 
+### 2026-10-06 — Login: distinct handling + Sentry detail for a missing `mfa_token` (PID 10758)
+
+> Branch `fix-login-missing-mfa-token`, merged to `main` locally (not pushed). No build/version bump, not published OTA. Typecheck passes; not tested yet, no tests added (none cover `login()`).
+
+- **Why:** PID 10758 reported "wrong email or password" with a correct password. The API team's logs showed the password check succeeded and no `/mfa/verify` call followed. `AuthService.login()` threw the same error for `success:false` and for `success:true` with no `mfa_token`, and `LoginPage.extractMessage()` mapped any error carrying an `apiErrors` property (even `undefined`) to `errIncorrect`. Likely cause is an account with MFA off; not confirmed against the real `/token` response. Policy: Go does not allow login without MFA (PMS has a special user type that can skip MFA, and those users may not use Go).
+- **[auth.ts](src/app/services/auth.ts) `login()`** now throws a `LoginError` with `reason` (`api_rejected` | `mfa_token_missing`), `apiErrors`, and `responseShape` (`success`, `data` key names, API error codes, and a `userID` decoded from an `access_token` if the response carried one; never token values).
+- **[login.page.ts](src/app/pages/login/login.page.ts):** `errIncorrect` only for `api_rejected` or HTTP 401; `mfa_token_missing` shows the new `login.errNoMfa` (EN + HU, also in `translations.ts`/`translations.*.json`).
+- **Sentry:** `login_failure_reason` tag (`api_rejected`, `mfa_token_missing`, `http_<status>`, `unknown`), `login_user_id` tag when known, per-reason fingerprint, and extras with email, device id and response shape. PID is unknown pre-login by design (property is picked after MFA). Email is logged as personal data; revisit if unwanted.
+
 ### 2026-10-05 — Mixpanel: IDScanly recognition timing (`recognition_duration_ms`, `payload_kb`)
 
 > Branch `add-home-filter-chips`. No build/version bump, not published OTA. Not verified on a device.
