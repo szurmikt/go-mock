@@ -703,7 +703,7 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ### 2026-10-07 — Home: Today's arrivals split no longer treats an online check-in as "arrived"
 
-> Branch `fix-arrivals-split-online-checkin`. No build/version bump. Published OTA to the `dev` channel only. Spec 28/28 green; not verified on a device.
+> Branch `fix-arrivals-split-online-checkin`, merged to `main`. No build/version bump. Published OTA to `dev` (bundle `cfa4f13b-3c56-43fb-b5cc-715c3f64e8ff`, build #82, git `ee0e63c`), verified on a device, then promoted to `early` and `prod`. Spec 28/28 green.
 
 - **Why:** on properties using online check-in, `checkedin` only means the guest completed the online form, not that they are at the property (arriving moves them to `onboard`). `hasArrived()` counted `checkedin`, so those guests landed under "Arrived" on Today's arrivals. Properties without online check-in never have `checkedin` (the PMS shows `onboard` as "Checked-in"), so they are unaffected.
 - **[home-filter-grouping.ts](src/app/utils/home-filter-grouping.ts):** `hasArrived()` is now `onboard` or `checkedout`. New `hasCheckedInAhead()` keeps `checkedin` in the completed group for **tomorrow's** arrivals only, where "Checked-in" (online check-in ahead of arrival) is the useful split. `isInHouse()` still counts `checkedin`; left as-is, not part of this report.
