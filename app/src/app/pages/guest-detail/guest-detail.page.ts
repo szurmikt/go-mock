@@ -13,6 +13,7 @@ import { CaptureSessionService } from '../../idscanly/services/capture-session.s
 import { ExternalResultService } from '../../idscanly/services/external-result.service';
 import { DocumentTypeId, resolveScanEntryType } from '../../idscanly/models/document-type';
 import { CapturePreferenceService } from '../../idscanly/services/capture-preference.service';
+import { CountryUsageService } from '../../services/country-usage.service';
 import { GuestInterface, ScanResultInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
 import { DashIfEmptyPipe } from '../../pipes/dash-if-empty.pipe';
@@ -100,6 +101,7 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     private captureSession: CaptureSessionService,
     private externalResult: ExternalResultService,
     private capturePreference: CapturePreferenceService,
+    private countryUsage: CountryUsageService,
   ) {}
 
   ngOnInit() {
@@ -276,6 +278,10 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     if (!guest) return;
 
     const isIdentityDoc = result?.documentData?.is_identity_document !== false;
+    // Snapshot before the scan merge mutates `guest` in place — the country pickers' top-10
+    // counts only go up when the save actually changes the country.
+    const prevCitizenship = guest.citizenship;
+    const prevCountry = guest.address?.country_code;
 
     if (result?.scannedData) {
       if (isIdentityDoc) {
@@ -299,6 +305,8 @@ export class GuestDetailPage implements OnInit, OnDestroy, ViewWillEnter {
     this.scanSaveError.set(null);
     this.res.updateGuest(this.reservationCode, guest)
       .then(() => {
+        this.countryUsage.record('citizenship', prevCitizenship, guest.citizenship);
+        this.countryUsage.record('country_code', prevCountry, guest.address?.country_code);
         this.mixpanel.trackScanResultSaved({
           document_type: result?.documentData?.document_type ?? undefined,
         });

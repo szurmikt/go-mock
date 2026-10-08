@@ -197,6 +197,23 @@ export class MixpanelService {
     this.track('guest_updated', { ...p });
   }
 
+  /**
+   * One per country-picker sheet session (Citizenship / Address country on Guest Edit), fired
+   * when it closes. Never carries the country itself — nationality is guest PII here.
+   */
+  trackCountryPickerUsed(p: {
+    field: 'citizenship' | 'country_code';
+    outcome: 'picked' | 'dismissed';
+    picked_from?: 'top' | 'list' | 'search';
+    top_rank?: number;
+    top_count: number;
+    used_search: boolean;
+    query_length: number;
+    changed: boolean;
+  }): void {
+    this.track('country_picker_used', { ...p });
+  }
+
   trackScanResultEdited(p: { document_type?: string }): void {
     this.track('scan_result_edited', { ...p });
   }

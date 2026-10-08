@@ -162,7 +162,9 @@
     "documentType": "Okmány típusa",
     "documentNumber": "Okmány száma",
     "turkishIdNumber": "Török személyazonosító szám",
-    "saved": "A vendég adatai elmentve"
+    "saved": "A vendég adatai elmentve",
+    "searchCountry": "Ország keresése…",
+    "noCountryMatch": "Nincs találat."
   },
   "idScan": {
     "fullName": "Vezeték- és keresztnév",
