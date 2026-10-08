@@ -10,6 +10,7 @@ import { OptionsService } from '../../services/options.service';
 import { PropertySettingsService } from '../../services/property-settings.service';
 import { LanguageService } from '../../services/language.service';
 import { AuthService } from '../../services/auth';
+import { MixpanelService } from '../../services/mixpanel';
 import { ReservationInterface, ReservationNoteInterface } from '../../models/reservation.interface';
 import { GuestInterface } from '../../models/guest.interface';
 import { LocalizedDatePipe } from '../../pipes/localized-date.pipe';
@@ -194,6 +195,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     private options: OptionsService,
     private lang: LanguageService,
     private auth: AuthService,
+    private mixpanel: MixpanelService,
     public propertySettings: PropertySettingsService,
   ) {}
 
@@ -305,8 +307,14 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
 
   // Two entry points, one sheet: the FAB's "Change Status" action item and the
   // status pill in the detail-block header both call this.
-  openStatusSheet() {
+  openStatusSheet(source: 'fab' | 'pill') {
     if (!this.inStatusFlow()) return;
+    this.mixpanel.trackReservationStatusSheetOpened({
+      reservation_code: this.reservationCode,
+      property_id: this.auth.selectedProperty()?.property_id,
+      source,
+      current_status: this.reservation()?.status ?? '',
+    });
     this.menuOpen.set(false);
     this.statusUpdateError.set(null);
     this.statusSheetOpen.set(true);
@@ -461,6 +469,9 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     // regardless of which steps this property's account shows.
     const displayIndex = this.statusSteps().findIndex(s => s.key === target.key);
     if (isRevert) this.revertingIndex.set(displayIndex);
+    const fromStatus = this.reservation()?.status ?? '';
+    const stepsBack = STATUS_STEPS.findIndex(s => s.key === fromStatus) - STATUS_STEPS.findIndex(s => s.key === target.key);
+    let success = false;
     try {
       let updated = await this.res.changeStatus(this.reservationCode, target.key);
       if (isRevert) {
@@ -468,9 +479,19 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
         updated = blankTimestampsAfter(updated, fullIndex);
       }
       this.reservation.set(updated);
+      success = true;
     } catch (e: any) {
       this.statusUpdateError.set(e?.message ?? this.lang.t('errors.failedChangeStatus'));
     } finally {
+      const base = {
+        reservation_code: this.reservationCode,
+        property_id: this.auth.selectedProperty()?.property_id,
+        from_status: fromStatus,
+        to_status: target.key,
+        success,
+      };
+      if (isRevert) this.mixpanel.trackReservationStatusReverted({ ...base, steps_back: stepsBack });
+      else this.mixpanel.trackReservationStatusChanged(base);
       this.statusUpdating.set(false);
       this.revertingIndex.set(null);
     }
@@ -555,6 +576,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     const type = this.noteType();
     this.postingNote.set(true);
     this.noteError.set(null);
+    let noteSuccess = false;
     try {
       const updated = await this.res.postNote(
         current,
@@ -574,9 +596,17 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
       markNotesSeen(this.auth.userId(), this.reservationCode);
       this.noteDraft.set('');
       setTimeout(() => this.scrollNotesToBottom(), 0);
+      noteSuccess = true;
     } catch (e: any) {
       this.noteError.set(e?.message ?? this.lang.t('errors.failedPostNote'));
     } finally {
+      this.mixpanel.trackReservationNoteAdded({
+        reservation_code: this.reservationCode,
+        property_id: this.auth.selectedProperty()?.property_id,
+        note_type: type,
+        housekeeper_visible: type === 'reservation' ? this.housekeeperVisible() : undefined,
+        success: noteSuccess,
+      });
       this.postingNote.set(false);
     }
   }
@@ -653,13 +683,21 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     if (!current || this.deletingNoteId() !== null) return;
     this.deletingNoteId.set(note.comment_id);
     this.noteError.set(null);
+    let deleteSuccess = false;
     try {
       const updated = await this.res.deleteNote(current, note);
       this.reservation.set(updated);
       if (this.openNoteId() === note.comment_id) this.openNoteId.set(null);
+      deleteSuccess = true;
     } catch (e: any) {
       this.noteError.set(e?.message ?? this.lang.t('errors.failedDeleteNote'));
     } finally {
+      this.mixpanel.trackReservationNoteDeleted({
+        reservation_code: this.reservationCode,
+        property_id: this.auth.selectedProperty()?.property_id,
+        note_type: note.type,
+        success: deleteSuccess,
+      });
       this.deletingNoteId.set(null);
     }
   }
