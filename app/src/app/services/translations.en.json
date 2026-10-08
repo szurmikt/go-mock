@@ -162,7 +162,10 @@
     "documentType": "Document Type",
     "documentNumber": "Document Number",
     "turkishIdNumber": "Turkish Republic identity number",
-    "saved": "Guest details saved"
+    "saved": "Guest details saved",
+    "searchCountry": "Search country…",
+    "noCountryMatch": "No countries match.",
+    "clear": "Clear"
   },
   "idScan": {
     "fullName": "First & Last name",

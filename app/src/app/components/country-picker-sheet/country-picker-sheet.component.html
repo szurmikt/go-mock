@@ -1,0 +1,70 @@
+<div class="sheet-backdrop" (click)="dismiss()">
+  <div class="sheet sheet--tall picker-sheet" (click)="$event.stopPropagation()">
+    <div class="head">
+      <h3>{{ title }}</h3>
+      @if (value) {
+        <button class="picker-clear-btn" (click)="clear()">{{ 'guestEdit.clear' | tr }}</button>
+      }
+      <button class="icon-btn" (click)="dismiss()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="search-field" style="margin: 12px 0 4px; flex-shrink: 0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-4); flex-shrink: 0">
+        <circle cx="11" cy="11" r="7"/>
+        <path d="m21 21-4.3-4.3"/>
+      </svg>
+      <input
+        type="text"
+        [placeholder]="'guestEdit.searchCountry' | tr"
+        [value]="query()"
+        (input)="onQuery($any($event.target).value)"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+        style="font-weight: 600" />
+      @if (query().length > 0) {
+        <button (click)="onQuery('')" style="background: none; border: none; padding: 0; cursor: pointer; color: var(--ink-4); display: flex; align-items: center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      }
+    </div>
+
+    <div class="picker-list" #list>
+      @if (topCountries().length > 0) {
+        @for (c of topCountries(); track c.country_code) {
+          <button class="picker-item" [class.selected]="c.country_code === value" (click)="pick(c.country_code, 'top')">
+            <span class="picker-label">{{ c.name }}</span>
+            @if (c.country_code === value) {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            }
+          </button>
+        }
+        <div class="picker-divider"></div>
+      }
+      @for (c of filtered(); track c.country_code) {
+        <button class="picker-item" [class.selected]="c.country_code === value" (click)="pick(c.country_code, 'list')">
+          <span class="picker-label">{{ c.name }}</span>
+          @if (c.country_code === value) {
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+              stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+          }
+        </button>
+      }
+      @if (filtered().length === 0) {
+        <div class="notes-empty">{{ 'guestEdit.noCountryMatch' | tr }}</div>
+      }
+    </div>
+  </div>
+</div>

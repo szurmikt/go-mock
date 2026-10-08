@@ -40,6 +40,10 @@ export const Config = {
   STORAGE_FILTER_TOUR_SEEN_KEY: 'filterTourSeen',
   // Same, for the short Home chip-strip tour started from the pulsing dot on the filter icon.
   STORAGE_HOME_FILTER_TOUR_SEEN_KEY: 'homeFilterTourSeen',
+  // Country-picker popularity counts ("top 10" section) — see country-usage.service.ts. One blob
+  // keyed by property id, then by field (citizenship / country_code). Device-local, and
+  // deliberately NOT cleared by AuthService.clearSessionData(): it's per-property history.
+  STORAGE_COUNTRY_USAGE_KEY: 'countryUsage',
   // Per-user Help & tips card seen/dismissed state — see tips.service.ts. One blob keyed by
   // auth.userId() so GO's shared front-desk devices don't hide a card from one staff member
   // just because a colleague already saw it. Deliberately NOT cleared by

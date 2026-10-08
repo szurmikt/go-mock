@@ -21,6 +21,7 @@ import { MixpanelService } from './services/mixpanel';
 import { OptionsService } from './services/options.service';
 import { RemoteTipsService } from './services/remote-tips.service';
 import { TipsService } from './services/tips.service';
+import { CountryUsageService } from './services/country-usage.service';
 import {
   BOOT_SETUP_BUDGET_NATIVE_MS,
   BOOT_SETUP_BUDGET_OTA_MS,
@@ -101,6 +102,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private filterTour = inject(FilterTourService);
   private remoteTips = inject(RemoteTipsService);
   private tips = inject(TipsService);
+  private countryUsage = inject(CountryUsageService);
   private homeFilters = inject(FilterService);
 
   constructor(
@@ -159,6 +161,8 @@ export class AppComponent implements OnInit, OnDestroy {
     // Purely local read (per-user Help & tips seen/dismissed state) — no network dependency,
     // must resolve before Home's first ionViewWillEnter can compute its tip carousel.
     await this.tips.init();
+    // Purely local read (country-picker popularity counts) — no network dependency.
+    await this.countryUsage.init();
     // Purely local read (per-user saved Home filter chips + selection) — no network
     // dependency, must resolve before Home's first ionViewWillEnter can seed/read filters.
     await this.homeFilters.init();

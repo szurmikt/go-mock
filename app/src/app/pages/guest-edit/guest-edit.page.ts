@@ -15,6 +15,10 @@ import { LanguageService } from '../../services/language.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { toInputDate } from '../../utils/date';
 import { BusyGuardService } from '../../services/busy-guard';
+import { CountryUsageService } from '../../services/country-usage.service';
+import { CountryPickerSheetComponent } from '../../components/country-picker-sheet/country-picker-sheet.component';
+
+type CountryField = 'citizenship' | 'country_code';
 
 /** Busy-guard key: an unsaved edit must not be discarded by a live-update reload. */
 const EDIT_BUSY_KEY = 'guest-edit-dirty';
@@ -24,13 +28,14 @@ const EDIT_BUSY_KEY = 'guest-edit-dirty';
   templateUrl: './guest-edit.page.html',
   styleUrls: ['./guest-edit.page.scss'],
   standalone: true,
-  imports: [IonContent, FormsModule, TranslatePipe],
+  imports: [IonContent, FormsModule, TranslatePipe, CountryPickerSheetComponent],
 })
 export class GuestEditPage implements OnInit, OnDestroy {
   private docuscanService = inject(DocuscanService);
   private externalResult = inject(ExternalResultService);
   private busyGuard = inject(BusyGuardService);
   private propertySettings = inject(PropertySettingsService);
+  countryUsage = inject(CountryUsageService);
 
   // Only shown when the current property's scan_fields (GET /properties/settings) actually
   // lists this field — it's TR-specific and most properties never have it configured.
@@ -43,6 +48,8 @@ export class GuestEditPage implements OnInit, OnDestroy {
   saving = signal(false);
   error = signal<string | null>(null);
   saveError = signal<string | null>(null);
+  /** Which country field's picker sheet is open (null = closed). */
+  countryPicker = signal<CountryField | null>(null);
 
   // form model — flat, two-way bound
   form = {
@@ -234,6 +241,24 @@ export class GuestEditPage implements OnInit, OnDestroy {
     this.busyGuard.acquire(EDIT_BUSY_KEY);
   }
 
+  openCountryPicker(field: CountryField): void {
+    this.countryPicker.set(field);
+  }
+
+  pickCountry(field: CountryField, code: string): void {
+    if (this.form[field] !== code) {
+      this.form[field] = code;
+      this.markDirty();
+    }
+    this.countryPicker.set(null);
+  }
+
+  /** Display name for a stored country code; falls back to the raw code if it isn't in the options list. */
+  countryName(code: string): string {
+    if (!code) return '';
+    return this.options.countries().find(c => c.country_code === code)?.name ?? code;
+  }
+
   private clearDirty(): void {
     if (!this.dirty) return;
     this.dirty = false;
@@ -274,6 +299,10 @@ export class GuestEditPage implements OnInit, OnDestroy {
         },
       };
       await this.res.updateGuest(this.reservationCode, updated);
+      // Popularity counts for the country pickers' top-10 section — compared against the
+      // fetched server copy, so a scan-prefilled country that gets saved counts as a change.
+      this.countryUsage.record('citizenship', g.citizenship, this.form.citizenship);
+      this.countryUsage.record('country_code', g.address?.country_code, this.form.country_code);
       const fieldsChanged = Object.keys(this.form).filter(
         k => (this.form as Record<string, string>)[k] !== (this.formSnapshot[k] ?? ''),
       ).length;

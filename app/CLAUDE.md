@@ -701,6 +701,17 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ## 20. Changelog
 
+### 2026-10-08 — Guest Edit: searchable country picker with per-property "top 10"
+
+> Branch `feature/country-picker-search`. No build/version bump. Published OTA to `dev` (bundle `fc5b2c04-7017-4869-bcca-6a91b222d504`) **from the uncommitted tree before this commit** — its `git 351f4e5` tag does not contain these changes, so move it to `early`/`prod` with `promote:liveupdate <bundle-id>`, not a direct publish. `npx ng build` clean; not yet verified in the browser or on a device.
+
+- **Why:** customers complained about scrolling the ~250-entry native iOS `<select>` popup to find a country (no search, no jump-to-letter without a hardware keyboard).
+- **New [country-picker-sheet](src/app/components/country-picker-sheet/country-picker-sheet.component.ts)** bottom sheet (`sheet--tall`, flex column so only `.picker-list` scrolls). Search folds case + accents (`NFD` + `\p{Diacritic}`), also matches the exact 2-letter code; names starting with the query rank first. Compact rows with no dividers (`.picker-item`), checkmark on the selected row, opens scrolled to it. "Clear" text button in the header (only when a value is set). Search box does not autofocus (keyboard would cover the list).
+- **[guest-edit.page.html](src/app/pages/guest-edit/guest-edit.page.html):** Citizenship and Address → Country `<select>`s replaced with `.form-group--picker` triggers (same floating-label shell; `.has-value`/`.active` drive the label since there is no input). Gender and Document type stay native selects.
+- **Top 10:** new [country-usage.service.ts](src/app/services/country-usage.service.ts) keeps per-device, per-property counts (`Config.STORAGE_COUNTRY_USAGE_KEY`, separate for `citizenship` and `country_code`, not cleared on logout/switch). `record()` counts only when a successful save changes the country — from guest-edit `save()` (compared with the fetched server copy) and guest-detail's scan-result Save (snapshot taken before the in-place scan merge). The sheet shows the top 10 (most used first) above a `.picker-divider`, only when not searching and only once something was counted.
+- **Mixpanel:** new `country_picker_used` (one per sheet session): `field`, `outcome`, `picked_from`, `top_rank`, `top_count`, `used_search`, `query_length`, `changed`. The country itself is never sent (nationality is guest PII). Documented in [mixpanel-tracking-plan.md](docs/mixpanel-tracking-plan.md).
+- **Translations:** `guestEdit.searchCountry` / `noCountryMatch` / `clear` added to `translations.ts` / `.en.json` / `.hu.json`. Other languages fall back to English until the API serves them.
+
 ### 2026-10-08 — Repo housekeeping: commit leftover build-number bumps, gitignore local key file
 
 > Committed directly to `main`. No code change, no build.

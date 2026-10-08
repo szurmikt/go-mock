@@ -13,6 +13,13 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+### 2026-10-08 — dev — fc5b2c04-7017-4869-bcca-6a91b222d504
+> Branch `feature/country-picker-search`, built from an **uncommitted** working tree — the bundle's `git 351f4e5` tag does NOT contain these changes. Promote by bundle id (`promote:liveupdate`), not by re-publishing from a commit.
+- Guest Edit: Citizenship and Address country open a searchable bottom sheet instead of the long native dropdown (search ignores case/accents, matches 2-letter codes)
+- The sheet shows the property's 10 most-used countries on top, then a divider, then A–Z; counts are per device and per property, and go up only when a save changes the country (Edit screen and scan-result save)
+- "Clear" button in the sheet header removes a chosen country
+- Mixpanel: new `country_picker_used` event (field, outcome, picked_from, top_rank, top_count, used_search, query_length, changed — never the country itself)
+
 ### 2026-10-06 — prod — f8dd23d6-031e-4597-9363-ba493a8e090d
 > git `0edd3f3`. Published to `dev`, device-tested, promoted (not rebuilt) to `early` and `prod` the same day. Same as `ff034331` below plus the timing change.
 - Mixpanel: `scan_succeeded` / `scan_failed` now carry `recognition_duration_ms` (IDScanly request time) and `payload_kb` (submitted image size) — no user-facing change

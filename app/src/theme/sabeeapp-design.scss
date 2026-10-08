@@ -1368,6 +1368,81 @@ ion-refresher {
   }
 }
 
+/* ─── Picker field (opens a sheet instead of a native <select>) ─── */
+// Same shell as .form-group; the value is a span, so the label floats on
+// .has-value instead of :placeholder-shown, and "focus" is the .active class
+// while the sheet is open.
+
+.form-group--picker {
+  cursor: pointer;
+  padding-right: 40px;
+
+  &.active { border-color: var(--primary); }
+
+  &.has-value label,
+  &.active label {
+    top: 8px; transform: none;
+    font-size: var(--font-xs);
+  }
+  &.active label { color: var(--primary); }
+
+  .picker-value {
+    flex: 1; min-width: 0;
+    font-size: var(--font-md); font-weight: 700; color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .form-icon {
+    position: absolute; right: 14px; top: 50%;
+    transform: translateY(-50%); padding-bottom: 0;
+  }
+}
+
+/* ─── Picker sheet (searchable list) ──────────────────────── */
+// Flex column so only .picker-list scrolls; the head + search stay pinned.
+
+.sheet.picker-sheet {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.picker-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: calc(max(env(safe-area-inset-bottom, 0px) - 8px, 8px) + 8px);
+}
+
+// Condensed rows, no dividers — a ~250-row country list needs density more than separation.
+.picker-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 10px 4px;
+  border: none; background: transparent; font: inherit;
+  font-size: var(--font-md); font-weight: 600;
+  color: var(--ink); cursor: pointer; text-align: left;
+
+  &:active { opacity: 0.6; }
+
+  .picker-label { flex: 1; min-width: 0; }
+
+  &.selected { color: var(--primary); font-weight: 800; }
+
+}
+
+// "Clear" text button in the picker sheet header, left of the X (only when a value is set).
+.picker-clear-btn {
+  margin-left: auto; margin-right: 4px;
+  border: none; background: transparent; font: inherit;
+  font-size: var(--font-base); font-weight: 700; color: var(--primary);
+  padding: 8px 10px; cursor: pointer;
+  &:active { opacity: 0.6; }
+}
+
+// Separates the "top 10 most used" rows from the full alphabetical list.
+.picker-divider { height: 1px; background: var(--line); margin: 6px 4px; }
+
 /* ─── Language select ─────────────────────────────────────── */
 
 .lang-select {
