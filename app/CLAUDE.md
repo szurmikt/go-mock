@@ -701,6 +701,13 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ## 20. Changelog
 
+### 2026-10-08 — Repo housekeeping: commit leftover build-number bumps, gitignore local key file
+
+> Committed directly to `main`. No code change, no build.
+
+- **Build numbers:** committed the bumps left uncommitted by earlier publish runs: iOS `CURRENT_PROJECT_VERSION` 106 → 108, Android `versionCode` 34 → 36 (`versionName` stays 1.0.7).
+- **[.gitignore](.gitignore):** `src/environments/llm.local.ts` was described as gitignored in its own header comment but wasn't, so it showed as an untracked file holding an Anthropic API key. Now ignored. Also ignored `docs/status-icons/` (a saved ~1 MB PMS "List view" page kept locally as status-icon reference material).
+
 ### 2026-10-07 — Home: Today's arrivals split no longer treats an online check-in as "arrived"
 
 > Branch `fix-arrivals-split-online-checkin`, merged to `main`. No build/version bump. Published OTA to `dev` (bundle `cfa4f13b-3c56-43fb-b5cc-715c3f64e8ff`, build #82, git `ee0e63c`), verified on a device, then promoted to `early` and `prod`. Spec 28/28 green.
