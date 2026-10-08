@@ -164,8 +164,7 @@
     "turkishIdNumber": "Turkish Republic identity number",
     "saved": "Guest details saved",
     "searchCountry": "Search country…",
-    "noCountryMatch": "No countries match.",
-    "clear": "Clear"
+    "noCountryMatch": "No countries match."
   },
   "idScan": {
     "fullName": "First & Last name",

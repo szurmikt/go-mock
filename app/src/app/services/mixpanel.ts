@@ -203,7 +203,7 @@ export class MixpanelService {
    */
   trackCountryPickerUsed(p: {
     field: 'citizenship' | 'country_code';
-    outcome: 'picked' | 'cleared' | 'dismissed';
+    outcome: 'picked' | 'dismissed';
     picked_from?: 'top' | 'list' | 'search';
     top_rank?: number;
     top_count: number;

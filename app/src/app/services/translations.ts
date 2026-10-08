@@ -185,7 +185,6 @@ export const TRANSLATIONS: TranslationMap = {
     saved: 'Guest details saved',
     searchCountry: 'Search country…',
     noCountryMatch: 'No countries match.',
-    clear: 'Clear',
   },
   // Shared scan-result vocabulary — read by guest-detail's scan-result bottom sheet,
   // used by IDScanly's mapped results.

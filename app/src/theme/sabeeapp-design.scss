@@ -1431,15 +1431,6 @@ ion-refresher {
 
 }
 
-// "Clear" text button in the picker sheet header, left of the X (only when a value is set).
-.picker-clear-btn {
-  margin-left: auto; margin-right: 4px;
-  border: none; background: transparent; font: inherit;
-  font-size: var(--font-base); font-weight: 700; color: var(--primary);
-  padding: 8px 10px; cursor: pointer;
-  &:active { opacity: 0.6; }
-}
-
 // Separates the "top 10 most used" rows from the full alphabetical list.
 .picker-divider { height: 1px; background: var(--line); margin: 6px 4px; }
 

@@ -31,7 +31,7 @@ export class CountryPickerSheetComponent implements AfterViewInit {
   /** Most-used country codes, most popular first — shown above the full list when not searching. */
   @Input() set topCodes(v: string[]) { this.top.set(v ?? []); }
 
-  /** Emits the picked country_code, or '' for "Clear selection". The parent closes the sheet. */
+  /** Emits the picked country_code. The parent closes the sheet. */
   @Output() picked = new EventEmitter<string>();
   @Output() closed = new EventEmitter<void>();
 
@@ -96,18 +96,13 @@ export class CountryPickerSheetComponent implements AfterViewInit {
     this.picked.emit(code);
   }
 
-  clear(): void {
-    this.track({ outcome: 'cleared', changed: !!this.value });
-    this.picked.emit('');
-  }
-
   dismiss(): void {
     this.track({ outcome: 'dismissed', changed: false });
     this.closed.emit();
   }
 
   private track(p: {
-    outcome: 'picked' | 'cleared' | 'dismissed';
+    outcome: 'picked' | 'dismissed';
     picked_from?: 'top' | 'list' | 'search';
     top_rank?: number;
     changed: boolean;

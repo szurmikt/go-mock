@@ -140,7 +140,7 @@ meaningless.
 
 | Event | When | Properties |
 |---|---|---|
-| `country_picker_used` | Citizenship / Address-country picker sheet on Guest Edit closes (once per opening) | `field` (`citizenship`\|`country_code`), `outcome` (`picked`\|`cleared`\|`dismissed`), `picked_from` (`top`\|`list`\|`search`, only when picked), `top_rank` (1-based, only when picked from the top section), `top_count` (int, size of the "most used" section, 0 = none yet), `used_search` (bool), `query_length` (int), `changed` (bool, picked value differs from the field's previous value) |
+| `country_picker_used` | Citizenship / Address-country picker sheet on Guest Edit closes (once per opening) | `field` (`citizenship`\|`country_code`), `outcome` (`picked`\|`dismissed`), `picked_from` (`top`\|`list`\|`search`, only when picked), `top_rank` (1-based, only when picked from the top section), `top_count` (int, size of the "most used" section, 0 = none yet), `used_search` (bool), `query_length` (int), `changed` (bool, picked value differs from the field's previous value) |
 
 - **"How often are the country selectors used"** → `country_picker_used` volume, broken down by `field`.
 - **"Does the top-10 section help"** → share of `picked_from = top` among `outcome = picked` where `top_count > 0`; `top_rank` shows how deep people go.

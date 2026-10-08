@@ -164,8 +164,7 @@
     "turkishIdNumber": "Török személyazonosító szám",
     "saved": "A vendég adatai elmentve",
     "searchCountry": "Ország keresése…",
-    "noCountryMatch": "Nincs találat.",
-    "clear": "Törlés"
+    "noCountryMatch": "Nincs találat."
   },
   "idScan": {
     "fullName": "Vezeték- és keresztnév",
