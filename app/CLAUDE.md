@@ -714,6 +714,10 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 - **No clear option:** a chosen country can only be switched to another one, not blanked — a "Clear" button was tried and removed as confusing/error-prone.
 - **Translations:** `guestEdit.searchCountry` / `noCountryMatch` added to `translations.ts` / `.en.json` / `.hu.json`. Other languages fall back to English until the API serves them.
 
+### 2026-10-08 — Mixpanel: reservation status changes + notes (`feature/mixpanel-status-comment-tracking`)
+
+Reservation Detail had no Mixpanel events at all. Added five typed helpers in [mixpanel.ts](src/app/services/mixpanel.ts), called from [reservation-detail.page.ts](src/app/pages/reservation-detail/reservation-detail.page.ts): `reservation_status_sheet_opened{source: fab|pill, current_status}`, `reservation_status_changed{from_status,to_status,success}`, `reservation_status_reverted{…,steps_back,success}` (separate event so reverts chart directly), `reservation_note_added{note_type,housekeeper_visible?,success}`, `reservation_note_deleted{note_type,success}`. `openStatusSheet()` now takes a `'fab'|'pill'` source argument (template updated). Privacy: no note text, no room-note dates. Status/note events fire in `finally`, with `success` set. Documented in `docs/mixpanel-tracking-plan.md`.
+
 ### 2026-10-08 — Repo housekeeping: commit leftover build-number bumps, gitignore local key file
 
 > Committed directly to `main`. No code change, no build.

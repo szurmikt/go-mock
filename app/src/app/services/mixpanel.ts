@@ -214,6 +214,63 @@ export class MixpanelService {
     this.track('country_picker_used', { ...p });
   }
 
+  // ---- reservation status & notes (Reservation Detail) ----
+
+  /** Status sheet opened — from the FAB action item or the status pill. Compare against
+   *  trackReservationStatusChanged/Reverted to see how often it's opened without a change. */
+  trackReservationStatusSheetOpened(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    source: 'fab' | 'pill';
+    current_status: string;
+  }): void {
+    this.track('reservation_status_sheet_opened', { ...p });
+  }
+
+  /** Forward status change (advancing to the next step). */
+  trackReservationStatusChanged(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    from_status: string;
+    to_status: string;
+    success: boolean;
+  }): void {
+    this.track('reservation_status_changed', { ...p });
+  }
+
+  /** Long-press revert to an earlier status. Separate event so reverts chart directly. */
+  trackReservationStatusReverted(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    from_status: string;
+    to_status: string;
+    steps_back: number;
+    success: boolean;
+  }): void {
+    this.track('reservation_status_reverted', { ...p });
+  }
+
+  /** housekeeper_visible is only sent for reservation notes (the checkbox doesn't exist
+   *  for room notes). Never the comment text or the selected room-note dates. */
+  trackReservationNoteAdded(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    note_type: 'reservation' | 'room';
+    housekeeper_visible?: boolean;
+    success: boolean;
+  }): void {
+    this.track('reservation_note_added', { ...p });
+  }
+
+  trackReservationNoteDeleted(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    note_type: 'reservation' | 'room';
+    success: boolean;
+  }): void {
+    this.track('reservation_note_deleted', { ...p });
+  }
+
   trackScanResultEdited(p: { document_type?: string }): void {
     this.track('scan_result_edited', { ...p });
   }

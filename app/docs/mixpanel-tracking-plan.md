@@ -133,6 +133,20 @@ meaningless.
 |---|---|---|
 | `guest_updated` | Guest Edit form saved successfully | `reservation_code`, `property_id`, `from_scan` (bool), `fields_changed` (int) |
 
+### Reservation status & notes (Reservation Detail)
+
+| Event | When | Properties |
+|---|---|---|
+| `reservation_status_sheet_opened` | Status sheet opened | `reservation_code`, `property_id`, `source` (`fab`/`pill`), `current_status` |
+| `reservation_status_changed` | Forward status change attempted | `reservation_code`, `property_id`, `from_status`, `to_status`, `success` |
+| `reservation_status_reverted` | Long-press revert to an earlier status attempted | `reservation_code`, `property_id`, `from_status`, `to_status`, `steps_back`, `success` |
+| `reservation_note_added` | Note posted | `reservation_code`, `property_id`, `note_type` (`reservation`/`room`), `housekeeper_visible` (reservation notes only), `success` |
+| `reservation_note_deleted` | Note deleted | `reservation_code`, `property_id`, `note_type`, `success` |
+
+- **"Open the sheet but don't change anything"** → `reservation_status_sheet_opened` vs. changed + reverted.
+- **"Mistakes / corrections"** → `reservation_status_reverted` volume, `steps_back` distribution.
+- Privacy: never the note text or the selected room-note dates.
+
 - **"Do they edit guest cards"** → `guest_updated` volume / per-user.
 - **"How many times they change scanned data"** → `guest_updated` where `from_scan = true`;
   `fields_changed` = how many fields differ from the scan-prefilled values (0 = saved a scan
