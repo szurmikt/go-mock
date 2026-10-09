@@ -35,6 +35,7 @@ function makeReservation(overrides: Partial<ReservationInterface> = {}): Reserva
     number_of_guests: 1,
     nights: 1,
     open_in_pms: false,
+    ntak_connected: false,
     notes: [],
     ...overrides,
   };

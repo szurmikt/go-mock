@@ -1,0 +1,100 @@
+<div class="sheet-backdrop" (click)="close()">
+  <div class="sheet notes-sheet viza-sheet" (click)="$event.stopPropagation()">
+    <div class="head">
+      <h3>{{ 'viza.title' | tr }}</h3>
+      <button class="icon-btn" (click)="close()" [attr.aria-label]="'common.close' | tr">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="viza-list">
+      @if (!hasUnreported()) {
+        <p class="viza-empty">{{ 'viza.allReported' | tr }}</p>
+      }
+
+      @for (card of cards(); track card.guest.reservation_guest_id) {
+        @let g = card.guest;
+        <div class="card viza-card" [class.viza-card--muted]="!card.sendable"
+          [class.viza-card--selected]="selected.has(g.reservation_guest_id)">
+          <div class="viza-card__head">
+            @if (card.sendable) {
+              <button type="button" class="viza-check" (click)="onCheckbox(card)"
+                [attr.aria-pressed]="selected.has(g.reservation_guest_id)"
+                [attr.aria-label]="guestName(g)">
+                <span class="note-checkbox-box" [class.checked]="selected.has(g.reservation_guest_id)">
+                  @if (selected.has(g.reservation_guest_id)) {
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                  }
+                </span>
+              </button>
+            }
+            <div class="viza-card__name">{{ guestName(g) }}</div>
+
+            @if (card.sendable && card.missing.length > 0) {
+              <span class="pill" data-status="viza-incomplete">{{ 'viza.chipIncomplete' | tr }}</span>
+            }
+            @switch (g.viza_status) {
+              @case ('completed') { <span class="pill" data-status="viza-sent">{{ 'viza.chipSent' | tr }}</span> }
+              @case ('in_progress') { <span class="pill" data-status="viza-sending">{{ 'viza.chipSending' | tr }}</span> }
+              @case ('modified') { <span class="pill" data-status="viza-modified">{{ 'viza.chipModified' | tr }}</span> }
+              @case ('scanned') { <span class="pill" data-status="viza-scanned">{{ 'viza.chipScanned' | tr }}</span> }
+              @default { <span class="pill" data-status="viza-not-scanned">{{ 'viza.chipNotScanned' | tr }}</span> }
+            }
+
+            @if (card.editable) {
+              <button type="button" class="icon-btn viza-edit-btn" (click)="onEdit(card)" [attr.aria-label]="'viza.editAria' | tr">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20h9"/>
+                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                </svg>
+              </button>
+            }
+          </div>
+
+          @if (g.viza_status !== null || card.hasData) {
+            <dl class="viza-facts">
+              <div><dt>{{ 'guestEdit.birthDate' | tr }}</dt><dd>{{ (g.birth_date | localizedDate) || '—' }}</dd></div>
+              <div><dt>{{ 'guestEdit.gender' | tr }}</dt><dd>{{ genderLabel(g.gender) || '—' }}</dd></div>
+              <div><dt>{{ 'guestEdit.citizenship' | tr }}</dt><dd>{{ countryName(g.citizenship) || '—' }}</dd></div>
+              <div><dt>{{ 'guestEdit.documentType' | tr }}</dt><dd>{{ documentTypeLabel(g.document?.document_type) || '—' }}</dd></div>
+              <div class="viza-facts__wide"><dt>{{ 'guestEdit.documentNumber' | tr }}</dt><dd>{{ g.document?.document_number || '—' }}</dd></div>
+              @if (g.maiden_name) {
+                <div class="viza-facts__wide"><dt>{{ 'guestEdit.maidenFullName' | tr }}</dt><dd>{{ g.maiden_name }}</dd></div>
+              }
+              @if (g.mother_name) {
+                <div class="viza-facts__wide"><dt>{{ 'guestEdit.motherFullName' | tr }}</dt><dd>{{ g.mother_name }}</dd></div>
+              }
+              @if (g.birth_place) {
+                <div><dt>{{ 'guestEdit.birthPlace' | tr }}</dt><dd>{{ g.birth_place }}</dd></div>
+              }
+              @if (g.address?.country_code) {
+                <div><dt>{{ 'guestDetail.country' | tr }}</dt><dd>{{ countryName(g.address?.country_code) }}</dd></div>
+              }
+            </dl>
+          }
+
+          @if (blockedId() === g.reservation_guest_id && card.missing.length > 0) {
+            <p class="viza-card__error">{{ missingMessage(card.missing) }}</p>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="viza-footer">
+      @if (sendError) {
+        <p class="note-error" style="margin: 0">{{ sendError }}</p>
+      }
+      <button class="btn" (click)="send.emit()" [disabled]="selected.size === 0 || sending">
+        @if (sending) {
+          <span class="spin" style="width: 18px; height: 18px; border-width: 2.5px"></span>
+        } @else {
+          {{ sendLabel() }}
+        }
+      </button>
+    </div>
+  </div>
+</div>

@@ -147,6 +147,29 @@ meaningless.
 - **"Mistakes / corrections"** → `reservation_status_reverted` volume, `steps_back` distribution.
 - Privacy: never the note text or the selected room-note dates.
 
+### VIZA reporting (Reservation Detail sheet + Guest Edit VIZA mode)
+
+Every event carries `reservation_code`, `property_id`. Field **names** and counts only — never values.
+
+| Event | When | Properties |
+|---|---|---|
+| `viza_sheet_opened` | Report-to-VIZA sheet opened from the FAB | `total_guests`, `sendable_count` (scanned/modified), `incomplete_count` (sendable but missing a mandatory field), `not_scanned_count`, `sending_count`, `sent_count`, `auto_checked_count` (complete cards pre-ticked) |
+| `viza_banner_shown` | "Ready for VIZA reporting" banner became visible on Reservation Detail (once per page visit) | `ready_count` (complete sendable guests), `total_guests` |
+| `viza_banner_tapped` | Banner tapped (opens the sheet) | — |
+| `viza_card_toggled` | Staff tick / untick a complete card | `checked` (bool), `was_edited` (bool, status `modified`) |
+| `viza_card_blocked` | Checkbox tapped on an incomplete card (stays unchecked) | `missing_fields` (field names), `missing_count` |
+| `viza_edit_opened` | Edit tapped on a card | `reason` (`missing_fields`\|`voluntary`), `missing_fields` |
+| `viza_edit_saved` | Save on Guest Edit in VIZA mode | `changed_fields` (field names), `changed_count`, `now_complete` (bool), `success` |
+| `viza_edit_abandoned` | Left Guest Edit VIZA mode without saving | `had_changes` (bool) |
+| `viza_report_sent` | Send tapped (fires after the attempt) | `selected_count`, `sendable_count`, `edited_count` (selected with status `modified`), `unticked_count` (complete cards left unticked), `success`, `error_kind` (`http_error`\|`api_rejected`, failures only) |
+| `viza_sheet_closed` | Sheet closed without sending | `sendable_count`, `selected_count` |
+
+- **"Does read-only-first hold?" (edit rate)** → `viza_edit_opened` / `viza_sheet_opened`, split by `reason`; `incomplete_count` / `sendable_count` on open.
+- **"Which fields does the scan miss?"** → `missing_fields` breakdown on `viza_card_blocked` / `viza_edit_opened`; `changed_fields` on `viza_edit_saved`.
+- **"One-tap rate"** → `viza_report_sent` where `unticked_count = 0` and `edited_count = 0`.
+- **Does the banner nudge work?** → `viza_banner_tapped` / `viza_banner_shown`, then how many of those sessions end in `viza_report_sent`; compare send rates for sheets opened via banner vs. the FAB (`viza_sheet_opened` right after a tap).
+- **Drop-off** → `viza_sheet_closed` and `viza_edit_abandoned` vs. `viza_report_sent`; failures via `success = false`.
+
 - **"Do they edit guest cards"** → `guest_updated` volume / per-user.
 - **"How many times they change scanned data"** → `guest_updated` where `from_scan = true`;
   `fields_changed` = how many fields differ from the scan-prefilled values (0 = saved a scan

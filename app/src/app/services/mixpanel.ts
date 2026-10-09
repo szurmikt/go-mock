@@ -271,6 +271,110 @@ export class MixpanelService {
     this.track('reservation_note_deleted', { ...p });
   }
 
+  // ---- VIZA reporting (Reservation Detail sheet + guest-edit VIZA mode) ----
+  // Field NAMES and counts only — never values (names, dates, document numbers).
+
+  trackVizaSheetOpened(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    total_guests: number;
+    sendable_count: number;
+    incomplete_count: number;
+    not_scanned_count: number;
+    sending_count: number;
+    sent_count: number;
+    auto_checked_count: number;
+  }): void {
+    this.track('viza_sheet_opened', { ...p });
+  }
+
+  /** "Ready for VIZA reporting" banner became visible (once per page visit). */
+  trackVizaBannerShown(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    ready_count: number;
+    total_guests: number;
+  }): void {
+    this.track('viza_banner_shown', { ...p });
+  }
+
+  /** Banner tapped — compare with viza_banner_shown (tap rate) and viza_report_sent. */
+  trackVizaBannerTapped(p: { reservation_code: string; property_id?: string | number }): void {
+    this.track('viza_banner_tapped', { ...p });
+  }
+
+  trackVizaCardToggled(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    checked: boolean;
+    was_edited: boolean;
+  }): void {
+    this.track('viza_card_toggled', { ...p });
+  }
+
+  /** Checkbox tapped on an incomplete card — the card stays unchecked. */
+  trackVizaCardBlocked(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    missing_fields: string[];
+    missing_count: number;
+  }): void {
+    this.track('viza_card_blocked', { ...p });
+  }
+
+  trackVizaEditOpened(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    reason: 'missing_fields' | 'voluntary';
+    missing_fields: string[];
+  }): void {
+    this.track('viza_edit_opened', { ...p });
+  }
+
+  trackVizaEditSaved(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    changed_fields: string[];
+    changed_count: number;
+    now_complete: boolean;
+    success: boolean;
+  }): void {
+    this.track('viza_edit_saved', { ...p });
+  }
+
+  /** Left the VIZA edit screen without saving. */
+  trackVizaEditAbandoned(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    had_changes: boolean;
+  }): void {
+    this.track('viza_edit_abandoned', { ...p });
+  }
+
+  /** Fires in `finally` after the send attempt. */
+  trackVizaReportSent(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    selected_count: number;
+    sendable_count: number;
+    edited_count: number;
+    unticked_count: number;
+    success: boolean;
+    error_kind?: 'http_error' | 'api_rejected';
+  }): void {
+    this.track('viza_report_sent', { ...p });
+  }
+
+  /** Sheet closed without sending. */
+  trackVizaSheetClosed(p: {
+    reservation_code: string;
+    property_id?: string | number;
+    sendable_count: number;
+    selected_count: number;
+  }): void {
+    this.track('viza_sheet_closed', { ...p });
+  }
+
   trackScanResultEdited(p: { document_type?: string }): void {
     this.track('scan_result_edited', { ...p });
   }

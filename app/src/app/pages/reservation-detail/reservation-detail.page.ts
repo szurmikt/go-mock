@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild, computed, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, effect, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -18,6 +18,8 @@ import { LocalizedTimePipe } from '../../pipes/localized-time.pipe';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { parseApiInstant, todayInTimeZone } from '../../utils/date';
 import { getNotesLastSeen, markNotesSeen } from '../../utils/notes-seen.util';
+import { VizaReportSheetComponent } from '../../components/viza-report-sheet/viza-report-sheet.component';
+import { VizaRequiredField, isVizaLocked, isVizaNotScanned, isVizaSendable, missingVizaFields, vizaValuesFromGuest } from '../../utils/viza';
 
 type NoteType = 'reservation' | 'room';
 
@@ -32,7 +34,7 @@ interface NoteDatePill {
   templateUrl: './reservation-detail.page.html',
   styleUrls: ['./reservation-detail.page.scss'],
   standalone: true,
-  imports: [IonContent, IonRefresher, IonRefresherContent, FormsModule, TitleCasePipe, LocalizedDatePipe, LocalizedTimePipe, TranslatePipe],
+  imports: [IonContent, IonRefresher, IonRefresherContent, FormsModule, TitleCasePipe, LocalizedDatePipe, LocalizedTimePipe, TranslatePipe, VizaReportSheetComponent],
 })
 export class ReservationDetailPage implements OnInit, ViewWillEnter {
   reservation = signal<ReservationInterface | null>(null);
@@ -66,6 +68,33 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
 
   // FAB action-sheet
   menuOpen = signal(false);
+
+  // Report-to-VIZA sheet. Selection lives here (not in the sheet component) so it
+  // survives the round trip to the VIZA edit screen — this page stays alive in the
+  // Ionic stack while guest-edit is on top.
+  readonly ntakConnected = computed(() => this.reservation()?.ntak_connected === true);
+  /**
+   * "Ready for VIZA reporting" banner (below the page title, tappable → opens the sheet):
+   * VIZA is available, at least one guest is still unsent, and nothing blocks the send —
+   * every guest is either already sent/sending or scanned/modified with all mandatory
+   * fields. An incomplete or "Not scanned" guest hides it, and so does a fully sent
+   * reservation. Under-14 guests need no document (see missingVizaFields).
+   */
+  readonly vizaReady = computed(() => {
+    if (!this.ntakConnected() || !this.inStatusFlow()) return false;
+    const guests = this.guests();
+    return (
+      guests.some(g => this.isVizaCompleteSendable(g)) &&
+      guests.every(g => isVizaLocked(g.viza_status) || this.isVizaCompleteSendable(g))
+    );
+  });
+  private vizaBannerTracked = false;
+  vizaSheetOpen = signal(false);
+  vizaSelected = signal<ReadonlySet<string>>(new Set());
+  vizaSending = signal(false);
+  vizaSendError = signal<string | null>(null);
+  // Guest opened in the VIZA edit screen — on return, auto-checked if now complete.
+  private vizaEditingGuestId: string | null = null;
 
   // Reservation Status timeline sheet
   statusSheetOpen = signal(false);
@@ -197,7 +226,19 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     private auth: AuthService,
     private mixpanel: MixpanelService,
     public propertySettings: PropertySettingsService,
-  ) {}
+  ) {
+    // Once per page visit, the first time the banner becomes visible.
+    effect(() => {
+      if (this.vizaReady() && !this.vizaBannerTracked) {
+        this.vizaBannerTracked = true;
+        this.mixpanel.trackVizaBannerShown({
+          ...this.vizaBase(),
+          ready_count: this.guests().filter(g => this.isVizaCompleteSendable(g)).length,
+          total_guests: this.guests().length,
+        });
+      }
+    });
+  }
 
   private reservationCode!: string;
 
@@ -212,6 +253,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
   async ionViewWillEnter() {
     const code = this.reservationCode;
     if (!code) return;
+    this.vizaBannerTracked = false;
 
     if (!this.reservation()) {
       const cached = this.res.reservations().find(r => r.reservation_code === code);
@@ -235,6 +277,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
       this.reservation.set(detail);
       this.guests.set(guests);
       this.recomputeNewNotes(detail);
+      this.afterVizaGuestsRefresh();
     } catch (e: any) {
       if (firstLoad) this.error.set(e.message ?? this.lang.t('errors.failedLoadReservation'));
     } finally {
@@ -254,6 +297,7 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
       this.reservation.set(detail);
       this.guests.set(guests);
       this.recomputeNewNotes(detail);
+      this.afterVizaGuestsRefresh();
     } catch { /* keep existing data */ }
     (event.target as HTMLIonRefresherElement).complete();
   }
@@ -303,6 +347,151 @@ export class ReservationDetailPage implements OnInit, ViewWillEnter {
     this.router.navigate(['/guest', this.reservationCode, g.reservation_guest_id], {
       queryParams: { autoScan: '1' },
     });
+  }
+
+  // ---- Report to VIZA ----
+
+  private isVizaCompleteSendable(g: GuestInterface): boolean {
+    return isVizaSendable(g.viza_status) && missingVizaFields(vizaValuesFromGuest(g)).length === 0;
+  }
+
+  private vizaBase() {
+    return {
+      reservation_code: this.reservationCode,
+      property_id: this.auth.selectedProperty()?.property_id,
+    };
+  }
+
+  /** Banner tap — same sheet as the FAB item, tracked separately to measure the nudge. */
+  openVizaFromBanner() {
+    this.mixpanel.trackVizaBannerTapped({ ...this.vizaBase() });
+    this.openVizaSheet();
+  }
+
+  openVizaSheet() {
+    if (!this.ntakConnected()) return;
+    this.menuOpen.set(false);
+    this.vizaSendError.set(null);
+    // Base case is a correct scan, so every complete unsent card starts checked — the
+    // normal flow is one tap on the send button.
+    const guests = this.guests();
+    const auto = guests.filter(g => this.isVizaCompleteSendable(g));
+    this.vizaSelected.set(new Set(auto.map(g => g.reservation_guest_id)));
+    this.vizaSheetOpen.set(true);
+    const sendable = guests.filter(g => isVizaSendable(g.viza_status));
+    this.mixpanel.trackVizaSheetOpened({
+      ...this.vizaBase(),
+      total_guests: guests.length,
+      sendable_count: sendable.length,
+      incomplete_count: sendable.length - auto.length,
+      not_scanned_count: guests.filter(g => isVizaNotScanned(g.viza_status)).length,
+      sending_count: guests.filter(g => g.viza_status === 'in_progress').length,
+      sent_count: guests.filter(g => g.viza_status === 'completed').length,
+      auto_checked_count: auto.length,
+    });
+  }
+
+  closeVizaSheet() {
+    if (this.vizaSending()) return;
+    this.vizaSheetOpen.set(false);
+    this.mixpanel.trackVizaSheetClosed({
+      ...this.vizaBase(),
+      sendable_count: this.guests().filter(g => isVizaSendable(g.viza_status)).length,
+      selected_count: this.vizaSelected().size,
+    });
+  }
+
+  onVizaToggle(g: GuestInterface) {
+    const id = g.reservation_guest_id;
+    const next = new Set(this.vizaSelected());
+    const checked = !next.has(id);
+    if (checked) next.add(id); else next.delete(id);
+    this.vizaSelected.set(next);
+    this.mixpanel.trackVizaCardToggled({
+      ...this.vizaBase(),
+      checked,
+      was_edited: g.viza_status === 'modified',
+    });
+  }
+
+  onVizaBlocked(e: { guest: GuestInterface; missing: VizaRequiredField[] }) {
+    this.mixpanel.trackVizaCardBlocked({
+      ...this.vizaBase(),
+      missing_fields: e.missing,
+      missing_count: e.missing.length,
+    });
+  }
+
+  onVizaEdit(e: { guest: GuestInterface; missing: VizaRequiredField[] }) {
+    this.mixpanel.trackVizaEditOpened({
+      ...this.vizaBase(),
+      reason: e.missing.length > 0 ? 'missing_fields' : 'voluntary',
+      missing_fields: e.missing,
+    });
+    this.vizaEditingGuestId = e.guest.reservation_guest_id;
+    const queryParams: Record<string, string> = { mode: 'viza' };
+    if (e.missing.length > 0) queryParams['missing'] = e.missing.join(',');
+    this.router.navigate(['/guest', this.reservationCode, e.guest.reservation_guest_id, 'edit'], { queryParams });
+  }
+
+  async sendViza() {
+    const ids = [...this.vizaSelected()];
+    if (ids.length === 0 || this.vizaSending()) return;
+    const before = this.guests();
+    const sendable = before.filter(g => isVizaSendable(g.viza_status));
+    const completeSendable = sendable.filter(g => this.isVizaCompleteSendable(g)).length;
+    const editedCount = before.filter(g => ids.includes(g.reservation_guest_id) && g.viza_status === 'modified').length;
+    this.vizaSending.set(true);
+    this.vizaSendError.set(null);
+    let success = false;
+    let errorKind: 'http_error' | 'api_rejected' | undefined;
+    try {
+      await this.res.reportToViza(this.reservationCode, ids);
+      success = true;
+      // Optimistic: the send is async server-side, so the selected cards show "Sending…"
+      // right away; the refetch below replaces this with the real status.
+      this.guests.set(before.map(g => (ids.includes(g.reservation_guest_id) ? { ...g, viza_status: 'in_progress' } : g)));
+      this.vizaSelected.set(new Set());
+      try {
+        const fresh = await this.res.fetchGuests(this.reservationCode, true);
+        // Keep the optimistic chip if the backend hasn't caught up yet.
+        this.guests.set(fresh.map(g =>
+          ids.includes(g.reservation_guest_id) && isVizaSendable(g.viza_status) ? { ...g, viza_status: 'in_progress' } : g));
+      } catch { /* keep optimistic state */ }
+    } catch (e: any) {
+      errorKind = e?.apiErrors !== undefined ? 'api_rejected' : 'http_error';
+      this.vizaSendError.set(this.lang.t('viza.failedSend'));
+    } finally {
+      this.vizaSending.set(false);
+      this.mixpanel.trackVizaReportSent({
+        ...this.vizaBase(),
+        selected_count: ids.length,
+        sendable_count: sendable.length,
+        edited_count: editedCount,
+        unticked_count: Math.max(completeSendable - ids.length, 0),
+        success,
+        ...(errorKind ? { error_kind: errorKind } : {}),
+      });
+    }
+  }
+
+  // After any guest refresh: drop selections that are no longer sendable/complete, and
+  // auto-check the guest just edited in VIZA mode if the edit made it complete.
+  private afterVizaGuestsRefresh() {
+    const guests = this.guests();
+    const editedId = this.vizaEditingGuestId;
+    this.vizaEditingGuestId = null;
+    const next = new Set(
+      [...this.vizaSelected()].filter(id => {
+        const g = guests.find(x => x.reservation_guest_id === id);
+        return !!g && this.isVizaCompleteSendable(g);
+      }),
+    );
+    if (editedId) {
+      const g = guests.find(x => x.reservation_guest_id === editedId);
+      if (g && this.isVizaCompleteSendable(g)) next.add(editedId);
+    }
+    this.vizaSelected.set(next);
   }
 
   // Two entry points, one sheet: the FAB's "Change Status" action item and the

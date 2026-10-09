@@ -701,6 +701,38 @@ The one blessed path for anything reaching `early`/`prod`: `npm run publish:live
 
 ## 20. Changelog
 
+### 2026-10-09 — New: Report to VIZA (Reservation Detail sheet + Guest Edit VIZA mode)
+
+> Branch `feature/viza-reporting`. No build/version bump, not published OTA. Implements the "VIZA reporting – Claude Code handover" doc against the `go_api_2.json` Postman collection. `npx ng build` clean (3 known warnings); full suite 183/190 (the same 7 pre-existing `should be created` failures, none new; new `viza.spec.ts` 6/6); lint back to its pre-existing 82. **Not yet verified against the live API or on a device** (needs an NTAK-connected property — the sample responses all carry `ntak_connected: false`).
+
+- **API contract, confirmed from the Postman doc** (the handover listed these as open): `ntak_connected` is reservation-level (`reservations` list + `reservations/details`); `viza_status` is per guest at `guests[].reporting.viza_status` (also on `GET guests`), and **can be `null`**; the send is `PUT guests/reporting` with `{ reservation_guest_id: number[] }`. The VIZA "Country" field is the guest record's country (`address.country_code`, confirmed by the user).
+- **Data layer** ([reservation.ts](src/app/services/reservation.ts)): `ntak_connected` mapped in `convert()`; `viza_status` mapped in `convertGuest()` via `toVizaStatus()` (unknown values → `null`, so a new backend status can never make a guest reportable). `updateGuest()` strips `viza_status` from the `POST guests` payload (server-owned). New `reportToViza()` (+ `reportVizaFailure()` Sentry helper, ids only) clears that reservation's guest cache on success.
+- **[utils/viza.ts](src/app/utils/viza.ts)** (+ spec): the single source of mandatory fields (first/last name, birth date, citizenship, gender, document type, document number — the ID number is treated as mandatory because PMS validation enforces it). **The document is only required from guests aged 14+** (per vizainfo.hu/szallashelyek; under-14 data may be recorded from the representative's statement) — `isUnder14()` works on the `YYYY-MM-DD` parts, and an unknown birth date keeps the document required, `missingVizaFields()`, and the `isVizaSendable/Locked/NotScanned` status rules. Shared by the sheet and the edit page so they can't disagree.
+- **Entry point:** a "Report to VIZA" item in the reservation-detail FAB menu, shown only when `ntak_connected` (hidden, not disabled). It sits inside the existing `inStatusFlow()` gate, so cancelled/no-show reservations get no VIZA.
+- **New [viza-report-sheet](src/app/components/viza-report-sheet/viza-report-sheet.component.ts):** reuses the `.notes-sheet` flex shell (cards scroll, send button pinned). Each compact read-only card shows only VIZA fields; the optional ones (maiden, mother, birth place, country) appear only when filled. Status rules:
+  - `scanned`/`modified`: checkbox + Edit. A `modified` card carries an "Edited" chip.
+  - `in_progress`/`completed`: "Sending…"/"Sent" chip.
+  - `null`: "Not scanned" chip, no checkbox (can't be sent), but **Edit is available** so staff can enter the data manually — VIZA allows this when the scanner can't read a document or a child has none. Facts only show if some data exists. Whether the backend then returns `scanned`/`modified` (making the card tickable) is still unconfirmed.
+  - Every card shows its real status chip (Scanned / Modified / Sending… / Sent / Not scanned); "Incomplete" is a separate warning chip beside it.
+  - Incomplete cards get an "Incomplete" chip; tapping their checkbox leaves them unchecked and shows `Missing: …. Edit first.`
+  - Complete sendable cards are pre-ticked on open, so the normal case is one tap.
+- **"Ready for VIZA reporting" banner** (tappable, below the Reservation Details title; opens the sheet): shows when VIZA is on, the reservation is in the status flow, at least one guest is complete and sendable, and every other guest is already sent/sending. An incomplete or "Not scanned" guest hides it. Persistent (the app has no toast component). Events: `viza_banner_shown` (once per page visit), `viza_banner_tapped`.
+- **Selection lives in `ReservationDetailPage`, not the sheet**, so it survives the edit round trip (the page stays alive in the Ionic stack). `afterVizaGuestsRefresh()` runs on every guest refresh: it drops selections that are no longer complete+sendable and auto-ticks the guest just edited if it is now complete.
+- **Send** is optimistic: the selected cards switch to "Sending…", then a forced guest re-fetch replaces that with the real status (keeping the optimistic chip while the backend still reports scanned/modified). Errors show inline in the sheet footer.
+- **Guest Edit VIZA mode** (`/guest/:code/:id/edit?mode=viza&missing=…`, same page — decided with the user over a forked page so there is one save path and hidden fields can never be wiped):
+  - Hides contact, zip/city/address line and the TR id; address Country stays visible.
+  - Shows the manual-entry warning banner.
+  - Highlights the `missing` fields (`.form-group--error`) while empty, and blocks Save with a field list when any mandatory field is empty.
+  - Skips the scan-result prefill (a stale in-memory scan must never overwrite the record here).
+  - Save is the unchanged `updateGuest()` (full guest re-sent), so VIZA edits land on the guest record.
+- **Mixpanel** (documented in [mixpanel-tracking-plan.md](docs/mixpanel-tracking-plan.md)): `viza_sheet_opened`, `viza_card_toggled`, `viza_card_blocked`, `viza_edit_opened`, `viza_edit_saved`, `viza_edit_abandoned`, `viza_report_sent`, `viza_sheet_closed`. They carry field names and counts only.
+- **i18n:** new `viza` namespace (16 keys) in `translations.ts`/`.en.json`/`.hu.json`; HU is a best-effort draft.
+- **Open / to verify live:**
+  - Does `POST guests` set `viza_status: modified` server-side? The app can't set it.
+  - What does a failed send return?
+  - How does `in_progress` become `completed`? Today the app re-fetches on page enter, pull-to-refresh and sheet reopen.
+  - Do the `options.genders()`/`documentTypes()` values match the guest's stored values for the card labels? The card falls back to the raw value if not.
+
 ### 2026-10-09 — Android 1.0.8 (Android-only release): stop false rollbacks to native and stuck devices
 
 > Branch `fix/android-rollback-native-fallback`. Android `versionName` 1.0.7 → 1.0.8 (`versionCode` is bumped by `publish-android.sh`). **Android-only native release — there is no iOS 1.0.8.** Built as versionCode 37: signed AAB `sabeeapp-go-v37.aab` + signed APK `sabeeapp-go-v37.apk` (for device testing). Uploaded to Play Console and rolling out to Android devices (2026-10-09). `npx ng build` clean; `npx cap sync android` confirmed `readyTimeout: 45000` in the generated Android config; `live-update-state.spec.ts` 67/67. **Device-verified by the user on the v37 APK:** backgrounding right after launch no longer falls back to native.

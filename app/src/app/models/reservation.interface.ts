@@ -18,6 +18,9 @@ export interface ReservationInterface {
   number_of_guests: number;
   nights: number;
   open_in_pms: boolean;
+  // NTAK/VIZA integration enabled for this reservation's property — gates the
+  // "Report to VIZA" FAB action. Missing from the API ⇒ false.
+  ntak_connected: boolean;
   notes: ReservationNoteInterface[];
 }
 

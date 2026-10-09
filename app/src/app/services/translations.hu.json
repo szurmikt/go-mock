@@ -387,6 +387,26 @@
     "unlock": "Feloldás",
     "usePassword": "Inkább jelszóval"
   },
+  "viza": {
+    "fabAction": "Jelentés a VIZA-nak",
+    "title": "Jelentés a VIZA-nak",
+    "sendButton": "{{n}} vendég jelentése a VIZA-nak",
+    "sendButtonOne": "1 vendég jelentése a VIZA-nak",
+    "readyBanner": "Készen áll a VIZA-jelentésre",
+    "chipSent": "Elküldve",
+    "chipSending": "Küldés…",
+    "chipNotScanned": "Nincs beolvasva",
+    "chipIncomplete": "Hiányos",
+    "chipScanned": "Beolvasva",
+    "chipModified": "Módosítva",
+    "missingEditFirst": "Hiányzik: {{fields}}. Előbb szerkeszd.",
+    "allReported": "Minden vendég jelentve a VIZA-nak",
+    "editAria": "Vendégadatok szerkesztése",
+    "failedSend": "Nem sikerült jelenteni a VIZA-nak. Próbáld újra.",
+    "editTitle": "Szerkesztés VIZA-hoz",
+    "manualEntryWarning": "Kézi adatrögzítés csak különleges esetekben megengedett, pl. 14 év alatti, úti okmány nélküli gyermekeknél vagy a beolvasó meghibásodása esetén. A kézzel rögzített adatokért te felelsz.",
+    "requiredMissing": "Töltsd ki a kötelező mezőket: {{fields}}"
+  },
   "errors": {
     "cantFindReservationTitle": "A foglalás nem található",
     "cantFindReservationDescription": "Nem találtuk a keresett foglalást.",

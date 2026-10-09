@@ -17,6 +17,7 @@ import { toInputDate } from '../../utils/date';
 import { BusyGuardService } from '../../services/busy-guard';
 import { CountryUsageService } from '../../services/country-usage.service';
 import { CountryPickerSheetComponent } from '../../components/country-picker-sheet/country-picker-sheet.component';
+import { VIZA_FIELD_LABEL_KEYS, VIZA_REQUIRED_FIELDS, VizaRequiredField, missingVizaFields } from '../../utils/viza';
 
 type CountryField = 'citizenship' | 'country_code';
 
@@ -50,6 +51,16 @@ export class GuestEditPage implements OnInit, OnDestroy {
   saveError = signal<string | null>(null);
   /** Which country field's picker sheet is open (null = closed). */
   countryPicker = signal<CountryField | null>(null);
+
+  /**
+   * VIZA mode (`?mode=viza`, opened from the Report-to-VIZA sheet): only the VIZA fields
+   * are shown and the mandatory ones block saving. Same form, same save path — the full
+   * guest is still loaded and re-sent, so the hidden fields are preserved untouched.
+   */
+  vizaMode = signal(false);
+  /** Mandatory fields to highlight while empty — from `?missing=`, then all of them after a blocked save. */
+  private vizaHighlight = signal<ReadonlySet<VizaRequiredField>>(new Set());
+  private vizaSaved = false;
 
   // form model — flat, two-way bound
   form = {
@@ -101,6 +112,14 @@ export class GuestEditPage implements OnInit, OnDestroy {
   async ngOnInit() {
     this.reservationCode = this.route.snapshot.paramMap.get('code')!;
     this.guestId = this.route.snapshot.paramMap.get('guestId')!;
+    const qp = this.route.snapshot.queryParamMap;
+    if (qp.get('mode') === 'viza') {
+      this.vizaMode.set(true);
+      const missing = (qp.get('missing') ?? '')
+        .split(',')
+        .filter((f): f is VizaRequiredField => (VIZA_REQUIRED_FIELDS as readonly string[]).includes(f));
+      this.vizaHighlight.set(new Set(missing));
+    }
 
     try {
       // Force a fresh fetch so the edit form always starts from the latest server copy
@@ -134,7 +153,9 @@ export class GuestEditPage implements OnInit, OnDestroy {
         turkish_republic_identity_number:
           found.document?.turkish_republic_identity_number ?? '',
       };
-      const last = this.docuscanService.lastScanResult;
+      // VIZA mode edits the guest record as stored — never prefill from a (possibly
+      // unrelated, earlier) scan result still held in memory.
+      const last = this.vizaMode() ? null : this.docuscanService.lastScanResult;
       // TEMPORARY diagnostics (2026-09-08) for a reported "Edit kicks the user to Home"
       // bug that only reproduces when the scan carried address data, with nothing captured
       // in Sentry so far — remove once root-caused. Unconditional (not gated on
@@ -265,9 +286,29 @@ export class GuestEditPage implements OnInit, OnDestroy {
     this.busyGuard.release(EDIT_BUSY_KEY);
   }
 
+  /** Template: highlight a mandatory VIZA field while it is still empty. */
+  vizaFieldError(field: VizaRequiredField): boolean {
+    return this.vizaMode() && this.vizaHighlight().has(field) && missingVizaFields(this.form).includes(field);
+  }
+
+  private changedFieldNames(): string[] {
+    return Object.keys(this.form).filter(
+      k => (this.form as Record<string, string>)[k] !== (this.formSnapshot[k] ?? ''),
+    );
+  }
+
   async save() {
     const g = this.guest();
     if (!g) return;
+    if (this.vizaMode()) {
+      const missing = missingVizaFields(this.form);
+      if (missing.length > 0) {
+        this.vizaHighlight.set(new Set(VIZA_REQUIRED_FIELDS));
+        const fields = missing.map(f => this.lang.t(VIZA_FIELD_LABEL_KEYS[f]).toLowerCase()).join(', ');
+        this.saveError.set(this.lang.t('viza.requiredMissing', { fields }));
+        return;
+      }
+    }
     this.saving.set(true);
     this.saveError.set(null);
     try {
@@ -303,9 +344,19 @@ export class GuestEditPage implements OnInit, OnDestroy {
       // fetched server copy, so a scan-prefilled country that gets saved counts as a change.
       this.countryUsage.record('citizenship', g.citizenship, this.form.citizenship);
       this.countryUsage.record('country_code', g.address?.country_code, this.form.country_code);
-      const fieldsChanged = Object.keys(this.form).filter(
-        k => (this.form as Record<string, string>)[k] !== (this.formSnapshot[k] ?? ''),
-      ).length;
+      const changedFields = this.changedFieldNames();
+      const fieldsChanged = changedFields.length;
+      if (this.vizaMode()) {
+        this.vizaSaved = true;
+        this.mixpanel.trackVizaEditSaved({
+          reservation_code: this.reservationCode,
+          property_id: this.auth.selectedProperty()?.property_id,
+          changed_fields: changedFields,
+          changed_count: fieldsChanged,
+          now_complete: missingVizaFields(this.form).length === 0,
+          success: true,
+        });
+      }
       this.mixpanel.trackGuestUpdated({
         reservation_code: this.reservationCode,
         property_id: this.auth.selectedProperty()?.property_id,
@@ -329,6 +380,16 @@ export class GuestEditPage implements OnInit, OnDestroy {
       this.back();
     } catch (e: any) {
       this.saveError.set(e.message ?? this.lang.t('errors.failedSave'));
+      if (this.vizaMode()) {
+        this.mixpanel.trackVizaEditSaved({
+          reservation_code: this.reservationCode,
+          property_id: this.auth.selectedProperty()?.property_id,
+          changed_fields: this.changedFieldNames(),
+          changed_count: this.changedFieldNames().length,
+          now_complete: missingVizaFields(this.form).length === 0,
+          success: false,
+        });
+      }
     } finally {
       this.saving.set(false);
     }
@@ -336,6 +397,13 @@ export class GuestEditPage implements OnInit, OnDestroy {
 
   /** Covers abandoning a dirty edit (back-navigation without saving) — never leak the guard. */
   ngOnDestroy(): void {
+    if (this.vizaMode() && !this.vizaSaved && this.guest()) {
+      this.mixpanel.trackVizaEditAbandoned({
+        reservation_code: this.reservationCode,
+        property_id: this.auth.selectedProperty()?.property_id,
+        had_changes: this.changedFieldNames().length > 0,
+      });
+    }
     this.clearDirty();
   }
 

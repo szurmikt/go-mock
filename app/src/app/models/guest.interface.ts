@@ -1,5 +1,11 @@
 import { DocumentData } from './statistics-interface';
 
+/**
+ * Per-guest VIZA (Hungarian guest-registry) reporting state, from `reporting.viza_status`.
+ * null = no data / not scanned yet — shown as "Not scanned", never reportable.
+ */
+export type VizaStatus = 'scanned' | 'modified' | 'in_progress' | 'completed';
+
 export interface GuestInterface {
   reservation_guest_id: string;
   guest_id: string;
@@ -32,6 +38,8 @@ export interface GuestInterface {
   } | null;
   scanned_data: ScannedDataInterface | null;
   locked: boolean;
+  // Read-only, server-owned. Stripped from the POST /guests payload in updateGuest().
+  viza_status: VizaStatus | null;
 }
 
 export interface ScannedDataInterface {

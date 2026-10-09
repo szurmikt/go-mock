@@ -7,7 +7,7 @@ import { LanguageService } from './language.service';
 import { PropertyConfigService } from './property-config.service';
 import { ApiResponse } from '../models/auth.interfaces';
 import { ReservationInterface, ReservationNoteInterface } from '../models/reservation.interface';
-import { GuestInterface } from '../models/guest.interface';
+import { GuestInterface, VizaStatus } from '../models/guest.interface';
 import { nowAsApiTimestamp } from '../utils/date';
 
 function dateStr(d: Date): string {
@@ -197,7 +197,9 @@ export class ReservationService {
   }
 
   async updateGuest(reservationCode: string, guest: GuestInterface): Promise<void> {
-    const payload = { reservation_code: reservationCode, guest: nullifyEmpty(guest) };
+    // viza_status is server-owned reporting state, not a guest field — never echo it back.
+    const { viza_status: _viza, ...guestFields } = guest;
+    const payload = { reservation_code: reservationCode, guest: nullifyEmpty(guestFields) };
     let resp: ApiResponse<unknown>;
     try {
       resp = await firstValueFrom(
@@ -274,6 +276,62 @@ export class ReservationService {
           payload_json: json.length > 16000 ? `${json.slice(0, 16000)}…[truncated ${json.length} chars]` : json,
         });
         console.error('[guest_save] failed', { apiErrors, exception, payload });
+      }
+    } catch {
+      // Reporting must never mask or replace the original failure.
+    }
+  }
+
+  /**
+   * Reports the given guests to VIZA via PUT /guests/reporting
+   * ({ reservation_guest_id: number[] }). The send is asynchronous server-side — on success
+   * the guests move to `in_progress`; the guest cache is invalidated so the next
+   * fetchGuests() picks up the real status. Throws (with `.apiErrors`) on rejection.
+   */
+  async reportToViza(reservationCode: string, reservationGuestIds: string[]): Promise<void> {
+    const payload = { reservation_guest_id: reservationGuestIds.map(id => Number(id)) };
+    let resp: ApiResponse<unknown>;
+    try {
+      resp = await firstValueFrom(this.api.put<ApiResponse<unknown>>('guests/reporting', payload));
+    } catch (e) {
+      this.reportVizaFailure(reservationCode, payload, null, e);
+      throw e;
+    }
+    if (!resp.success) {
+      this.reportVizaFailure(reservationCode, payload, resp.errors, null);
+      const err = new Error('Failed to report to VIZA') as Error & { apiErrors?: unknown };
+      err.apiErrors = resp.errors;
+      throw err;
+    }
+    this._guestCache.delete(reservationCode);
+    this._guestFetchedAt.delete(reservationCode);
+  }
+
+  // Payload is only guest ids — no PII.
+  private reportVizaFailure(
+    reservationCode: string,
+    payload: unknown,
+    apiErrors: unknown,
+    exception: unknown,
+  ): void {
+    try {
+      const captureContext = {
+        tags: {
+          context: 'viza_report',
+          failure_kind: exception != null ? 'http_error' : 'api_rejected',
+        },
+        contexts: {
+          viza_report: {
+            reservation_code: reservationCode,
+            payload: safeJson(payload).slice(0, 2000),
+            api_errors: safeJson(apiErrors).slice(0, 4000),
+          },
+        },
+      };
+      if (exception != null) {
+        Sentry.captureException(exception, captureContext);
+      } else {
+        Sentry.captureMessage('VIZA report rejected by API', { level: 'error', ...captureContext });
       }
     } catch {
       // Reporting must never mask or replace the original failure.
@@ -627,6 +685,7 @@ export class ReservationService {
       document: g.document ?? null,
       scanned_data: this.hasScanRecord(g.scanned_data) ? g.scanned_data : null,
       locked: g.locked ?? false,
+      viza_status: toVizaStatus(g.reporting?.viza_status),
     };
   }
 
@@ -674,6 +733,7 @@ export class ReservationService {
       number_of_guests: r.number_of_guests ?? 0,
       nights,
       open_in_pms: r.open_in_pms === true,
+      ntak_connected: r.ntak_connected === true,
       notes: this.convertNotes(r.comments),
     };
   }
@@ -696,6 +756,15 @@ export class ReservationService {
       }))
       .sort((a, b) => a.created_datetime.localeCompare(b.created_datetime));
   }
+}
+
+const VIZA_STATUSES: readonly VizaStatus[] = ['scanned', 'modified', 'in_progress', 'completed'];
+
+// Unknown/missing values collapse to null ("Not scanned"), so a new backend status can
+// never make a guest accidentally reportable.
+function toVizaStatus(v: unknown): VizaStatus | null {
+  const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
+  return (VIZA_STATUSES as readonly string[]).includes(s) ? (s as VizaStatus) : null;
 }
 
 // Best-effort JSON for Sentry diagnostics — must never throw.
