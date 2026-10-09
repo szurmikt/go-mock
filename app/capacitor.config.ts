@@ -28,6 +28,11 @@ const config: CapacitorConfig = {
       // Must be non-zero or rollback is disabled entirely (and autoBlockRolledBackBundles below
       // has no effect). See the const file for why this value is shared rather than inlined.
       readyTimeout: READY_TIMEOUT_MS,
+      // Left on, but no longer permanent: each block is one rollback that LiveUpdateService counts
+      // and then clears at the next boot (countRollbacksAndClearBlocks). A bundle is retried up
+      // to BUNDLE_ROLLBACK_LIMIT times in 24h, then held back for 24h. Before Android 1.0.8 one
+      // false rollback (see READY_TIMEOUT_MS) blocked a bundle for good, stranding the device on
+      // native until a newer bundle was published.
       autoBlockRolledBackBundles: true,
       // Explicit rather than relying on the plugin default (which is also false): the retention
       // policy is ours. LiveUpdateService prunes to {current, next, previous} after each boot

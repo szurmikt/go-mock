@@ -64,6 +64,9 @@ export const Config = {
   // would leave torn state. Deliberately NOT cleared by AuthService.clearSessionData() — most of
   // it describes what is on this device's disk, which logging out does not change.
   STORAGE_LIVE_UPDATE_KEY: 'liveUpdateState',
+  // Per-bundle rollback counts (BundleRollbackLog). Its own key, not part of LiveUpdateState,
+  // because that record is reset on a binary change and the 24h hold must survive one.
+  STORAGE_LIVE_UPDATE_ROLLBACKS_KEY: 'liveUpdateRollbacks',
   // Apple/Google App Store reviewers can't complete MFA (no access to an authenticator
   // app), so this one account skips the /mfa screen entirely and verifies with an empty
   // code — per the backend team, /mfa/verify accepts code: '' for this account only.

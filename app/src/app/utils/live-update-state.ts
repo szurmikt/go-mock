@@ -15,7 +15,11 @@
  * does fire, it lands on a bundle known to have worked rather than on native.
  */
 
-import { FALLBACK_COOLDOWN_MS } from '../config/live-update.const';
+import {
+  BUNDLE_ROLLBACK_LIMIT,
+  BUNDLE_ROLLBACK_WINDOW_MS,
+  FALLBACK_COOLDOWN_MS,
+} from '../config/live-update.const';
 
 /** The channels bundles can be published to. Shared with LiveUpdateService's own validation. */
 const VALID_CHANNELS = ['prod', 'early', 'dev'];
@@ -427,4 +431,59 @@ export function decideReady(facts: { reachedBackend: boolean; online: boolean })
   if (!facts.online) return { ready: true, reason: 'offline' };
   if (facts.reachedBackend) return { ready: true, reason: 'backend' };
   return { ready: false, reason: 'unconfirmed' };
+}
+
+/** Per-bundle rollback history on this device. Stored on its own key, see LiveUpdateService. */
+export interface BundleRollbackEntry {
+  rollbacks: number;
+  /** When the first rollback in the current window happened. */
+  firstAt: number;
+  /** When the bundle hit BUNDLE_ROLLBACK_LIMIT and started being held back, or null. */
+  limitedAt: number | null;
+}
+
+export type BundleRollbackLog = Record<string, BundleRollbackEntry>;
+
+/**
+ * Count rollbacks from the plugin's blocked list and decide which bundles are held back.
+ *
+ * The plugin blocks a bundle each time it rolls back (autoBlockRolledBackBundles), and
+ * LiveUpdateService clears that list after every call to this function, so each id in
+ * `blockedBundleIds` is exactly one new rollback. A bundle under the limit is retried; one that
+ * reaches it is held for BUNDLE_ROLLBACK_WINDOW_MS. Entries whose window has passed are dropped,
+ * so a held bundle becomes eligible again with a fresh count.
+ */
+export function recordRollbacks(facts: {
+  log: BundleRollbackLog;
+  blockedBundleIds: string[];
+  now: number;
+}): { log: BundleRollbackLog; newlyLimited: string[] } {
+  const log: BundleRollbackLog = {};
+  for (const [id, entry] of Object.entries(facts.log)) {
+    const since = entry.limitedAt ?? entry.firstAt;
+    if (facts.now - since < BUNDLE_ROLLBACK_WINDOW_MS) log[id] = entry;
+  }
+
+  const newlyLimited: string[] = [];
+  for (const id of facts.blockedBundleIds) {
+    // Already held: it can only be blocked again if something applied it anyway, which is not
+    // a new attempt worth counting.
+    if (log[id]?.limitedAt != null) continue;
+    const entry = log[id]
+      ? { ...log[id], rollbacks: log[id].rollbacks + 1 }
+      : { rollbacks: 1, firstAt: facts.now, limitedAt: null };
+    if (entry.rollbacks >= BUNDLE_ROLLBACK_LIMIT) {
+      entry.limitedAt = facts.now;
+      newlyLimited.push(id);
+    }
+    log[id] = entry;
+  }
+  return { log, newlyLimited };
+}
+
+/** Bundles this device must not take right now. */
+export function heldBundleIds(log: BundleRollbackLog, now: number): string[] {
+  return Object.entries(log)
+    .filter(([, e]) => e.limitedAt !== null && now - e.limitedAt < BUNDLE_ROLLBACK_WINDOW_MS)
+    .map(([id]) => id);
 }

@@ -28,7 +28,7 @@ import {
   BOOT_SETUP_CAPTION_DELAY_MS,
   BOOT_SETUP_RELOAD_MARGIN_MS,
   MIN_BACKGROUND_MS_FOR_RELOAD,
-  READY_TIMEOUT_MS,
+  READY_PROBE_WINDOW_MS,
 } from './config/live-update.const';
 import { TranslatePipe } from './pipes/translate.pipe';
 
@@ -227,7 +227,7 @@ export class AppComponent implements OnInit, OnDestroy {
     } else {
       const budget = Math.max(
         0,
-        READY_TIMEOUT_MS - PRE_BOOT_MARGIN_MS - READY_SAFETY_MARGIN_MS - (Date.now() - bootStart),
+        READY_PROBE_WINDOW_MS - PRE_BOOT_MARGIN_MS - READY_SAFETY_MARGIN_MS - (Date.now() - bootStart),
       );
       this.language
         .waitForBackendReachable(budget)

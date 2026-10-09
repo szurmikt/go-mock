@@ -13,6 +13,27 @@ Log of every bundle pushed to Capawesome Cloud, newest first. One entry per `npm
 
 ---
 
+## Native binary releases
+
+### Android 1.0.8 — Android only (no iOS 1.0.8)
+> versionCode 37, released 2026-10-09 (Play Store rollout), device-tested before release. Branch `fix/android-rollback-native-fallback`. A native fix, so it ships as a Play Store update, not an OTA bundle. iOS stays on its current binary; the config change reaches iOS only with its next binary.
+- Fix: Android devices no longer fall back to the built-in (native) version when the app is opened and quickly switched away or locked. The safety window before a rollback is now 45 seconds instead of 15.
+- Fix: a device that did fall back no longer gets stuck there until the next update is published. A rolled-back update is retried on the next launch, up to 3 times in 24 hours. After the 3rd failure that update is held back on the device for 24 hours (and Sentry raises a warning), giving time to publish a fix. Blocks left by older versions are cleared on first launch.
+
+---
+
+### 2026-10-09 — prod — 47b17570-ee57-4a97-9c46-92fcccaea076
+> Build #85, git `3361f95` (`main` after merging `feature/country-picker-search` + `feature/mixpanel-status-comment-tracking`). Published to `dev`, device-tested, promoted (not rebuilt) to `early` and `prod` the same day.
+- Guest Edit: Citizenship and Address country open a searchable bottom sheet instead of the long native dropdown (search ignores case/accents, matches 2-letter codes); the property's 10 most-used countries sit on top, then A–Z. No "Clear" option — a chosen country can only be switched to another one
+- Mixpanel: new `country_picker_used` event (never carries the country itself)
+- Mixpanel: Reservation Detail now tracks `reservation_status_sheet_opened` (source fab/pill), `reservation_status_changed`, `reservation_status_reverted`, `reservation_note_added`, `reservation_note_deleted` — no note text or room-note dates
+
+### 2026-10-09 — early — 47b17570-ee57-4a97-9c46-92fcccaea076
+- Same bundle/changes as the `prod` entry above — promoted, not rebuilt.
+
+### 2026-10-09 — dev — 47b17570-ee57-4a97-9c46-92fcccaea076
+- Same bundle/changes as the `prod` entry above.
+
 ### 2026-10-08 — dev — fc5b2c04-7017-4869-bcca-6a91b222d504
 > Branch `feature/country-picker-search`, built from an **uncommitted** working tree — the bundle's `git 351f4e5` tag does NOT contain these changes. Promote by bundle id (`promote:liveupdate`), not by re-publishing from a commit.
 - Guest Edit: Citizenship and Address country open a searchable bottom sheet instead of the long native dropdown (search ignores case/accents, matches 2-letter codes)

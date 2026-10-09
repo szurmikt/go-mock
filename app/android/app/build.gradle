@@ -14,8 +14,10 @@ android {
         applicationId "com.sabeeapp.goapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 36
-        versionName "1.0.7"
+        versionCode 37
+        // 1.0.8 is an Android-only release (rollback / native-fallback fix, 2026-10-09).
+        // There is no iOS 1.0.8 — iOS stays on 1.0.7 until its next release.
+        versionName "1.0.8"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
