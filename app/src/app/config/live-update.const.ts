@@ -1,15 +1,43 @@
 /**
  * Rollback window: how long the native plugin waits for LiveUpdate.ready() before resetting to
- * the default bundle. Shared between capacitor.config.ts (the native value) and app.component.ts
- * (the JS-side retry-budget math) so the two can never silently drift apart — if they did, the
- * confirmation retry would overrun the native deadline and revert healthy bundles on slow networks.
+ * the default bundle. Read only by capacitor.config.ts, so it is baked into the binary.
+ *
+ * Raised 15s → 45s in Android 1.0.8 (2026-10-09). On Android the plugin's countdown is a plain
+ * native timer that keeps running while the app is in the background, and the webview's JS is
+ * paused — so opening the app and switching away (or locking the phone) within 15s rolled back
+ * perfectly healthy bundles. 66 of 67 rollbacks in the 21 days before this change were Android.
  *
  * ⚠️ KEEP THIS FILE DEPENDENCY-FREE — no imports of any kind, not even type-only ones, and never
  * re-export it through a barrel file. capacitor.config.ts imports it and is loaded by the
  * Capacitor CLI *outside* the Angular build, so any Angular import reachable from here (directly
  * or transitively) breaks `npx cap sync` with an error that gives no hint it originated here.
  */
-export const READY_TIMEOUT_MS = 15000;
+export const READY_TIMEOUT_MS = 45000;
+
+/**
+ * The window the JS-side ready() retry budget (app.component.ts) is computed from.
+ *
+ * Deliberately NOT READY_TIMEOUT_MS: that value is baked into each binary, while this code ships
+ * OTA to every binary, including ones still carrying the old 15s timeout. Budgeting against the
+ * smallest timeout any shipped binary has means the retry can never overrun the native deadline,
+ * whichever binary it lands on. Raise it only once no binary with a smaller readyTimeout is
+ * still in use.
+ */
+export const READY_PROBE_WINDOW_MS = 15000;
+
+/**
+ * How many times one bundle may roll back on a device before that device stops taking it.
+ * A false rollback (see READY_TIMEOUT_MS) costs one session and the bundle is retried; a bundle
+ * that rolls back this many times within BUNDLE_ROLLBACK_WINDOW_MS is treated as broken.
+ */
+export const BUNDLE_ROLLBACK_LIMIT = 3;
+
+/**
+ * Both the window the BUNDLE_ROLLBACK_LIMIT rollbacks are counted in, and how long a bundle that
+ * hit the limit is then held back on that device. 24h is time to notice the failure (Sentry
+ * raises an Issue when the limit is hit) and publish a corrected bundle, which is never held.
+ */
+export const BUNDLE_ROLLBACK_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
  * How long the app must have actually been backgrounded before a resume is allowed to apply a

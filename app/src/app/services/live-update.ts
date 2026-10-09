@@ -6,14 +6,17 @@ import { FALLBACK_TELEMETRY_TIMEOUT_MS, READY_RACE_MS } from '../config/live-upd
 import { Config } from '../config/config';
 import {
   BundleBootState,
+  BundleRollbackLog,
   LiveUpdateState,
   decideReady,
   decideReadyGate,
   decideReloadBeforeReady,
   decideRollbackFallback,
   emptyState,
+  heldBundleIds,
   keepSetFor,
   reconcileBootState,
+  recordRollbacks,
   resolveSyncChannel,
 } from '../utils/live-update-state';
 import { BusyGuardService } from './busy-guard';
@@ -101,6 +104,9 @@ export class LiveUpdateService {
    * cannot both start a download of the same bundle.
    */
   private syncInFlight: Promise<string | null> | null = null;
+
+  /** Per-bundle rollback counts, loaded at boot by countRollbacksAndClearBlocks(). */
+  private rollbackLog: BundleRollbackLog = {};
 
   /**
    * Whether the persisted record has been read this session. Boot reads it once; later writers
@@ -240,6 +246,9 @@ export class LiveUpdateService {
         installedBundleId: nextRecord.installedBundleId,
         stagedBundleId: nextRecord.stagedBundleId,
       });
+
+      // Before the fallback, which otherwise declines a blocked candidate.
+      await this.countRollbacksAndClearBlocks();
 
       if (await this.applyRollbackFallback(state, nextRecord)) {
         return true;
@@ -387,6 +396,52 @@ export class LiveUpdateService {
       reason,
     });
     this.callReady(ready);
+  }
+
+  /**
+   * Turn the plugin's blocked list into a per-bundle retry limit: 3 rollbacks of the same bundle
+   * within 24h, then that bundle is held back on this device for 24h (see recordRollbacks).
+   *
+   * The plugin only offers "block forever" (autoBlockRolledBackBundles) or nothing, and can only
+   * clear its whole list at once. So every rollback is left to block as usual, each blocked id is
+   * counted here as one rollback, and the list is cleared so the bundle can be retried. A bundle
+   * that hit the limit is enforced by runSync() instead. Before Android 1.0.8 every block was
+   * permanent, which stranded devices on native after a single false rollback (READY_TIMEOUT_MS);
+   * blocks left by those binaries are counted as one rollback and cleared here too.
+   *
+   * Runs every boot: two local preferences reads and no network call.
+   */
+  private async countRollbacksAndClearBlocks(): Promise<void> {
+    try {
+      const { bundleIds } = await LiveUpdate.getBlockedBundles();
+      const stored =
+        (await this.storage.get<BundleRollbackLog>(Config.STORAGE_LIVE_UPDATE_ROLLBACKS_KEY)) ?? {};
+      const { log, newlyLimited } = recordRollbacks({
+        log: stored,
+        blockedBundleIds: bundleIds,
+        now: Date.now(),
+      });
+      await this.storage.set(Config.STORAGE_LIVE_UPDATE_ROLLBACKS_KEY, log);
+      this.rollbackLog = log;
+
+      if (bundleIds.length > 0) {
+        await LiveUpdate.clearBlockedBundles();
+        Sentry.logger.info('live_update blocked bundles counted', {
+          context: 'live_update_diagnostics',
+          blockedBundleIds: bundleIds.join(','),
+          rollbacks: bundleIds.map(id => log[id]?.rollbacks ?? 0).join(','),
+        });
+      }
+      // An Issue, not just a log: this is the signal that a published bundle is broken.
+      for (const bundleId of newlyLimited) {
+        Sentry.captureMessage('live_update bundle hit rollback limit', {
+          level: 'warning',
+          tags: { context: 'live_update_rollback_limit', bundle_id: bundleId },
+        });
+      }
+    } catch (error) {
+      Sentry.captureException(error, { tags: { context: 'live_update_rollback_count' } });
+    }
   }
 
   /**
@@ -545,11 +600,30 @@ export class LiveUpdateService {
    * parallel. Without this, both would call sync() and the native download queue would fetch the
    * same bundle twice — the exact double-download this design removes elsewhere.
    */
+  /**
+   * Whether the bundle sync() would install is one held back by the rollback limit.
+   *
+   * Only asks Capawesome when something is actually held, so a normal device makes no extra
+   * request. If that check fails, the sync is skipped too (fails closed): letting it through
+   * could re-apply the very bundle being held.
+   */
+  private async latestBundleIsHeld(channel: string): Promise<boolean> {
+    const held = heldBundleIds(this.rollbackLog, Date.now());
+    if (held.length === 0) return false;
+    try {
+      const { bundleId } = await LiveUpdate.fetchLatestBundle({ channel });
+      return bundleId !== null && held.includes(bundleId);
+    } catch {
+      return true;
+    }
+  }
+
   private runSync(channel: string): Promise<string | null> {
     if (this.syncInFlight) return this.syncInFlight;
 
     this.syncInFlight = (async () => {
       try {
+        if (await this.latestBundleIsHeld(channel)) return null;
         const { nextBundleId } = await LiveUpdate.sync({ channel });
         if (nextBundleId) {
           this.mixpanel.trackBundleDownloaded({ bundle_id: nextBundleId, channel });

@@ -1,14 +1,21 @@
-import { FALLBACK_COOLDOWN_MS } from '../config/live-update.const';
+import {
+  BUNDLE_ROLLBACK_LIMIT,
+  BUNDLE_ROLLBACK_WINDOW_MS,
+  FALLBACK_COOLDOWN_MS,
+} from '../config/live-update.const';
 import {
   decideReady,
   decideReadyGate,
   decideReloadBeforeReady,
   decideRollbackFallback,
   emptyState,
+  heldBundleIds,
+  recordRollbacks,
   keepSetFor,
   reconcileBootState,
   resolveSyncChannel,
   validateChannel,
+  BundleRollbackLog,
   LiveUpdateState,
 } from './live-update-state';
 
@@ -500,5 +507,66 @@ describe('decideReady', () => {
       ready: true,
       reason: 'offline',
     });
+  });
+});
+
+describe('recordRollbacks / heldBundleIds', () => {
+  const T0 = 1_000_000_000_000;
+  const HOUR = 60 * 60 * 1000;
+
+  function rollBack(times: number, id = 'bad', start = T0) {
+    let log: BundleRollbackLog = {};
+    let newlyLimited: string[] = [];
+    for (let i = 0; i < times; i++) {
+      ({ log, newlyLimited } = recordRollbacks({ log, blockedBundleIds: [id], now: start + i * HOUR }));
+    }
+    return { log, newlyLimited };
+  }
+
+  it('retries a bundle below the limit', () => {
+    const { log, newlyLimited } = rollBack(BUNDLE_ROLLBACK_LIMIT - 1);
+    expect(newlyLimited).toEqual([]);
+    expect(heldBundleIds(log, T0 + 5 * HOUR)).toEqual([]);
+  });
+
+  it('holds a bundle once it rolls back BUNDLE_ROLLBACK_LIMIT times', () => {
+    const { log, newlyLimited } = rollBack(BUNDLE_ROLLBACK_LIMIT);
+    expect(newlyLimited).toEqual(['bad']);
+    expect(heldBundleIds(log, T0 + 5 * HOUR)).toEqual(['bad']);
+  });
+
+  it('reports the limit only once', () => {
+    const { log } = rollBack(BUNDLE_ROLLBACK_LIMIT);
+    const again = recordRollbacks({ log, blockedBundleIds: ['bad'], now: T0 + 6 * HOUR });
+    expect(again.newlyLimited).toEqual([]);
+    expect(again.log['bad'].rollbacks).toBe(BUNDLE_ROLLBACK_LIMIT);
+  });
+
+  it('releases a held bundle with a fresh count after the window', () => {
+    const { log } = rollBack(BUNDLE_ROLLBACK_LIMIT);
+    const later = (log['bad'].limitedAt as number) + BUNDLE_ROLLBACK_WINDOW_MS;
+    expect(heldBundleIds(log, later)).toEqual([]);
+    const next = recordRollbacks({ log, blockedBundleIds: ['bad'], now: later });
+    expect(next.log['bad']).toEqual({ rollbacks: 1, firstAt: later, limitedAt: null });
+  });
+
+  it('forgets rollbacks that fall out of the window before reaching the limit', () => {
+    let { log } = rollBack(BUNDLE_ROLLBACK_LIMIT - 1);
+    ({ log } = recordRollbacks({ log, blockedBundleIds: ['bad'], now: T0 + BUNDLE_ROLLBACK_WINDOW_MS }));
+    expect(log['bad'].rollbacks).toBe(1);
+    expect(heldBundleIds(log, T0 + BUNDLE_ROLLBACK_WINDOW_MS)).toEqual([]);
+  });
+
+  it('counts each bundle separately', () => {
+    const { log } = rollBack(BUNDLE_ROLLBACK_LIMIT - 1, 'a');
+    const result = recordRollbacks({ log, blockedBundleIds: ['b'], now: T0 + 3 * HOUR });
+    expect(result.log['a'].rollbacks).toBe(BUNDLE_ROLLBACK_LIMIT - 1);
+    expect(result.log['b'].rollbacks).toBe(1);
+    expect(result.newlyLimited).toEqual([]);
+  });
+
+  it('leaves the log unchanged when nothing is blocked', () => {
+    const { log } = rollBack(1);
+    expect(recordRollbacks({ log, blockedBundleIds: [], now: T0 + HOUR }).log).toEqual(log);
   });
 });
